@@ -1,4 +1,4 @@
-import type { Pass, VolumePass } from "./passes";
+import type { Pass, VolumePass, BodyPass } from "./passes";
 export type Volume = {
     path: string;
     sha256?: string;
@@ -30,6 +30,7 @@ export type PipelineDef = {
 };
 export type ResolvedPasses = {
     geometry: "per-volume" | "document";
+    bodyPasses: BodyPass[];
     volumePasses: VolumePass[];
 };
 /** Validates a report's definition. Throws rather than ingesting nonsense. */

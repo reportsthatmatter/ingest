@@ -20,7 +20,7 @@ export function ingestPages(pages, meta) {
  * keep a margin per source volume: each PDF's page furniture and typesetting
  * may differ, so one global margin is not meaningful across all of them.
  */
-export function ingestPageGroups(pageGroups, meta, resolved = { geometry: "document", volumePasses: [] }, corrections = []) {
+export function ingestPageGroups(pageGroups, meta, resolved = { geometry: "document", bodyPasses: [], volumePasses: [] }, corrections = []) {
     // Volume is assigned here because this is the only place that knows the
     // order the volumes were given in — and that order is semantic: footnote
     // numbering and page indices run continuously across them.
@@ -42,6 +42,9 @@ export function ingestPageGroups(pageGroups, meta, resolved = { geometry: "docum
             if (parsed.length)
                 expectedNote = Math.max(...parsed.map((n) => n.number)) + 1;
         }
+        // Body passes rewrite the page's own lines once its furniture is off:
+        // reading two columns in order, for instance.
+        split.body = resolved.bodyPasses.reduce((lines, pass) => pass.run(lines), split.body);
         return split;
     }));
     // Which passes run is a declared property of the document, not something

@@ -1,4 +1,4 @@
-import type { Pass, GeometryPass, VolumePass } from "./passes";
+import type { Pass, GeometryPass, VolumePass, BodyPass } from "./passes";
 
 export type Volume = { path: string; sha256?: string };
 
@@ -30,6 +30,7 @@ export type PipelineDef = {
 
 export type ResolvedPasses = {
   geometry: "per-volume" | "document";
+  bodyPasses: BodyPass[];
   volumePasses: VolumePass[];
 };
 
@@ -72,6 +73,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
   );
   return {
     geometry: geometry?.scope ?? "document",
+    bodyPasses: passes.filter((pass): pass is BodyPass => pass.stage === "body"),
     volumePasses: passes.filter((pass): pass is VolumePass => pass.stage === "volume"),
   };
 }

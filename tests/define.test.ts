@@ -53,3 +53,17 @@ describe("resolvePasses", () => {
     expect(resolved.volumePasses).toEqual([]);
   });
 });
+
+describe("body passes", () => {
+  it("resolves a declared columns pass", async () => {
+    const { columns } = await import("../src/passes");
+    const resolved = resolvePasses(pipeline({ ...base, passes: [columns()] }));
+    expect(resolved.bodyPasses.map((p) => p.name)).toEqual(["columns"]);
+    // It is a body pass, so it must not be mistaken for a volume one.
+    expect(resolved.volumePasses).toEqual([]);
+  });
+
+  it("declares nothing by default, so a report is never split by surprise", () => {
+    expect(resolvePasses(pipeline(base)).bodyPasses).toEqual([]);
+  });
+});

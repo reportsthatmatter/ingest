@@ -14,6 +14,12 @@ export type PagePass = {
     readonly name: string;
     readonly stage: "page";
 };
+/** Rewrites one page's body lines, after its furniture has been taken off. */
+export type BodyPass = {
+    readonly name: string;
+    readonly stage: "body";
+    run(lines: string[]): string[];
+};
 /** Runs over one volume's pages together. */
 export type VolumePass = {
     readonly name: string;
@@ -26,7 +32,7 @@ export type GeometryPass = {
     readonly stage: "geometry";
     readonly scope: "per-volume" | "document";
 };
-export type Pass = PagePass | VolumePass | GeometryPass;
+export type Pass = PagePass | BodyPass | VolumePass | GeometryPass;
 /**
  * Takes the printed page number off each page. These documents are cited by
  * page ("Report at 62"), so the printed number is the citation unit readers
@@ -45,6 +51,24 @@ export declare const footnoteBlock: () => PagePass;
  * repeated line to it.
  */
 export declare const runningFurniture: () => VolumePass;
+/**
+ * Reads a two-column page column by column rather than line by line.
+ *
+ * `pdftotext -layout` puts both columns on the same physical line, so without
+ * this an unrelated sentence is welded into the middle of every paragraph —
+ * unreadable, and invisible to the fidelity checks, which count words rather
+ * than order them.
+ *
+ * Opt-in, and per page: a report declares it, and each page is judged on its
+ * own, because front matter and appendices are routinely single-column in an
+ * otherwise two-column document. Pages with no detectable gutter are left
+ * untouched.
+ *
+ * A caveat worth knowing: a wide two-column *table* looks much like
+ * two-column prose, and this will split one. That is why it is opt-in rather
+ * than a universal heuristic.
+ */
+export declare const columns: () => BodyPass;
 /**
  * Where the left margin is measured.
  *

@@ -1,0 +1,22 @@
+                                                        COLUMBIA
+                                                     ACCIDENT INVESTIGATION BOARD
+
+
+
+
+The Orbiter has a large glowing field surrounding it in this view        Taken at the same time as the photo at left, but from Hewitt, Texas,
+taken from Mesquite, Texas, looking south.                               looking north.
+
+
+
+
+Figure 2.6-1. This simplified timeline shows the re-entry path of Columbia on February 1, 2003. The information presented here is a com-
+posite of sensor data telemetered to the ground combined with data from the Modular Auxiliary Data System recorder recovered after the
+accident. Note that the first off-nominal reading was a small increase in a strain gauge at the front wing spar behind RCC panel 9-left. The
+chart is color-coded: blue boxes contain position, attitude, and velocity information; orange boxes indicate when debris was shed from the
+Orbiter; green boxes are significant aerodynamic control events; gray boxes contain sensor information from the Modular Auxiliary Data
+System; and yellow boxes contain telemetered sensor information. The red boxes indicate other significant events.
+
+
+40                                             Report Volume I            August 2003
+

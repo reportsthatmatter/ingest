@@ -10,7 +10,8 @@
  */
 // — What a report declares —
 export { pipeline, resolvePasses } from "./define";
-export { printedPageNumber, footnoteBlock, runningFurniture, geometry } from "./passes";
+export { printedPageNumber, footnoteBlock, runningFurniture, geometry, columns } from "./passes";
+export { detectGutter, splitColumns } from "./columns";
 // — Running a build —
 export { extractPages, normaliseWhitespace } from "./extract";
 export { ingest, ingestPages, ingestPageGroups } from "./pipeline";

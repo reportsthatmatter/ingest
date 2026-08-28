@@ -26,6 +26,7 @@ import { runningFurniture } from "../src/passes";
 /** What a multi-volume report declares: per-volume geometry, furniture stripped. */
 const MULTI_VOLUME = {
   geometry: "per-volume" as const,
+  bodyPasses: [],
   volumePasses: [runningFurniture()],
 };
 

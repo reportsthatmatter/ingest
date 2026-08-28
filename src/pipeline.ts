@@ -52,7 +52,7 @@ export function ingestPages(pages: Page[], meta: Metadata): IngestResult {
 export function ingestPageGroups(
   pageGroups: Page[][],
   meta: Metadata,
-  resolved: ResolvedPasses = { geometry: "document", volumePasses: [] },
+  resolved: ResolvedPasses = { geometry: "document", bodyPasses: [], volumePasses: [] },
   corrections: Correction[] = []
 ): IngestResult {
   // Volume is assigned here because this is the only place that knows the
@@ -81,6 +81,12 @@ export function ingestPageGroups(
         footnotes.push(...parsed);
         if (parsed.length) expectedNote = Math.max(...parsed.map((n) => n.number)) + 1;
       }
+      // Body passes rewrite the page's own lines once its furniture is off:
+      // reading two columns in order, for instance.
+      split.body = resolved.bodyPasses.reduce(
+        (lines, pass) => pass.run(lines),
+        split.body
+      );
       return split;
     })
   );

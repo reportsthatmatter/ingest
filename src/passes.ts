@@ -1,5 +1,6 @@
 import { stripRepeatedPageFurniture, takePrintedNumber, splitFootnoteBlock, type SplitPage } from "./clean";
 import { bodyIndent } from "./paragraphs";
+import { splitColumns } from "./columns";
 
 /**
  * A pass is one named decision about how to read a source.
@@ -17,6 +18,13 @@ export type PagePass = {
   readonly stage: "page";
 };
 
+/** Rewrites one page's body lines, after its furniture has been taken off. */
+export type BodyPass = {
+  readonly name: string;
+  readonly stage: "body";
+  run(lines: string[]): string[];
+};
+
 /** Runs over one volume's pages together. */
 export type VolumePass = {
   readonly name: string;
@@ -31,7 +39,7 @@ export type GeometryPass = {
   readonly scope: "per-volume" | "document";
 };
 
-export type Pass = PagePass | VolumePass | GeometryPass;
+export type Pass = PagePass | BodyPass | VolumePass | GeometryPass;
 
 /**
  * Takes the printed page number off each page. These documents are cited by
@@ -59,6 +67,29 @@ export const runningFurniture = (): VolumePass => ({
   name: "runningFurniture",
   stage: "volume",
   run: stripRepeatedPageFurniture,
+});
+
+/**
+ * Reads a two-column page column by column rather than line by line.
+ *
+ * `pdftotext -layout` puts both columns on the same physical line, so without
+ * this an unrelated sentence is welded into the middle of every paragraph —
+ * unreadable, and invisible to the fidelity checks, which count words rather
+ * than order them.
+ *
+ * Opt-in, and per page: a report declares it, and each page is judged on its
+ * own, because front matter and appendices are routinely single-column in an
+ * otherwise two-column document. Pages with no detectable gutter are left
+ * untouched.
+ *
+ * A caveat worth knowing: a wide two-column *table* looks much like
+ * two-column prose, and this will split one. That is why it is opt-in rather
+ * than a universal heuristic.
+ */
+export const columns = (): BodyPass => ({
+  name: "columns",
+  stage: "body",
+  run: splitColumns,
 });
 
 /**
