@@ -80,6 +80,16 @@ export function losslessCheck(sourceText, markdown, extraVocabulary = []) {
         ...words(autoFix(sourceText).text),
         ...words(extraVocabulary.join(" ")),
     ]);
+    // A footnote marker fused to its word reaches the source as one token
+    // ("kidnapping112"), and lifting the marker out leaves a word the source
+    // appears never to contain. Splitting the trailing digits off is what makes
+    // that legitimate — and only that: anything the pipeline actually invented
+    // still has nothing to match.
+    for (const word of [...source]) {
+        const stem = word.replace(/\d+$/, "");
+        if (stem && stem !== word)
+            source.add(stem);
+    }
     const output = words(stripFrontMatter(markdown));
     const foreign = output.filter((word) => !source.has(word));
     const ratio = output.length ? foreign.length / output.length : 1;

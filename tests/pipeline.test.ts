@@ -1112,3 +1112,21 @@ describe("repeated printed page numbers", () => {
     expect(result.markdown).not.toContain("#");
   });
 });
+
+describe("a marker lifted off its word is not invented text", () => {
+  it("accepts the word once its fused marker is lifted", () => {
+    // The source has "kidnapping112" as one token; the output has
+    // "kidnapping[^112]", whose comparable form is "kidnapping".
+    const check = losslessCheck(
+      "he described the kidnapping112 in detail",
+      "he described the kidnapping[^112] in detail"
+    );
+    expect(check.ok).toBe(true);
+    expect(check.detail).toMatch(/all accounted for/);
+  });
+
+  it("still catches text the pipeline actually invented", () => {
+    const check = losslessCheck("the original text", "the invented text");
+    expect(check.detail).toMatch(/invented/);
+  });
+});
