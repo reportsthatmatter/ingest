@@ -39,9 +39,14 @@ export type { Baseline } from "./baseline";
 export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler";
 
 // — Human corrections —
-export { parseCorrections, applyCorrections, correctionVocabulary } from "./corrections";
+export {
+  parseCorrections,
+  parseDismissals,
+  applyCorrections,
+  correctionVocabulary,
+} from "./corrections";
 export { rejoinHyphenated, vocabulary } from "./hyphens";
-export type { Correction } from "./corrections";
+export type { Correction, Dismissal } from "./corrections";
 
 // — Building a bespoke pass —
 export { takePrintedNumber, splitFootnoteBlock, bodyIndent } from "./passes";

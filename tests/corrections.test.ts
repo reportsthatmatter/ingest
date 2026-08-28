@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parseCorrections, applyCorrections } from "../src/corrections";
+import {
+  parseCorrections,
+  applyCorrections,
+  parseDismissals,
+} from "../src/corrections";
 import type { Block } from "../src/paragraphs";
 
 const at = (volume: number, printed: number) => ({ volume, pdfIndex: printed, printed });
@@ -93,5 +97,29 @@ describe("applyCorrections", () => {
     const fix = yaml('  - id: c-2\n    find: "wrogn"\n    replace: "wrong"\n');
     const result = applyCorrections(list, parseCorrections(fix, "x"), "x");
     expect((result.blocks[0] as { items: string[] }).items[0]).toBe("a wrong item");
+  });
+});
+
+describe("parseDismissals", () => {
+  it("reads the suspects a reviewer judged correct", () => {
+    const parsed = parseDismissals(
+      `dismissed:
+  - match: "tum"
+    reason: the scan really does read "tum" here; it is a surname
+`,
+      "x"
+    );
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0].match).toBe("tum");
+  });
+
+  it("is empty when a report has dismissed nothing", () => {
+    expect(parseDismissals("version: 1\ncorrections: []\n", "x")).toEqual([]);
+  });
+
+  it("rejects an entry with nothing to match on", () => {
+    expect(() => parseDismissals("dismissed:\n  - reason: looks fine\n", "x")).toThrow(
+      /match/i
+    );
   });
 });

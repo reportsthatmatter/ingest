@@ -13,6 +13,22 @@ import type { Block } from "./paragraphs";
  * If you are writing a correction to undo something the parser did, you needed
  * a different pass or a bug fix.
  */
+/**
+ * A suspect looked at and judged correct as it stands.
+ *
+ * The review queue is a list of places the scanner probably got wrong. Half
+ * the answers are "fix it", which is a correction; the other half are "I
+ * checked this against the scan and it is right", and until now those had
+ * nowhere to go — so the same entries reappeared on every run and the queue
+ * never shrank. That is why nobody reviewed it (#105).
+ */
+export type Dismissal = {
+  /** The suspect text, exactly as the queue lists it. */
+  match: string;
+  reason?: string;
+  added?: string;
+};
+
 export type Correction = {
   id: string;
   /** Narrows the correction to one page. Omit to search the whole document. */
@@ -124,4 +140,22 @@ export function applyCorrections(
 /** Words a correction introduces, so the lossless check does not call them invented. */
 export function correctionVocabulary(corrections: Correction[]): string[] {
   return corrections.flatMap((correction) => correction.replace.split(/\s+/));
+}
+
+/**
+ * The suspects a reviewer has judged correct, so the queue stops listing them.
+ *
+ * Deliberately keyed on the suspect text rather than a position: the queue is
+ * regenerated from scratch on every ingest, and a line number would go stale
+ * the moment anything above it moved.
+ */
+export function parseDismissals(yamlText: string, reportId: string): Dismissal[] {
+  const raw = parse(yamlText) as { dismissed?: Dismissal[] } | null;
+  const dismissed = raw?.dismissed ?? [];
+  for (const entry of dismissed) {
+    if (!entry?.match) {
+      throw new Error(`${reportId}: a dismissed entry has no match`);
+    }
+  }
+  return dismissed;
 }

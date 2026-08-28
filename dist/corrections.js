@@ -92,3 +92,20 @@ export function applyCorrections(blocks, corrections, reportId) {
 export function correctionVocabulary(corrections) {
     return corrections.flatMap((correction) => correction.replace.split(/\s+/));
 }
+/**
+ * The suspects a reviewer has judged correct, so the queue stops listing them.
+ *
+ * Deliberately keyed on the suspect text rather than a position: the queue is
+ * regenerated from scratch on every ingest, and a line number would go stale
+ * the moment anything above it moved.
+ */
+export function parseDismissals(yamlText, reportId) {
+    const raw = parse(yamlText);
+    const dismissed = raw?.dismissed ?? [];
+    for (const entry of dismissed) {
+        if (!entry?.match) {
+            throw new Error(`${reportId}: a dismissed entry has no match`);
+        }
+    }
+    return dismissed;
+}
