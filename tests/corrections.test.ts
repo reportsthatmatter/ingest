@@ -123,3 +123,11 @@ describe("parseDismissals", () => {
     );
   });
 });
+
+describe("a malformed corrections file", () => {
+  it("names the report and the problem rather than throwing a stack", () => {
+    expect(() => parseCorrections("dismissed:\n  - match: [unclosed\n", "leveson")).toThrow(
+      /leveson: corrections\.yaml is not valid YAML/
+    );
+  });
+});

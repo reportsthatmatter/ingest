@@ -39,8 +39,18 @@ export type Correction = {
   added?: string;
 };
 
+/** Parses, and says which report's file is at fault rather than throwing a stack. */
+function load(yamlText: string, reportId: string): Record<string, unknown> | null {
+  try {
+    return parse(yamlText) as Record<string, unknown> | null;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message.split("\n")[0] : String(error);
+    throw new Error(`${reportId}: corrections.yaml is not valid YAML — ${detail}`);
+  }
+}
+
 export function parseCorrections(yamlText: string, reportId: string): Correction[] {
-  const raw = parse(yamlText) as { corrections?: Correction[] } | null;
+  const raw = load(yamlText, reportId) as { corrections?: Correction[] } | null;
   const corrections = raw?.corrections ?? [];
 
   const seen = new Set<string>();
@@ -150,7 +160,7 @@ export function correctionVocabulary(corrections: Correction[]): string[] {
  * the moment anything above it moved.
  */
 export function parseDismissals(yamlText: string, reportId: string): Dismissal[] {
-  const raw = parse(yamlText) as { dismissed?: Dismissal[] } | null;
+  const raw = load(yamlText, reportId) as { dismissed?: Dismissal[] } | null;
   const dismissed = raw?.dismissed ?? [];
   for (const entry of dismissed) {
     if (!entry?.match) {

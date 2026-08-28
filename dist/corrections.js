@@ -1,6 +1,16 @@
 import { parse } from "yaml";
+/** Parses, and says which report's file is at fault rather than throwing a stack. */
+function load(yamlText, reportId) {
+    try {
+        return parse(yamlText);
+    }
+    catch (error) {
+        const detail = error instanceof Error ? error.message.split("\n")[0] : String(error);
+        throw new Error(`${reportId}: corrections.yaml is not valid YAML — ${detail}`);
+    }
+}
 export function parseCorrections(yamlText, reportId) {
-    const raw = parse(yamlText);
+    const raw = load(yamlText, reportId);
     const corrections = raw?.corrections ?? [];
     const seen = new Set();
     for (const correction of corrections) {
@@ -100,7 +110,7 @@ export function correctionVocabulary(corrections) {
  * the moment anything above it moved.
  */
 export function parseDismissals(yamlText, reportId) {
-    const raw = parse(yamlText);
+    const raw = load(yamlText, reportId);
     const dismissed = raw?.dismissed ?? [];
     for (const entry of dismissed) {
         if (!entry?.match) {
