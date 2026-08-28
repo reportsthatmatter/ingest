@@ -30,6 +30,7 @@ export type PipelineDef = {
 
 export type ResolvedPasses = {
   geometry: "per-volume" | "document";
+  flushFootnoteMarkers: boolean;
   bodyPasses: BodyPass[];
   volumePasses: VolumePass[];
 };
@@ -73,6 +74,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
   );
   return {
     geometry: geometry?.scope ?? "document",
+    flushFootnoteMarkers: passes.some((pass) => pass.name === "flushFootnoteMarkers"),
     bodyPasses: passes.filter((pass): pass is BodyPass => pass.stage === "body"),
     volumePasses: passes.filter((pass): pass is VolumePass => pass.stage === "volume"),
   };

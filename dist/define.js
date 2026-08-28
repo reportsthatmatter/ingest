@@ -32,6 +32,7 @@ export function resolvePasses(def) {
     const geometry = passes.find((pass) => pass.stage === "geometry");
     return {
         geometry: geometry?.scope ?? "document",
+        flushFootnoteMarkers: passes.some((pass) => pass.name === "flushFootnoteMarkers"),
         bodyPasses: passes.filter((pass) => pass.stage === "body"),
         volumePasses: passes.filter((pass) => pass.stage === "volume"),
     };

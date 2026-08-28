@@ -67,3 +67,20 @@ describe("body passes", () => {
     expect(resolvePasses(pipeline(base)).bodyPasses).toEqual([]);
   });
 });
+
+describe("flushFootnoteMarkers", () => {
+  it("is off unless a report declares it", async () => {
+    // It is safe only where a note number identifies one note. Leveson
+    // restarts numbering per chapter, so linking every fused "20" pointed 54
+    // references at a single note.
+    expect(resolvePasses(pipeline(base)).flushFootnoteMarkers).toBe(false);
+  });
+
+  it("is on when declared", async () => {
+    const { flushFootnoteMarkers } = await import("../src/passes");
+    const resolved = resolvePasses(
+      pipeline({ ...base, passes: [flushFootnoteMarkers()] })
+    );
+    expect(resolved.flushFootnoteMarkers).toBe(true);
+  });
+});

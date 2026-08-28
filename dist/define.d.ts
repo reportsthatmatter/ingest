@@ -30,6 +30,7 @@ export type PipelineDef = {
 };
 export type ResolvedPasses = {
     geometry: "per-volume" | "document";
+    flushFootnoteMarkers: boolean;
     bodyPasses: BodyPass[];
     volumePasses: VolumePass[];
 };

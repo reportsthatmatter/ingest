@@ -51,6 +51,20 @@ export const printedPageNumber = (): PagePass => ({
   stage: "page",
 });
 
+/**
+ * Links footnote markers that OCR fused to the preceding word (#103).
+ *
+ * Opt-in, and it must stay that way. It is safe only where a note number
+ * identifies one note: Leveson restarts its numbering per chapter, so "20"
+ * names a different note in every one of them, and linking every fused "20"
+ * pointed 54 references at a single note. Where numbering is not unique
+ * across the document, a bare number is the honest output.
+ */
+export const flushFootnoteMarkers = (): PagePass => ({
+  name: "flushFootnoteMarkers",
+  stage: "page",
+});
+
 /** Separates the footnote block at the foot of each page from the body. */
 export const footnoteBlock = (): PagePass => ({ name: "footnoteBlock", stage: "page" });
 

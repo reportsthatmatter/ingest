@@ -59,7 +59,12 @@ export function ingestPages(pages: Page[], meta: Metadata): IngestResult {
 export function ingestPageGroups(
   pageGroups: Page[][],
   meta: Metadata,
-  resolved: ResolvedPasses = { geometry: "document", bodyPasses: [], volumePasses: [] },
+  resolved: ResolvedPasses = {
+    geometry: "document",
+    flushFootnoteMarkers: false,
+    bodyPasses: [],
+    volumePasses: [],
+  },
   corrections: Correction[] = []
 ): IngestResult {
   // Volume is assigned here because this is the only place that knows the
@@ -143,24 +148,28 @@ export function ingestPageGroups(
   // notes collected near each block's own page: these documents number notes
   // sequentially, so page locality is what turns an ambiguous typographic
   // guess into a lookup that can be trusted to auto-apply.
-  const notesByPage = new Map<number, Set<number>>();
+  const notesByPage = new Map<string, Set<number>>();
+  // Keyed by volume as well as page: a per-volume page index alone collapses
+  // volume 1 page 50 into volume 4 page 50, widening the window fourfold.
+  const pageKey = (volume: number | undefined, page: number) => `${volume ?? 1}:${page}`;
   for (const note of footnotes) {
-    const page = note.pdfIndex ?? note.page;
-    if (!notesByPage.has(page)) notesByPage.set(page, new Set());
-    notesByPage.get(page)!.add(note.number);
+    const key = pageKey(note.volume, note.pdfIndex ?? note.page);
+    if (!notesByPage.has(key)) notesByPage.set(key, new Set());
+    notesByPage.get(key)!.add(note.number);
   }
-  const notesNear = (page: number | undefined): Set<number> => {
+  const notesNear = (at: Block["at"]): Set<number> => {
+    const page = at?.pdfIndex;
     if (page === undefined) return new Set();
     const near = new Set<number>();
     // A note whose text runs over is parsed on the following page, so look
     // one page either side of the marker.
     for (const offset of [-1, 0, 1]) {
-      for (const n of notesByPage.get(page + offset) ?? []) near.add(n);
+      for (const n of notesByPage.get(pageKey(at?.volume, page + offset)) ?? []) near.add(n);
     }
     return near;
   };
-  for (const block of bodyChunks) {
-    const plausible = notesNear(block.at?.pdfIndex);
+  for (const block of resolved.flushFootnoteMarkers ? bodyChunks : []) {
+    const plausible = notesNear(block.at);
     if (!plausible.size) continue;
     if (block.kind === "list") {
       block.items = block.items.map((item) => linkFlushMarkers(item, plausible));
