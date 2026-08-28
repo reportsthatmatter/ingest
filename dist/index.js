@@ -25,3 +25,4 @@ export { parseCorrections, applyCorrections, correctionVocabulary } from "./corr
 export { rejoinHyphenated, vocabulary } from "./hyphens";
 // — Building a bespoke pass —
 export { takePrintedNumber, splitFootnoteBlock, bodyIndent } from "./passes";
+export { linkFlushMarkers, linkInlineMarkers } from "./footnotes";

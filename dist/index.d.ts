@@ -30,5 +30,6 @@ export type { Correction } from "./corrections";
 export { takePrintedNumber, splitFootnoteBlock, bodyIndent } from "./passes";
 export type { SplitPage } from "./clean";
 export type { Block, Provenance } from "./paragraphs";
+export { linkFlushMarkers, linkInlineMarkers } from "./footnotes";
 export type { Footnote } from "./footnotes";
 export type { Suspect } from "./ocr";

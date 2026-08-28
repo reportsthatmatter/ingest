@@ -12,7 +12,13 @@ import {
   bodyIndent,
   type Block,
 } from "./paragraphs";
-import { parseFootnotes, linkInlineMarkers, renderEndnotes, type Footnote } from "./footnotes";
+import {
+  parseFootnotes,
+  linkInlineMarkers,
+  linkFlushMarkers,
+  renderEndnotes,
+  type Footnote,
+} from "./footnotes";
 import { autoFix, findSuspects, rankSuspects, type Suspect } from "./ocr";
 
 export type IngestResult = {
@@ -131,6 +137,36 @@ export function ingestPageGroups(
     const count = (seenPage.get(block.number) ?? 0) + 1;
     seenPage.set(block.number, count);
     if (count > 1) block.occurrence = count;
+  }
+
+  // Footnote markers that OCR fused to the preceding word. Scoped to the
+  // notes collected near each block's own page: these documents number notes
+  // sequentially, so page locality is what turns an ambiguous typographic
+  // guess into a lookup that can be trusted to auto-apply.
+  const notesByPage = new Map<number, Set<number>>();
+  for (const note of footnotes) {
+    const page = note.pdfIndex ?? note.page;
+    if (!notesByPage.has(page)) notesByPage.set(page, new Set());
+    notesByPage.get(page)!.add(note.number);
+  }
+  const notesNear = (page: number | undefined): Set<number> => {
+    if (page === undefined) return new Set();
+    const near = new Set<number>();
+    // A note whose text runs over is parsed on the following page, so look
+    // one page either side of the marker.
+    for (const offset of [-1, 0, 1]) {
+      for (const n of notesByPage.get(page + offset) ?? []) near.add(n);
+    }
+    return near;
+  };
+  for (const block of bodyChunks) {
+    const plausible = notesNear(block.at?.pdfIndex);
+    if (!plausible.size) continue;
+    if (block.kind === "list") {
+      block.items = block.items.map((item) => linkFlushMarkers(item, plausible));
+    } else if (block.kind !== "page") {
+      block.text = linkFlushMarkers(block.text, plausible);
+    }
   }
 
   // Corrections are the last word on the text: applied after the structure is
