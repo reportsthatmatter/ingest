@@ -2,6 +2,7 @@ import { extractPages, type Page } from "./extract";
 import { splitPage, collapseDoubleSpacing } from "./clean";
 import type { ResolvedPasses } from "./define";
 import { applyCorrections, type Correction } from "./corrections";
+import { rejoinHyphenated, vocabulary } from "./hyphens";
 import {
   toBlocks,
   blocksToMarkdown,
@@ -140,6 +141,11 @@ export function ingestPageGroups(
     meta.title
   );
   let body = blocksToMarkdown(corrected.blocks);
+
+  // Rejoin words the typesetter broke at a line end, decided from the
+  // document's own vocabulary. Before autoFix, so a repaired word is judged
+  // whole rather than as two fragments.
+  body = rejoinHyphenated(body, vocabulary(sourceText));
 
   const fixed = autoFix(body);
   body = fixed.text;

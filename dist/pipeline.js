@@ -1,6 +1,7 @@
 import { extractPages } from "./extract";
 import { splitPage, collapseDoubleSpacing } from "./clean";
 import { applyCorrections } from "./corrections";
+import { rejoinHyphenated, vocabulary } from "./hyphens";
 import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, mergeAcrossPages, bodyIndent, } from "./paragraphs";
 import { parseFootnotes, linkInlineMarkers, renderEndnotes } from "./footnotes";
 import { autoFix, findSuspects, rankSuspects } from "./ocr";
@@ -85,6 +86,10 @@ export function ingestPageGroups(pageGroups, meta, resolved = { geometry: "docum
     // settled, before it is serialised, so re-running reproduces the same output.
     const corrected = applyCorrections(mergeAcrossPages(bodyChunks), corrections, meta.title);
     let body = blocksToMarkdown(corrected.blocks);
+    // Rejoin words the typesetter broke at a line end, decided from the
+    // document's own vocabulary. Before autoFix, so a repaired word is judged
+    // whole rather than as two fragments.
+    body = rejoinHyphenated(body, vocabulary(sourceText));
     const fixed = autoFix(body);
     body = fixed.text;
     const known = new Set(footnotes.map((note) => note.number));

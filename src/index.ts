@@ -33,6 +33,7 @@ export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler";
 
 // — Human corrections —
 export { parseCorrections, applyCorrections, correctionVocabulary } from "./corrections";
+export { rejoinHyphenated, vocabulary } from "./hyphens";
 export type { Correction } from "./corrections";
 
 // — Building a bespoke pass —

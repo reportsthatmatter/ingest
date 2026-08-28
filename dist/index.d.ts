@@ -25,6 +25,7 @@ export { computeBaseline, diffBaselines } from "./baseline";
 export type { Baseline } from "./baseline";
 export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler";
 export { parseCorrections, applyCorrections, correctionVocabulary } from "./corrections";
+export { rejoinHyphenated, vocabulary } from "./hyphens";
 export type { Correction } from "./corrections";
 export { takePrintedNumber, splitFootnoteBlock, bodyIndent } from "./passes";
 export type { SplitPage } from "./clean";

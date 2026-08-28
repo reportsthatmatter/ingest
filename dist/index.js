@@ -22,5 +22,6 @@ export { computeBaseline, diffBaselines } from "./baseline";
 export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler";
 // — Human corrections —
 export { parseCorrections, applyCorrections, correctionVocabulary } from "./corrections";
+export { rejoinHyphenated, vocabulary } from "./hyphens";
 // — Building a bespoke pass —
 export { takePrintedNumber, splitFootnoteBlock, bodyIndent } from "./passes";

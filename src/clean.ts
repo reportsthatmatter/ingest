@@ -150,6 +150,26 @@ export function splitPage(page: Page, expectedNote: number): SplitPage {
  * position can: a real line of prose should not appear at the top or bottom of
  * three distinct pages.
  */
+/**
+ * What makes two edge lines "the same" furniture.
+ *
+ * A running footer usually carries the page number — "30  Report Volume I
+ * August 2003" — so comparing the literal text finds every one of them
+ * unique and strips none. Blanking the digits is what lets the repetition
+ * show: furniture that carries a page number is still furniture.
+ */
+function furnitureKey(text: string): string {
+  return normaliseWhitespace(text).replace(/\d+/g, "#");
+}
+
+/** The printed page number a composite footer carries, if it has exactly one. */
+function numberIn(text: string): number | null {
+  const numbers = normaliseWhitespace(text).match(/\b\d{1,4}\b/g) ?? [];
+  if (numbers.length !== 1) return null;
+  const value = Number.parseInt(numbers[0], 10);
+  return Number.isNaN(value) ? null : value;
+}
+
 export function stripRepeatedPageFurniture(pages: SplitPage[]): SplitPage[] {
   const counts = new Map<string, number>();
   const edgeIndices = pages.map((page) => pageEdgeIndices(page.body));
@@ -157,20 +177,43 @@ export function stripRepeatedPageFurniture(pages: SplitPage[]): SplitPage[] {
   for (const [pageIndex, page] of pages.entries()) {
     const seen = new Set<string>();
     for (const lineIndex of edgeIndices[pageIndex]) {
-      const text = normaliseWhitespace(page.body[lineIndex]);
-      if (text) seen.add(text);
+      const key = furnitureKey(page.body[lineIndex]);
+      if (key) seen.add(key);
     }
-    for (const text of seen) counts.set(text, (counts.get(text) ?? 0) + 1);
+    for (const key of seen) counts.set(key, (counts.get(key) ?? 0) + 1);
   }
 
-  return pages.map((page, pageIndex) => ({
-    ...page,
-    body: page.body.filter((line, lineIndex) => {
-      if (!edgeIndices[pageIndex].has(lineIndex)) return true;
-      const text = normaliseWhitespace(line);
-      return !text || (counts.get(text) ?? 0) < MIN_REPEATED_FURNITURE;
-    }),
-  }));
+  const isFurniture = (line: string) => {
+    const key = furnitureKey(line);
+    return Boolean(key) && (counts.get(key) ?? 0) >= MIN_REPEATED_FURNITURE;
+  };
+
+  return pages.map((page, pageIndex) => {
+    // A page whose number sits inside its running footer has none of its own.
+    // Recovering it here is what keeps the page anchors — the citation unit
+    // readers actually use — for a document laid out that way.
+    let printed = page.printed;
+    if (printed === null) {
+      for (const lineIndex of edgeIndices[pageIndex]) {
+        const line = page.body[lineIndex];
+        if (!isFurniture(line)) continue;
+        const value = numberIn(line);
+        if (value !== null) {
+          printed = value;
+          break;
+        }
+      }
+    }
+
+    return {
+      ...page,
+      printed,
+      body: page.body.filter((line, lineIndex) => {
+        if (!edgeIndices[pageIndex].has(lineIndex)) return true;
+        return !normaliseWhitespace(line) || !isFurniture(line);
+      }),
+    };
+  });
 }
 
 function pageEdgeIndices(lines: string[]): Set<number> {

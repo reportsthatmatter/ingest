@@ -66,12 +66,6 @@ export declare function splitFootnoteBlock(lines: string[], expectedNote: number
  * stacked note opening.
  */
 export declare function splitPage(page: Page, expectedNote: number): SplitPage;
-/**
- * Removes running headers and footers that recur at a page edge. PDF text
- * extraction cannot distinguish these from the report body, but their repeated
- * position can: a real line of prose should not appear at the top or bottom of
- * three distinct pages.
- */
 export declare function stripRepeatedPageFurniture(pages: SplitPage[]): SplitPage[];
 /**
  * pdftotext preserves the original double-spacing on many pages, which would
