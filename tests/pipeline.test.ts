@@ -7,6 +7,7 @@ import {
   blocksToMarkdown,
   mergeAcrossPages,
   endsSentence,
+  isTabularPage,
 } from "../src/paragraphs";
 import {
   parseFootnotes,
@@ -1129,5 +1130,48 @@ describe("a marker lifted off its word is not invented text", () => {
   it("still catches text the pipeline actually invented", () => {
     const check = losslessCheck("the original text", "the invented text");
     expect(check.detail).toMatch(/invented/);
+  });
+});
+
+describe("a table row is not a division heading (#120)", () => {
+  const docket = [
+    "1        8/1/2023     Indictment",
+    "10       8/4/2023     Government's Motion for Protective Order",
+    "12       8/5/2023     Government's Opposition to Defendant's Motion",
+    "15       8/7/2023     Government's Reply in Support of Motion",
+    "65       10/2/2023    Section 4 Filing and an Adjournment of the CIPA Section 5 Deadline",
+    "66       10/2/2023    Government's Response in Opposition to Defendant's Motion",
+    "70       10/5/2023    Order on Pretrial Schedule",
+    "82       10/6/2023    Notice of Filing",
+    "90       10/9/2023    Joint Status Report",
+  ];
+
+  it("recognises a docket page as tabular", () => {
+    expect(isTabularPage(docket)).toBe(true);
+  });
+
+  it("does not recognise ordinary prose as tabular", () => {
+    const prose = Array.from({ length: 10 }, (_, i) =>
+      `This is an ordinary line of running prose, number ${i}, with no columns.`
+    );
+    expect(isTabularPage(prose)).toBe(false);
+  });
+
+  it("leaves the docket row as text rather than inventing a heading", () => {
+    const blocks = toBlocks(docket);
+    const headings = blocks.filter((b) => b.kind === "heading");
+    expect(headings.map((h) => (h as { text: string }).text)).not.toContain(
+      "Section 4: Filing and an Adjournment of the CIPA Section 5 Deadline"
+    );
+  });
+
+  it("still finds a division heading on an ordinary page", () => {
+    const blocks = toBlocks([
+      "Part 4:  Why would anyone wish to kill Mr Litvinenko",
+      "",
+      "    The question is one the Inquiry had to confront directly and at length.",
+      "    It runs through the evidence given over many months of hearings here.",
+    ]);
+    expect(blocks.some((b) => b.kind === "heading")).toBe(true);
   });
 });
