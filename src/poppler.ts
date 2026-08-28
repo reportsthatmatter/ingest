@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 
 /**
  * The poppler version every committed baseline was produced with.
@@ -16,15 +16,13 @@ import { execFileSync } from "node:child_process";
 export const EXPECTED_POPPLER = "26.08.0";
 
 export function popplerVersion(): string {
-  try {
-    const out = execFileSync("pdftotext", ["-v"], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    return /pdftotext version (\S+)/.exec(out)?.[1] ?? "unknown";
-  } catch {
-    return "missing";
-  }
+  // `pdftotext -v` writes to stderr, not stdout. Reading only stdout returns
+  // "unknown" for a perfectly healthy install — which silently disabled the
+  // drift detection this module exists for.
+  const result = spawnSync("pdftotext", ["-v"], { encoding: "utf8" });
+  if (result.error) return "missing";
+  const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
+  return /pdftotext version (\S+)/.exec(output)?.[1] ?? "unknown";
 }
 
 /** A warning line when the installed poppler is not the pinned one. */
