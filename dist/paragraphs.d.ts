@@ -68,6 +68,19 @@ export declare function danglesMidPhrase(text: string): boolean;
  */
 export declare function isTabularPage(lines: string[]): boolean;
 /**
+ * Which lines sit inside a table, judged by their neighbours.
+ *
+ * Page-level is too blunt: a page can carry a chronology table and a real
+ * division heading at once, and suppressing headings across the whole page
+ * cost Litvinenko 26 of them and Leveson 16. A table row's *neighbours* are
+ * column-aligned; a heading's are blank or prose.
+ *
+ * The row that prompted this carries no alignment of its own — the docket's
+ * description column wraps onto its own line — so the line itself cannot be
+ * the test.
+ */
+export declare function tabularContext(lines: string[]): boolean[];
+/**
  * Reflows hard-wrapped lines back into paragraphs.
  *
  * The signal is indentation: a line indented past the running left margin opens

@@ -135,6 +135,7 @@ const TOC_ENTRY = /[.·]{4,}\s*\d{1,4}\s*$|(?<![.,;:])[ \t]{3,}\d{1,4}\s*$/;
 function stripTrailingPageNumber(text) {
     return text.replace(/\s+\d{1,4}$/, "").trim();
 }
+const ALIGNED = /\S {3,}\S/;
 /**
  * A page laid out as a table rather than as prose.
  *
@@ -147,8 +148,31 @@ export function isTabularPage(lines) {
     const content = lines.filter((line) => line.trim().length > 0);
     if (content.length < 8)
         return false;
-    const aligned = content.filter((line) => /\S {3,}\S/.test(line)).length;
-    return aligned / content.length >= 0.25;
+    return content.filter((line) => ALIGNED.test(line)).length / content.length >= 0.25;
+}
+/**
+ * Which lines sit inside a table, judged by their neighbours.
+ *
+ * Page-level is too blunt: a page can carry a chronology table and a real
+ * division heading at once, and suppressing headings across the whole page
+ * cost Litvinenko 26 of them and Leveson 16. A table row's *neighbours* are
+ * column-aligned; a heading's are blank or prose.
+ *
+ * The row that prompted this carries no alignment of its own — the docket's
+ * description column wraps onto its own line — so the line itself cannot be
+ * the test.
+ */
+export function tabularContext(lines) {
+    const WINDOW = 3;
+    const NEIGHBOURS = 2;
+    return lines.map((_, i) => {
+        let aligned = 0;
+        for (let j = Math.max(0, i - WINDOW); j <= Math.min(lines.length - 1, i + WINDOW); j++) {
+            if (j !== i && ALIGNED.test(lines[j]))
+                aligned++;
+        }
+        return aligned >= NEIGHBOURS;
+    });
 }
 function isHeading(text, allowDivisions = true) {
     const trimmed = text.trim();
@@ -244,7 +268,7 @@ export function toBlocks(lines, documentMargin) {
     // Filing and an Adjournment of the CIPA Section 5 Deadline" as a filing
     // description, and read as a division that manufactures a heading — colon
     // and all — out of a table cell (#120).
-    const allowDivisions = !isTabularPage(lines);
+    const inTable = tabularContext(lines);
     // A block quote is a *sustained* run of indented lines. A paragraph's first
     // line is indented just as deeply but is followed by lines back at the
     // margin — judging on indent alone splits sentences in half and quotes the
@@ -252,12 +276,12 @@ export function toBlocks(lines, documentMargin) {
     // Headings and contents entries are indented too, so they must not count as
     // quote neighbours — otherwise the first line of the paragraph beneath a
     // heading looks like the continuation of an indented block and gets quoted.
-    const structural = lines.map((line) => {
+    const structural = lines.map((line, i) => {
         if (!line.trim())
             return false;
         // TOC_ENTRY's whitespace-gap branch needs the line's real spacing, which
         // normaliseWhitespace below would collapse away before it gets a look.
-        return (TOC_ENTRY.test(line) || isHeading(normaliseWhitespace(line), allowDivisions) !== null);
+        return (TOC_ENTRY.test(line) || isHeading(normaliseWhitespace(line), !inTable[i]) !== null);
     });
     const quoted = lines.map((line, i) => {
         if (!line.trim() || structural[i] || indentOf(line) < margin + 5)
@@ -269,6 +293,7 @@ export function toBlocks(lines, documentMargin) {
         return neighbour(i - 1) || neighbour(i + 1);
     });
     let current = [];
+    let currentStart = 0;
     let currentKind = "paragraph";
     // The column a division heading's title starts at, while its title may still
     // be wrapping onto aligned continuation lines below it. -1 once the title is
@@ -316,7 +341,7 @@ export function toBlocks(lines, documentMargin) {
             blocks.push({ kind: "quote", text });
             return;
         }
-        const heading = isHeading(text, allowDivisions);
+        const heading = isHeading(text, !inTable[currentStart]);
         if (heading)
             blocks.push({ kind: "heading", ...heading });
         else
@@ -398,7 +423,7 @@ export function toBlocks(lines, documentMargin) {
             continue;
         }
         openDivisionIndent = -1;
-        const standalone = isHeading(single, allowDivisions);
+        const standalone = isHeading(single, !inTable[i]);
         if (standalone) {
             flush();
             if (isDivisionHeading(standalone.text)) {
@@ -428,6 +453,8 @@ export function toBlocks(lines, documentMargin) {
         if ((startsParagraph || kind !== currentKind) && current.length)
             flush();
         currentKind = kind;
+        if (!current.length)
+            currentStart = i;
         current.push(line.trim());
     }
     flush();
