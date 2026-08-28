@@ -56,3 +56,19 @@ describe("splitColumns", () => {
     expect(words(splitColumns(lines))).toEqual(words(lines));
   });
 });
+
+describe("page furniture", () => {
+  it("keeps a running footer at the page edge, where the furniture pass looks", () => {
+    // splitColumns emits the left column then the right, so a footer left
+    // mid-array is no longer at an edge and is never recognised as furniture.
+    const split = splitColumns(fixture("columbia-two-column"));
+    const lastText = [...split].reverse().find((line) => line.trim());
+    expect(lastText).toMatch(/Report Volume I/);
+  });
+
+  it("keeps a running header at the top", () => {
+    const split = splitColumns(fixture("columbia-two-column"));
+    const firstText = split.find((line) => line.trim());
+    expect(firstText).not.toMatch(/Board placed emphasis/);
+  });
+});

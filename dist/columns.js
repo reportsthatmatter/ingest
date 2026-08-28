@@ -93,12 +93,37 @@ export function splitColumns(lines) {
     const gutter = detectGutter(lines);
     if (!gutter)
         return lines;
-    // A line with text inside the band is full-width — a running footer, a
-    // caption spanning both columns. Slicing it would cut a word in half, so it
-    // stays whole and is read with the left column.
+    // A line with text inside the band is full-width — a running header or
+    // footer, a caption spanning both columns. Slicing it would cut a word in
+    // half, so it stays whole.
     const fullWidth = (line) => line.slice(gutter.start, gutter.end).trim().length > 0;
+    const straddles = (line) => line.slice(0, gutter.start).trim().length > 0 &&
+        line.slice(gutter.end).trim().length > 0;
+    // Where the two columns actually run. A full-width line outside that span
+    // is page furniture, and it has to stay at the page edge: the running
+    // header and footer are recognised by their position, and burying them
+    // mid-page hides them from the furniture pass.
+    const first = lines.findIndex(straddles);
+    let last = lines.length - 1;
+    while (last > first && !straddles(lines[last]))
+        last--;
+    const head = [];
+    const tail = [];
+    const inSpan = lines.map((line, i) => {
+        if (i < first && fullWidth(line)) {
+            head.push(line);
+            return false;
+        }
+        if (i > last && fullWidth(line)) {
+            tail.push(line);
+            return false;
+        }
+        return true;
+    });
     const column = (from, to) => {
-        const sliced = lines.map((line) => {
+        const sliced = lines.map((line, i) => {
+            if (!inSpan[i])
+                return "";
             if (fullWidth(line))
                 return from === 0 ? line : "";
             return to === undefined ? line.slice(from) : line.slice(from, to);
@@ -112,5 +137,5 @@ export function splitColumns(lines) {
             last--;
         return sliced.slice(first, last + 1).map((line) => (line.trim() ? line : ""));
     };
-    return [...column(0, gutter.start), "", ...column(gutter.end)];
+    return [...head, "", ...column(0, gutter.start), "", ...column(gutter.end), "", ...tail];
 }
