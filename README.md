@@ -95,7 +95,14 @@ golden pages are for, and why they live with the library rather than with the
 site.
 
 ```bash
-pnpm test        # unit + golden page fixtures
+pnpm test         # unit + golden page fixtures
 pnpm typecheck
-pnpm build       # dist/, what consumers import
+pnpm build        # dist/, what consumers import
+pnpm check-dist   # dist/ is committed — fails if it is behind src/
 ```
+
+**`dist/` is committed deliberately.** Consumers install this by git URL, and a
+`prepare` script would make every one of them approve a build step keyed by a
+content hash that changes on each release. Shipping the compiled output makes
+the dependency plain files. Run `pnpm check-dist` before tagging; it fails if
+`dist/` is behind `src/`.
