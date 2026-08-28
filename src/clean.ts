@@ -162,12 +162,25 @@ function furnitureKey(text: string): string {
   return normaliseWhitespace(text).replace(/\d+/g, "#");
 }
 
-/** The printed page number a composite footer carries, if it has exactly one. */
-function numberIn(text: string): number | null {
-  const numbers = normaliseWhitespace(text).match(/\b\d{1,4}\b/g) ?? [];
-  if (numbers.length !== 1) return null;
-  const value = Number.parseInt(numbers[0], 10);
-  return Number.isNaN(value) ? null : value;
+/**
+ * The printed page number a composite footer carries.
+ *
+ * "30  Report Volume I  August 2003" holds two numbers, and the year is not
+ * the page. The sequential index is the tie-breaker: a printed page number
+ * tracks it closely, a year does not.
+ */
+function numberIn(text: string, near: number): number | null {
+  const numbers = (normaliseWhitespace(text).match(/\b\d{1,4}\b/g) ?? [])
+    .map((n) => Number.parseInt(n, 10))
+    .filter((n) => !Number.isNaN(n));
+  if (!numbers.length) return null;
+
+  let best = numbers[0];
+  for (const value of numbers) {
+    if (Math.abs(value - near) < Math.abs(best - near)) best = value;
+  }
+  // A number nowhere near the page's own position is not its page number.
+  return Math.abs(best - near) <= 50 ? best : null;
 }
 
 export function stripRepeatedPageFurniture(pages: SplitPage[]): SplitPage[] {
@@ -197,7 +210,7 @@ export function stripRepeatedPageFurniture(pages: SplitPage[]): SplitPage[] {
       for (const lineIndex of edgeIndices[pageIndex]) {
         const line = page.body[lineIndex];
         if (!isFurniture(line)) continue;
-        const value = numberIn(line);
+        const value = numberIn(line, page.index);
         if (value !== null) {
           printed = value;
           break;
