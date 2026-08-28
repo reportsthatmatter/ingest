@@ -1,14 +1,25 @@
 /**
  * The ingestion library's public surface.
  *
- * This is what a report's `ingest.ts` imports, and it is the module that
- * becomes `@rtm/ingest` when reports move to their own repos. Everything else
- * in this directory is internal: importing it directly from a report couples
- * that report to an implementation detail that is free to change.
+ * Two audiences. A **report** imports `pipeline` and the passes, to declare
+ * how it is built. A **host** — the site repo's CLI — imports the runner and
+ * the checks, to execute that declaration over a corpus.
  *
- * See README.md for what a pass is and when one gets promoted into here.
+ * Everything not exported here is internal and free to change. See README.md
+ * for what a pass is and when one gets promoted into the library.
  */
+// — What a report declares —
 export { pipeline, resolvePasses } from "./define";
-export { printedPageNumber, footnoteBlock, runningFurniture, geometry, } from "./passes";
-// For a report that needs a bespoke pass: the building blocks to write one.
+export { printedPageNumber, footnoteBlock, runningFurniture, geometry } from "./passes";
+// — Running a build —
+export { extractPages, normaliseWhitespace } from "./extract";
+export { ingest, ingestPages, ingestPageGroups } from "./pipeline";
+export { resolveVolume, checkVolume, fileChecksum } from "./volumes";
+// — Checking a build —
+export { runChecks, structuralChecks, losslessCheck, retentionCheck } from "./fidelity";
+export { computeBaseline, diffBaselines } from "./baseline";
+export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler";
+// — Human corrections —
+export { parseCorrections, applyCorrections, correctionVocabulary } from "./corrections";
+// — Building a bespoke pass —
 export { takePrintedNumber, splitFootnoteBlock, bodyIndent } from "./passes";
