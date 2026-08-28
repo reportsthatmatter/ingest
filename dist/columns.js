@@ -97,28 +97,41 @@ export function splitColumns(lines) {
     // footer, a caption spanning both columns. Slicing it would cut a word in
     // half, so it stays whole.
     const fullWidth = (line) => line.slice(gutter.start, gutter.end).trim().length > 0;
-    const straddles = (line) => line.slice(0, gutter.start).trim().length > 0 &&
-        line.slice(gutter.end).trim().length > 0;
-    // Where the two columns actually run. A full-width line outside that span
-    // is page furniture, and it has to stay at the page edge: the running
-    // header and footer are recognised by their position, and burying them
-    // mid-page hides them from the furniture pass.
-    const first = lines.findIndex(straddles);
-    let last = lines.length - 1;
-    while (last > first && !straddles(lines[last]))
-        last--;
+    const width = Math.max(...lines.map((line) => line.length));
+    /**
+     * Page furniture, kept whole and kept at the edge it was found on.
+     *
+     * A running header or footer sits within a few lines of the page edge and
+     * carries far less text than a line of prose — "30  Report Volume I  August
+     * 2003" against a 138-column page. Position alone is not enough, because on
+     * a dense page the last line really is column text; length alone is not
+     * either, because a paragraph can end on a short line mid-page.
+     *
+     * This has to stay whole: the footer straddles the gutter, so splitting it
+     * would put the page number in one column and the date in the other, and
+     * burying it mid-array hides it from the furniture pass that strips it and
+     * recovers the printed page number.
+     */
+    const EDGE_DEPTH = 3;
+    const FURNITURE_MAX = 0.5;
+    const edges = new Set();
+    const nonBlank = lines
+        .map((line, i) => (line.trim() ? i : -1))
+        .filter((i) => i !== -1);
+    for (const i of nonBlank.slice(0, EDGE_DEPTH))
+        edges.add(i);
+    for (const i of nonBlank.slice(-EDGE_DEPTH))
+        edges.add(i);
+    const isFurniture = (line, i) => edges.has(i) &&
+        (fullWidth(line) || line.trim().replace(/\s+/g, " ").length < width * FURNITURE_MAX);
     const head = [];
     const tail = [];
+    const middle = Math.floor(lines.length / 2);
     const inSpan = lines.map((line, i) => {
-        if (i < first && fullWidth(line)) {
-            head.push(line);
-            return false;
-        }
-        if (i > last && fullWidth(line)) {
-            tail.push(line);
-            return false;
-        }
-        return true;
+        if (!line.trim() || !isFurniture(line, i))
+            return true;
+        (i < middle ? head : tail).push(line);
+        return false;
     });
     const column = (from, to) => {
         const sliced = lines.map((line, i) => {
