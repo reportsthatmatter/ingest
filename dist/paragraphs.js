@@ -164,14 +164,21 @@ export function isTabularPage(lines) {
  */
 export function tabularContext(lines) {
     const WINDOW = 3;
-    const NEIGHBOURS = 2;
     return lines.map((_, i) => {
-        let aligned = 0;
-        for (let j = Math.max(0, i - WINDOW); j <= Math.min(lines.length - 1, i + WINDOW); j++) {
-            if (j !== i && ALIGNED.test(lines[j]))
-                aligned++;
+        let before = 0;
+        let after = 0;
+        for (let j = Math.max(0, i - WINDOW); j < i; j++) {
+            if (ALIGNED.test(lines[j]))
+                before++;
         }
-        return aligned >= NEIGHBOURS;
+        for (let j = i + 1; j <= Math.min(lines.length - 1, i + WINDOW); j++) {
+            if (ALIGNED.test(lines[j]))
+                after++;
+        }
+        // Aligned rows on *both* sides. A table's own title has rows only after
+        // it — "Appendix 4: Chronology" heads a chronology table — and treating
+        // that as tabular cost Litvinenko and Leveson genuine division headings.
+        return before > 0 && after > 0;
     });
 }
 function isHeading(text, allowDivisions = true) {
