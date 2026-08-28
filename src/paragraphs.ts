@@ -535,11 +535,6 @@ export function mergeAcrossPages(blocks: Block[]): Block[] {
     // or to the typesetter cannot be known for certain, but the case of what
     // follows is a good guide: "Co-" + "Conspirator" is a real compound,
     // "regu-" + "lation" is a line break.
-    // Only across an actual page break. Two blocks on the same page are
-    // separated by a blank line — a paragraph break, not a word broken by the
-    // typesetter — and a two-column page puts the foot of the left column
-    // next to the head of the right, where this rule would glue "Orbital Ac-"
-    // onto "Figure 2.1-3".
     const acrossPages =
       previous?.at === undefined ||
       block.at === undefined ||
@@ -548,13 +543,23 @@ export function mergeAcrossPages(blocks: Block[]): Block[] {
     if (
       block.kind === "paragraph" &&
       previous?.kind === "paragraph" &&
-      acrossPages &&
       /[-­‐]$/.test(previous.text)
     ) {
       const stem = previous.text.replace(/[-­‐]$/, "");
-      previous.text = /^[A-Z]/.test(block.text)
-        ? `${stem}-${block.text}`
-        : stem + block.text;
+      if (/^[A-Z]/.test(block.text)) {
+        // A capitalised continuation is a real compound — "Co-" + "Conspirator"
+        // — but only across a page break. Within a page the next block is a
+        // new element, and a two-column page puts the foot of the left column
+        // beside the head of the right, where this glued "Orbital Ac-" onto
+        // "Figure 2.1-3".
+        if (!acrossPages) {
+          merged.push(block);
+          continue;
+        }
+        previous.text = `${stem}-${block.text}`;
+      } else {
+        previous.text = stem + block.text;
+      }
       continue;
     }
 
