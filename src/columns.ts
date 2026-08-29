@@ -19,12 +19,23 @@
 export type Gutter = { start: number; end: number };
 
 const MIN_CONTENT_LINES = 8;
-const MIN_GUTTER_WIDTH = 4;
+/**
+ * A gutter can be narrow. Columbia's executive summary sets its two columns
+ * three characters apart, and requiring four missed a third of the report —
+ * 86 pages that shipped with their columns still welded together.
+ */
+const MIN_GUTTER_WIDTH = 3;
 /** A gutter sits near the middle. Anything else is a margin or a table rule. */
 const MIN_POSITION = 0.3;
 const MAX_POSITION = 0.7;
-/** How blank a band must be across content lines to count as a gutter. */
-const BLANK_THRESHOLD = 0.95;
+/**
+ * How blank a band must be across content lines to count as a gutter.
+ *
+ * Not 1.0, and not near it: a full-width caption or footer crosses the gutter
+ * on a few lines of an otherwise two-column page, and at 0.95 those lines
+ * narrow the detected band below the minimum width and the page is missed.
+ */
+const BLANK_THRESHOLD = 0.9;
 /**
  * How many lines must actually straddle it, or this is one ragged column.
  *

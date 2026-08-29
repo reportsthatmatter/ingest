@@ -72,3 +72,28 @@ describe("page furniture", () => {
     expect(firstText).not.toMatch(/Board placed emphasis/);
   });
 });
+
+describe("a narrow gutter", () => {
+  it("finds a three-character gutter", () => {
+    // Columbia's executive summary sets its columns three characters apart.
+    // Requiring four missed 86 pages, a third of the report, and they
+    // shipped with their columns still welded together.
+    const lines = Array.from({ length: 12 }, (_, i) =>
+      `left column line number ${i} of text here   right column line ${i} of text`
+    );
+    const gutter = detectGutter(lines);
+    expect(gutter).not.toBeNull();
+    expect(gutter!.end - gutter!.start).toBeGreaterThanOrEqual(3);
+  });
+
+  it("tolerates a full-width line crossing the gutter", () => {
+    // A caption or footer spans both columns on a few lines; at a stricter
+    // blankness threshold those lines narrowed the band below the minimum.
+    const lines = Array.from({ length: 14 }, (_, i) =>
+      i === 6
+        ? "a full width caption spanning both of the columns of this page here"
+        : `left column line number ${i} of text here   right column line ${i} of text`
+    );
+    expect(detectGutter(lines)).not.toBeNull();
+  });
+});
