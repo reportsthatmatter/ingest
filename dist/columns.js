@@ -115,10 +115,32 @@ export function splitColumns(lines) {
     const gutter = detectGutter(lines);
     if (!gutter)
         return lines;
-    // A line with text inside the band is full-width — a running header or
-    // footer, a caption spanning both columns. Slicing it would cut a word in
-    // half, so it stays whole.
-    const fullWidth = (line) => line.slice(gutter.start, gutter.end).trim().length > 0;
+    /**
+     * Where this particular line's columns part.
+     *
+     * The gutter is a property of the page, but justified text does not respect
+     * it exactly: a long word at the end of the left column spills a character
+     * or two into the band. Slicing at the page's gutter would cut that word in
+     * half, so each line is split at its own run of whitespace nearest the
+     * gutter. A line with no such run is genuinely full-width.
+     */
+    const centre = (gutter.start + gutter.end) / 2;
+    const splitAt = (line) => {
+        const lo = Math.max(0, gutter.start - 6);
+        const hi = Math.min(line.length, gutter.end + 6);
+        let best = null;
+        for (const match of line.matchAll(/ {2,}/g)) {
+            const start = match.index ?? 0;
+            const end = start + match[0].length;
+            if (end < lo || start > hi)
+                continue;
+            if (best === null || Math.abs(start - centre) < Math.abs(best - centre)) {
+                best = start;
+            }
+        }
+        return best;
+    };
+    const fullWidth = (line) => line.slice(gutter.start, gutter.end).trim().length > 0 && splitAt(line) === null;
     const width = Math.max(...lines.map((line) => line.length));
     /**
      * Page furniture, kept whole and kept at the edge it was found on.
@@ -161,7 +183,12 @@ export function splitColumns(lines) {
                 return "";
             if (fullWidth(line))
                 return from === 0 ? line : "";
-            return to === undefined ? line.slice(from) : line.slice(from, to);
+            // The left column ends where this line's own gap begins; the right
+            // column always starts at the page's gutter, so its indentation — which
+            // is what marks a new paragraph — stays comparable across lines.
+            if (to !== undefined)
+                return line.slice(from, splitAt(line) ?? to);
+            return line.slice(from);
         });
         // Trim the blank lines at each end; the ones between paragraphs stay.
         let first = 0;

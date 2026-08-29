@@ -117,3 +117,20 @@ describe("the column boundary is a hard break", () => {
     expect(joined).not.toMatch(/in the process,\s+and waivers/);
   });
 });
+
+describe("justified text spilling into the gutter", () => {
+  it("splits at the line's own gap, not the page's nominal gutter", () => {
+    // A long word at the end of the left column reaches a character or two
+    // into the band. Slicing at the page gutter would cut it in half, so the
+    // line was kept whole instead — which welded the two columns together.
+    const lines = [
+      ...Array.from({ length: 10 }, (_, i) =>
+        `left column line number ${i} here      right column line ${i} here`
+      ),
+      "and in the process, Columbiaʼs   control over requirements",
+    ];
+    const out = splitColumns(lines).join("\n");
+    expect(out).toMatch(/in the process, Columbiaʼs\s*$/m);
+    expect(out).not.toMatch(/Columbiaʼs\s+control over/);
+  });
+});
