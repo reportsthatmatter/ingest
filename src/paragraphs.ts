@@ -1,4 +1,5 @@
 import { normaliseWhitespace } from "./extract";
+import { COLUMN_BREAK } from "./columns";
 
 /**
  * Where a block came from in the source. Carried so a fidelity note or an OCR
@@ -28,7 +29,15 @@ export type Block = (
        */
       occurrence?: number;
     }
-) & { at?: Provenance };
+) & {
+  at?: Provenance;
+  /**
+   * Nothing may be joined across this block. Set where one column of a page
+   * ends and the next begins — they are adjacent in the stream but not in the
+   * reading order of the sentence.
+   */
+  hardBreak?: true;
+};
 
 const HEADING_MAX_WORDS = 14;
 const ROMAN = /^[IVXLC]+\.?$/;
@@ -421,6 +430,15 @@ export function toBlocks(lines: string[], documentMargin?: number): Block[] {
   };
 
   for (const [i, line] of lines.entries()) {
+    if (line === COLUMN_BREAK) {
+      flush();
+      list = null;
+      openDivisionIndent = -1;
+      const last = blocks[blocks.length - 1];
+      if (last) last.hardBreak = true;
+      continue;
+    }
+
     if (!line.trim()) {
       flush();
       openDivisionIndent = -1;
@@ -594,6 +612,11 @@ export function mergeAcrossPages(blocks: Block[]): Block[] {
     // or to the typesetter cannot be known for certain, but the case of what
     // follows is a good guide: "Co-" + "Conspirator" is a real compound,
     // "regu-" + "lation" is a line break.
+    if (previous?.hardBreak) {
+      merged.push(block);
+      continue;
+    }
+
     const acrossPages =
       previous?.at === undefined ||
       block.at === undefined ||

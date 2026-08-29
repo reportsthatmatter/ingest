@@ -15,6 +15,18 @@
  * on nearly every content line, with substantial text on both sides of it.
  */
 
+/**
+ * Emitted between the two columns so the block parser can tell them apart.
+ *
+ * Splitting the page is not enough on its own: the foot of the left column
+ * and the head of the right end up adjacent in the block stream, and the
+ * continuation rule then joins them into one sentence — "In the process,
+ * Columbia's control over specifications and requirements, and waivers
+ * tragedy was compounded". A blank line does not stop that, because a blank
+ * line is exactly what separates two paragraphs of the same column.
+ */
+export const COLUMN_BREAK = "\u0000column-break\u0000";
+
 /** A vertical band of whitespace separating two columns of text. */
 export type Gutter = { start: number; end: number };
 
@@ -174,5 +186,13 @@ export function splitColumns(lines: string[]): string[] {
     return sliced.slice(first, last + 1).map((line) => (line.trim() ? line : ""));
   };
 
-  return [...head, "", ...column(0, gutter.start), "", ...column(gutter.end), "", ...tail];
+  return [
+    ...head,
+    "",
+    ...column(0, gutter.start),
+    COLUMN_BREAK,
+    ...column(gutter.end),
+    "",
+    ...tail,
+  ];
 }

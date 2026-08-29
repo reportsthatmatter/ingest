@@ -42,6 +42,12 @@ export type Block = ({
     occurrence?: number;
 }) & {
     at?: Provenance;
+    /**
+     * Nothing may be joined across this block. Set where one column of a page
+     * ends and the next begins — they are adjacent in the stream but not in the
+     * reading order of the sentence.
+     */
+    hardBreak?: true;
 };
 /**
  * A contents page, where entries wrap across several lines and only the last

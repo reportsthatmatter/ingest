@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { detectGutter, splitColumns } from "../src/columns";
+import { toBlocks } from "../src/paragraphs";
 
 const fixture = (name: string) =>
   readFileSync(join(import.meta.dirname, "fixtures/pages", `${name}.txt`), "utf8").split("\n");
@@ -95,5 +96,24 @@ describe("a narrow gutter", () => {
         : `left column line number ${i} of text here   right column line ${i} of text`
     );
     expect(detectGutter(lines)).not.toBeNull();
+  });
+});
+
+describe("the column boundary is a hard break", () => {
+  it("does not let a sentence run from one column into the next", () => {
+    // Splitting alone is not enough: the foot of the left column and the head
+    // of the right are adjacent in the block stream, and the continuation
+    // rule joined them — "In the process, Columbia's control over
+    // specifications and requirements, and waivers tragedy was compounded".
+    const lines = Array.from({ length: 12 }, (_, i) =>
+      i === 11
+        ? "and in the process,                                and waivers"
+        : `left column line number ${i} of text here   right column line ${i} here`
+    );
+    const blocks = toBlocks(splitColumns(lines));
+    const joined = blocks
+      .map((b) => (b.kind === "list" ? b.items.join(" ") : b.kind === "page" ? "" : b.text))
+      .join(" | ");
+    expect(joined).not.toMatch(/in the process,\s+and waivers/);
   });
 });

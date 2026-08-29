@@ -14,6 +14,17 @@
  * The gutter is found from the text itself: a band of columns that is blank
  * on nearly every content line, with substantial text on both sides of it.
  */
+/**
+ * Emitted between the two columns so the block parser can tell them apart.
+ *
+ * Splitting the page is not enough on its own: the foot of the left column
+ * and the head of the right end up adjacent in the block stream, and the
+ * continuation rule then joins them into one sentence — "In the process,
+ * Columbia's control over specifications and requirements, and waivers
+ * tragedy was compounded". A blank line does not stop that, because a blank
+ * line is exactly what separates two paragraphs of the same column.
+ */
+export declare const COLUMN_BREAK = "\0column-break\0";
 /** A vertical band of whitespace separating two columns of text. */
 export type Gutter = {
     start: number;
