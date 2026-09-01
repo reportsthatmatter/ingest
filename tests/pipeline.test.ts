@@ -1175,3 +1175,39 @@ describe("a table row is not a division heading (#120)", () => {
     expect(blocks.some((b) => b.kind === "heading")).toBe(true);
   });
 });
+
+describe("hanging-indent numbered paragraphs are not quotations", () => {
+  it("measures the margin from the body, not from footnotes at the left edge", () => {
+    // These reports set a numbered paragraph with a hanging indent: the number
+    // at the left edge, the text inset. A footnote block also sits at the left
+    // edge, so measuring the raw page lines put the margin at 0 — and anything
+    // indented five past the margin reads as a quotation. 865 of Litvinenko's
+    // 1,089 paragraphs were cut in half, the first line prose and the rest
+    // quoted (uk-litvinenko-inquiry#1).
+    const result = ingestPageGroups(
+      [
+        [
+          page([
+            "4.11   Marina Litvinenkoʼs evidence was that the decision she made to",
+            "       leave Russia was based in part on a fear that the FSB would act",
+            "       against him for what it regarded as his act of betrayal here,",
+            "       ending either in his indefinite detention or, worse, his death.",
+            "       I have referred already to the evidence given on that meeting.",
+            "",
+            "4.12   The evidence suggests that his flight from Russia did not soften",
+            "       in any way the view that the FSB took of him after he had gone.",
+            "       During the course of his interviews he described what happened",
+            "       to him in the months before he was finally able to leave at all.",
+            "",
+            "13 A footnote sitting at the left edge, as footnotes do.",
+            "14 Another footnote at the left edge of the very same page.",
+          ]),
+        ],
+      ],
+      { title: "Hanging indent" }
+    );
+
+    expect(result.markdown).not.toMatch(/^> leave Russia/m);
+    expect(result.markdown).toMatch(/4\.11 Marina Litvinenkoʼs evidence.*leave Russia/s);
+  });
+});

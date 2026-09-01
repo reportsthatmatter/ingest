@@ -56,9 +56,17 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     // Which passes run is a declared property of the document, not something
     // inferred from how many arguments were typed on the command line.
     const cleanedGroups = splitGroups.map((group) => resolved.volumePasses.reduce((pages, pass) => pass.run(pages), group));
+    // Measured on the page *body*, never on the raw lines.
+    //
+    // A footnote block sits at the left edge, and so does page furniture, so
+    // measuring the raw lines put Litvinenko's margin at 0 when its body text
+    // is at 6. Anything indented five past the margin reads as a quotation —
+    // and these reports set numbered paragraphs with a hanging indent, the
+    // number at the edge and the text inset — so 865 of its 1,089 paragraphs
+    // were cut in half, the first line left as prose and the rest quoted.
     const margins = resolved.geometry === "per-volume"
         ? cleanedGroups.map((group) => bodyIndent(group.flatMap((page) => page.body)))
-        : [bodyIndent(pages.flatMap((page) => page.lines))];
+        : [bodyIndent(cleanedGroups.flat().flatMap((page) => page.body))];
     for (const [groupIndex, group] of cleanedGroups.entries()) {
         for (const split of group) {
             const pageLines = collapseDoubleSpacing(split.body);
