@@ -128,7 +128,11 @@ export function ingestPageGroups(
       const blocks = (
         isContentsPage(pageLines)
           ? parseContentsPage(pageLines)
-          : toBlocks(pageLines, margins[resolved.geometry === "per-volume" ? groupIndex : 0])
+          : toBlocks(
+              pageLines,
+              margins[resolved.geometry === "per-volume" ? groupIndex : 0],
+              resolved.quoteInset
+            )
       ).map((block) => ({ ...block, at }));
 
       // Record where each printed page begins. These documents are cited by page

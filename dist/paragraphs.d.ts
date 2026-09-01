@@ -50,6 +50,14 @@ export type Block = ({
     hardBreak?: true;
 };
 /**
+ * How far past the body margin a line must sit to read as a quotation.
+ *
+ * Five suits a document that insets its quotations generously. Litvinenko
+ * does not — it sets body text at 7 and quotations at 10 — so a report whose
+ * typography is tighter declares its own; see `quoteInset` in the passes.
+ */
+export declare const DEFAULT_QUOTE_INSET = 5;
+/**
  * A contents page, where entries wrap across several lines and only the last
  * carries the dot leaders. Parsing these line by line shreds one entry into a
  * heading, a block quote and a list item, so they get their own pass.
@@ -93,7 +101,7 @@ export declare function tabularContext(lines: string[]): boolean[];
  * a new paragraph. Blank lines are a secondary signal, and block quotes (set
  * far to the right) are kept as quotes.
  */
-export declare function toBlocks(lines: string[], documentMargin?: number): Block[];
+export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number): Block[];
 export declare function endsSentence(text: string): boolean;
 export declare function mergeAcrossPages(blocks: Block[]): Block[];
 export declare function blocksToMarkdown(blocks: Block[]): string;

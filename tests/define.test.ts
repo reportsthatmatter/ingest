@@ -84,3 +84,17 @@ describe("flushFootnoteMarkers", () => {
     expect(resolved.flushFootnoteMarkers).toBe(true);
   });
 });
+
+describe("quoteInset", () => {
+  it("is undefined unless declared, so the default stands", async () => {
+    expect(resolvePasses(pipeline(base)).quoteInset).toBeUndefined();
+  });
+
+  it("carries a report's own inset", async () => {
+    // Litvinenko sets body text at 7 and quotations at 10. At the default of
+    // five, every quotation in the report reads as ordinary prose; lowering
+    // the default instead turned 442 Challenger paragraphs into quotations.
+    const { quoteInset } = await import("../src/passes");
+    expect(resolvePasses(pipeline({ ...base, passes: [quoteInset(3)] })).quoteInset).toBe(3);
+  });
+});

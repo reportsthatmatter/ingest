@@ -62,6 +62,22 @@ export const columns = () => ({
     run: splitColumns,
 });
 /**
+ * How far past the body margin a quotation sits in this document.
+ *
+ * The default of five suits a document that insets its quotations generously.
+ * Litvinenko does not — body at 7, quotations at 10 — and at five every one of
+ * its quotations reads as ordinary prose. Lowering it globally is not the
+ * answer: at three, Challenger turns 442 paragraphs into quotations.
+ *
+ * It is a fact about the document's typography, which is exactly the kind of
+ * thing a report declares rather than the parser guesses.
+ */
+export const quoteInset = (columns) => ({
+    name: "quoteInset",
+    stage: "quoteInset",
+    columns,
+});
+/**
  * Where the left margin is measured.
  *
  * `document` treats the whole report as one typesetting run. `per-volume`

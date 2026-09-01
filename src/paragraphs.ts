@@ -44,11 +44,11 @@ const HEADING_MAX_WORDS = 14;
 /**
  * How far past the body margin a line must sit to read as a quotation.
  *
- * Small, because the neighbour test below is what separates a quotation from
- * a paragraph's indented first line. Litvinenko insets its quotations by
- * three characters, and a larger figure loses every one of them.
+ * Five suits a document that insets its quotations generously. Litvinenko
+ * does not — it sets body text at 7 and quotations at 10 — so a report whose
+ * typography is tighter declares its own; see `quoteInset` in the passes.
  */
-const QUOTE_INSET = 3;
+export const DEFAULT_QUOTE_INSET = 5;
 const ROMAN = /^[IVXLC]+\.?$/;
 
 const LEADERS = /[.·]{4,}\s*(\d{1,4})\s*$/;
@@ -344,7 +344,11 @@ function isHeading(
  * a new paragraph. Blank lines are a secondary signal, and block quotes (set
  * far to the right) are kept as quotes.
  */
-export function toBlocks(lines: string[], documentMargin?: number): Block[] {
+export function toBlocks(
+  lines: string[],
+  documentMargin?: number,
+  quoteInset: number = DEFAULT_QUOTE_INSET
+): Block[] {
   // The left margin is a property of the document's layout, not of one page. A
   // short page — the last of a section, say — can have too few lines to infer
   // it from, and getting it wrong turns an ordinary paragraph into a quote.
@@ -377,11 +381,11 @@ export function toBlocks(lines: string[], documentMargin?: number): Block[] {
   });
 
   const quoted = lines.map((line, i) => {
-    if (!line.trim() || structural[i] || indentOf(line) < margin + QUOTE_INSET) return false;
+    if (!line.trim() || structural[i] || indentOf(line) < margin + quoteInset) return false;
     const neighbour = (j: number) => {
       const other = lines[j];
       return (
-        Boolean(other?.trim()) && !structural[j] && indentOf(other) >= margin + QUOTE_INSET
+        Boolean(other?.trim()) && !structural[j] && indentOf(other) >= margin + quoteInset
       );
     };
     return neighbour(i - 1) || neighbour(i + 1);

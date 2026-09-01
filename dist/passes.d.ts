@@ -32,7 +32,13 @@ export type GeometryPass = {
     readonly stage: "geometry";
     readonly scope: "per-volume" | "document";
 };
-export type Pass = PagePass | BodyPass | VolumePass | GeometryPass;
+/** Declares how far a quotation is inset from the body in this document. */
+export type QuoteInsetPass = {
+    readonly name: "quoteInset";
+    readonly stage: "quoteInset";
+    readonly columns: number;
+};
+export type Pass = PagePass | BodyPass | VolumePass | GeometryPass | QuoteInsetPass;
 /**
  * Takes the printed page number off each page. These documents are cited by
  * page ("Report at 62"), so the printed number is the citation unit readers
@@ -79,6 +85,18 @@ export declare const runningFurniture: () => VolumePass;
  * than a universal heuristic.
  */
 export declare const columns: () => BodyPass;
+/**
+ * How far past the body margin a quotation sits in this document.
+ *
+ * The default of five suits a document that insets its quotations generously.
+ * Litvinenko does not — body at 7, quotations at 10 — and at five every one of
+ * its quotations reads as ordinary prose. Lowering it globally is not the
+ * answer: at three, Challenger turns 442 paragraphs into quotations.
+ *
+ * It is a fact about the document's typography, which is exactly the kind of
+ * thing a report declares rather than the parser guesses.
+ */
+export declare const quoteInset: (columns: number) => QuoteInsetPass;
 /**
  * Where the left margin is measured.
  *

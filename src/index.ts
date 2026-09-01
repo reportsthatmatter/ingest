@@ -19,8 +19,16 @@ export {
   runningFurniture,
   geometry,
   columns,
+  quoteInset,
 } from "./passes";
-export type { Pass, PagePass, BodyPass, VolumePass, GeometryPass } from "./passes";
+export type {
+  Pass,
+  PagePass,
+  BodyPass,
+  VolumePass,
+  GeometryPass,
+  QuoteInsetPass,
+} from "./passes";
 export { detectGutter, splitColumns } from "./columns";
 export type { Gutter } from "./columns";
 

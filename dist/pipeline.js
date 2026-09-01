@@ -73,7 +73,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
             const at = { volume: split.volume, pdfIndex: split.pdfIndex, printed: split.printed };
             const blocks = (isContentsPage(pageLines)
                 ? parseContentsPage(pageLines)
-                : toBlocks(pageLines, margins[resolved.geometry === "per-volume" ? groupIndex : 0])).map((block) => ({ ...block, at }));
+                : toBlocks(pageLines, margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset)).map((block) => ({ ...block, at }));
             // Record where each printed page begins. These documents are cited by page
             // ("Report at 62"), so the printed number is the citation unit readers
             // already use — and it can be checked against the original PDF.

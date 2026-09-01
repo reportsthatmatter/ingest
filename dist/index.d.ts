@@ -10,8 +10,8 @@
  */
 export { pipeline, resolvePasses } from "./define";
 export type { PipelineDef, Volume, ResolvedPasses } from "./define";
-export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, runningFurniture, geometry, columns, } from "./passes";
-export type { Pass, PagePass, BodyPass, VolumePass, GeometryPass } from "./passes";
+export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, runningFurniture, geometry, columns, quoteInset, } from "./passes";
+export type { Pass, PagePass, BodyPass, VolumePass, GeometryPass, QuoteInsetPass, } from "./passes";
 export { detectGutter, splitColumns } from "./columns";
 export type { Gutter } from "./columns";
 export { extractPages, normaliseWhitespace } from "./extract";
