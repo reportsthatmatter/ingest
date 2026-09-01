@@ -1,6 +1,14 @@
 import { normaliseWhitespace } from "./extract";
 import { COLUMN_BREAK } from "./columns";
 const HEADING_MAX_WORDS = 14;
+/**
+ * How far past the body margin a line must sit to read as a quotation.
+ *
+ * Small, because the neighbour test below is what separates a quotation from
+ * a paragraph's indented first line. Litvinenko insets its quotations by
+ * three characters, and a larger figure loses every one of them.
+ */
+const QUOTE_INSET = 3;
 const ROMAN = /^[IVXLC]+\.?$/;
 const LEADERS = /[.·]{4,}\s*(\d{1,4})\s*$/;
 /**
@@ -280,7 +288,10 @@ export function toBlocks(lines, documentMargin) {
     // A block quote is a *sustained* run of indented lines. A paragraph's first
     // line is indented just as deeply but is followed by lines back at the
     // margin — judging on indent alone splits sentences in half and quotes the
-    // opening clause.
+    // opening clause. It is the *sustained* part that does the work, which is
+    // why the inset itself can be small: Litvinenko sets its body at 7 and its
+    // quotations at 10, and requiring five put every quotation on that page
+    // back into the prose.
     // Headings and contents entries are indented too, so they must not count as
     // quote neighbours — otherwise the first line of the paragraph beneath a
     // heading looks like the continuation of an indented block and gets quoted.
@@ -292,11 +303,11 @@ export function toBlocks(lines, documentMargin) {
         return (TOC_ENTRY.test(line) || isHeading(normaliseWhitespace(line), !inTable[i]) !== null);
     });
     const quoted = lines.map((line, i) => {
-        if (!line.trim() || structural[i] || indentOf(line) < margin + 5)
+        if (!line.trim() || structural[i] || indentOf(line) < margin + QUOTE_INSET)
             return false;
         const neighbour = (j) => {
             const other = lines[j];
-            return (Boolean(other?.trim()) && !structural[j] && indentOf(other) >= margin + 5);
+            return (Boolean(other?.trim()) && !structural[j] && indentOf(other) >= margin + QUOTE_INSET);
         };
         return neighbour(i - 1) || neighbour(i + 1);
     });
