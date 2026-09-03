@@ -40,7 +40,13 @@ export type { IngestResult, Metadata } from "./pipeline";
 export { resolveVolume, checkVolume, fileChecksum } from "./volumes";
 
 // — Checking a build —
-export { runChecks, structuralChecks, losslessCheck, retentionCheck } from "./fidelity";
+export {
+  runChecks,
+  structuralChecks,
+  losslessCheck,
+  retentionCheck,
+  severedSentenceCheck,
+} from "./fidelity";
 export type { Check } from "./fidelity";
 export { computeBaseline, diffBaselines } from "./baseline";
 export type { Baseline } from "./baseline";

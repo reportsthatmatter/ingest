@@ -120,6 +120,56 @@ export function retentionCheck(sourceText, markdown) {
  * input — which is exactly what `ingest verify` silently did for every report
  * until #118, because no report had a `source.pdf` to compare against.
  */
+/**
+ * Layer 4: are sentences intact?
+ *
+ * Layers 2 and 3 count words. They cannot see a paragraph severed in the
+ * middle and its tail relabelled as a quotation — the words are all still
+ * there, in the same document, in the wrong order and the wrong voice. That
+ * is how 865 of Litvinenko's 1,089 paragraphs shipped cut in half
+ * (uk-litvinenko-inquiry#1), passing every gate.
+ *
+ * The signature is precise: a paragraph that stops without terminal
+ * punctuation, immediately followed by a block quote that opens on a
+ * lower-case word — the rest of the same sentence, wearing quotation marks it
+ * never had. A genuine quotation is introduced ("as follows:") or opens with
+ * a quotation mark, so neither is counted.
+ *
+ * Measured over the corpus: the broken report scored 0.47, and every report
+ * as published scores between 0.0004 and 0.07.
+ */
+const SEVERED_LIMIT = 0.2;
+export function severedSentenceCheck(markdown) {
+    const blocks = stripFrontMatter(markdown)
+        .split("\n\n")
+        .map((block) => block.trim())
+        .filter(Boolean);
+    const isProse = (block) => !/^(#|>|-|%%|\[\^)/.test(block);
+    let severed = 0;
+    let paragraphs = 0;
+    for (const [i, block] of blocks.entries()) {
+        if (!isProse(block))
+            continue;
+        paragraphs += 1;
+        const next = blocks[i + 1];
+        if (!next?.startsWith("> "))
+            continue;
+        if (/[.?!:;]["\u201d]?$/.test(block))
+            continue; // the sentence ended
+        if (/^> ["\u201c]/.test(next))
+            continue; // a quotation opening properly
+        if (/^> [a-z\u00e0-\u00ff]/.test(next))
+            severed += 1;
+    }
+    const rate = paragraphs ? severed / paragraphs : 0;
+    return {
+        name: "sentences are not severed into quotations",
+        ok: rate < SEVERED_LIMIT,
+        detail: severed
+            ? `${severed}/${paragraphs} paragraphs run straight into a quote (${(rate * 100).toFixed(1)}%)`
+            : "none",
+    };
+}
 export function runChecks(sourceText, markdown, extraVocabulary = []) {
     if (sourceText === markdown) {
         throw new Error("runChecks was asked to check a document against itself: with the " +
@@ -131,5 +181,6 @@ export function runChecks(sourceText, markdown, extraVocabulary = []) {
         ...structuralChecks(markdown),
         losslessCheck(sourceText, markdown, extraVocabulary),
         retentionCheck(sourceText, markdown),
+        severedSentenceCheck(markdown),
     ];
 }

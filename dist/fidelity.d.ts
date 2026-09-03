@@ -20,12 +20,5 @@ export declare function structuralChecks(markdown: string): Check[];
 export declare function losslessCheck(sourceText: string, markdown: string, extraVocabulary?: string[]): Check;
 /** Layer 3: the output must not have lost a meaningful share of the source. */
 export declare function retentionCheck(sourceText: string, markdown: string): Check;
-/**
- * Layers 1-3 together.
- *
- * `sourceText` must be the text extracted from the source PDF. Passing the
- * markdown itself makes layers 2 and 3 tautologies that report 100% for any
- * input — which is exactly what `ingest verify` silently did for every report
- * until #118, because no report had a `source.pdf` to compare against.
- */
+export declare function severedSentenceCheck(markdown: string): Check;
 export declare function runChecks(sourceText: string, markdown: string, extraVocabulary?: string[]): Check[];

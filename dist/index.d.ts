@@ -19,7 +19,7 @@ export type { Page } from "./extract";
 export { ingest, ingestPages, ingestPageGroups } from "./pipeline";
 export type { IngestResult, Metadata } from "./pipeline";
 export { resolveVolume, checkVolume, fileChecksum } from "./volumes";
-export { runChecks, structuralChecks, losslessCheck, retentionCheck } from "./fidelity";
+export { runChecks, structuralChecks, losslessCheck, retentionCheck, severedSentenceCheck, } from "./fidelity";
 export type { Check } from "./fidelity";
 export { computeBaseline, diffBaselines } from "./baseline";
 export type { Baseline } from "./baseline";

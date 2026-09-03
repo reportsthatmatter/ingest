@@ -17,7 +17,7 @@ export { extractPages, normaliseWhitespace } from "./extract";
 export { ingest, ingestPages, ingestPageGroups } from "./pipeline";
 export { resolveVolume, checkVolume, fileChecksum } from "./volumes";
 // — Checking a build —
-export { runChecks, structuralChecks, losslessCheck, retentionCheck } from "./fidelity";
+export { runChecks, structuralChecks, losslessCheck, retentionCheck, severedSentenceCheck, } from "./fidelity";
 export { computeBaseline, diffBaselines } from "./baseline";
 export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler";
 // — Human corrections —
