@@ -1,10 +1,10 @@
-import { extractPages } from "./extract";
-import { splitPage, collapseDoubleSpacing } from "./clean";
-import { applyCorrections } from "./corrections";
-import { rejoinHyphenated, vocabulary } from "./hyphens";
-import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, mergeAcrossPages, bodyIndent, } from "./paragraphs";
-import { parseFootnotes, linkInlineMarkers, linkFlushMarkers, renderEndnotes, } from "./footnotes";
-import { autoFix, findSuspects, rankSuspects } from "./ocr";
+import { extractPages } from "./extract.js";
+import { splitPage, collapseDoubleSpacing } from "./clean.js";
+import { applyCorrections } from "./corrections.js";
+import { rejoinHyphenated, vocabulary } from "./hyphens.js";
+import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, mergeAcrossPages, bodyIndent, } from "./paragraphs.js";
+import { parseFootnotes, linkInlineMarkers, linkFlushMarkers, renderEndnotes, } from "./footnotes.js";
+import { autoFix, findSuspects, rankSuspects } from "./ocr.js";
 /**
  * PDF → Markdown, deterministically. The same input always produces the same
  * output, so fixes belong in this pipeline rather than in hand-edits of the

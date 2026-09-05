@@ -1,6 +1,6 @@
 {
   "name": "@rtm/ingest",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "PDF \u2192 Markdown for public inquiry reports, deterministically",
   "license": "MIT",
   "type": "module",
@@ -17,7 +17,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node scripts/fix-extensions.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check-dist": "pnpm build && git diff --exit-code dist"

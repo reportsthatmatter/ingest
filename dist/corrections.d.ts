@@ -1,4 +1,4 @@
-import type { Block } from "./paragraphs";
+import type { Block } from "./paragraphs.js";
 /**
  * A human judgement about this document's text, expressed as data.
  *

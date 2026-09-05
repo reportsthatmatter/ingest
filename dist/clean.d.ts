@@ -1,4 +1,4 @@
-import { type Page } from "./extract";
+import { type Page } from "./extract.js";
 export type SplitPage = {
     index: number;
     volume: number;

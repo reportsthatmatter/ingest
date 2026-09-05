@@ -6,7 +6,7 @@
  * decidable. They deliberately do not try to answer "is this faithful to the
  * source?", which is not.
  */
-import { autoFix } from "./ocr";
+import { autoFix } from "./ocr.js";
 const STOP_CHARS = /[^a-z0-9]/g;
 /** Front matter is metadata we added, not content extracted from the source. */
 function stripFrontMatter(markdown) {

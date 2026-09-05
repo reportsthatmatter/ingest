@@ -12,8 +12,8 @@
  * app owns the page, the report owns the text
  * (docs/plans/2026-09-04-content-publishing.md §2 in the site repo).
  */
-import { renderMarkdown } from "./markdown";
-import { splitSections, paragraphIndex } from "./sections";
+import { renderMarkdown } from "./markdown.js";
+import { splitSections, paragraphIndex } from "./sections.js";
 function wordCount(html) {
     return html.replace(/<[^>]+>/g, " ").split(/\s+/).filter(Boolean).length;
 }
