@@ -1,4 +1,4 @@
-import type { Volume } from "./define";
+import type { Volume } from "./define.js";
 /** Absolute path to a volume's PDF, resolved against the report repo. */
 export declare function resolveVolume(def: {
     repo: string;

@@ -1,4 +1,4 @@
-import type { IngestResult } from "./pipeline";
+import type { IngestResult } from "./pipeline.js";
 /**
  * A digest of one report's output.
  *

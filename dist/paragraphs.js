@@ -1,5 +1,5 @@
-import { normaliseWhitespace } from "./extract";
-import { COLUMN_BREAK } from "./columns";
+import { normaliseWhitespace } from "./extract.js";
+import { COLUMN_BREAK } from "./columns.js";
 const HEADING_MAX_WORDS = 14;
 /**
  * How far past the body margin a line must sit to read as a quotation.

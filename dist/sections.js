@@ -1,4 +1,4 @@
-import { slugify } from "./markdown";
+import { slugify } from "./markdown.js";
 /**
  * Splits a rendered report into its own top-level sections.
  *
