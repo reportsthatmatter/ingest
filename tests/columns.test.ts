@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { detectGutter, splitColumns } from "../src/columns";
+import { detectGutter, splitColumns, COLUMN_BREAK } from "../src/columns";
 import { toBlocks } from "../src/paragraphs";
 
 const fixture = (name: string) =>
@@ -52,8 +52,18 @@ describe("splitColumns", () => {
 
   it("loses no words", () => {
     const lines = fixture("columbia-two-column");
+    // COLUMN_BREAK is a structural sentinel this function inserts itself —
+    // real content, not text from the page — so it is stripped before
+    // counting words, same as any other markup would be.
     const words = (xs: string[]) =>
-      xs.join(" ").toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean).sort();
+      xs
+        .join(" ")
+        .replaceAll(COLUMN_BREAK, " ")
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, " ")
+        .split(/\s+/)
+        .filter(Boolean)
+        .sort();
     expect(words(splitColumns(lines))).toEqual(words(lines));
   });
 });
@@ -101,12 +111,33 @@ describe("a narrow gutter", () => {
 
 describe("the column boundary is a hard break", () => {
   it("does not let a sentence run from one column into the next", () => {
-    // Splitting alone is not enough: the foot of the left column and the head
-    // of the right are adjacent in the block stream, and the continuation
-    // rule joined them — "In the process, Columbia's control over
-    // specifications and requirements, and waivers tragedy was compounded".
-    const lines = Array.from({ length: 12 }, (_, i) =>
-      i === 11
+    // The shipped defect this guards against: "In the process, Columbia's
+    // control over specifications and requirements, and waivers tragedy was
+    // compounded" — the foot of the left column and the head of the right
+    // read as one sentence, because splitting the page is not the same as
+    // stopping the block parser's continuation rule at the seam.
+    //
+    // What actually stops it, within `toBlocks` alone (this test never calls
+    // `mergeAcrossPages`, which is where `hardBreak` — set on `COLUMN_BREAK`
+    // below — is read): `COLUMN_BREAK` triggers an unconditional `flush()`,
+    // so the two sides land in separate `blocks` array entries no matter what
+    // either side's text looks like. This test exists to catch a regression
+    // in *that* — someone editing the marker handling and losing the flush —
+    // not gutter detection, which the other tests in this file cover.
+    //
+    // The boundary line sits mid-page (index 6 of 14), not at the trailing
+    // edge, on purpose: at index 11 of 12 it used to fall inside the
+    // page-furniture pass's last-`EDGE_DEPTH` window, and after
+    // whitespace-collapse read as short enough to pass the furniture
+    // heuristic — so the whole unsplit line, both column-halves still glued
+    // together, was pushed straight into the page's trailing furniture and
+    // never reached `COLUMN_BREAK`, `flush()`, or column splitting at all.
+    // That is itself a real failure mode (a genuine two-column sentence can
+    // fall in the last few lines of a page) — just a different one from what
+    // this test is for, so it is avoided here the same way the "full-width
+    // caption" test above avoids it, rather than conflated with it.
+    const lines = Array.from({ length: 14 }, (_, i) =>
+      i === 6
         ? "and in the process,                                and waivers"
         : `left column line number ${i} of text here   right column line ${i} here`
     );
