@@ -1,9 +1,10 @@
 /**
- * The ingestion library's public surface.
+ * The library's public surface.
  *
- * Two audiences. A **report** imports `pipeline` and the passes, to declare
- * how it is built. A **host** — the site repo's CLI — imports the runner and
- * the checks, to execute that declaration over a corpus.
+ * Two audiences. A **report** imports `pipeline` and the passes to declare how
+ * it is built, and `renderArtifacts` to turn the markdown that produces into
+ * the content it publishes. A **host** — the site repo's CLI — imports the
+ * runner and the checks, to execute that declaration over a corpus.
  *
  * Everything not exported here is internal and free to change. See README.md
  * for what a pass is and when one gets promoted into the library.
@@ -26,3 +27,8 @@ export { rejoinHyphenated, vocabulary } from "./hyphens";
 // — Building a bespoke pass —
 export { takePrintedNumber, splitFootnoteBlock, bodyIndent } from "./passes";
 export { linkFlushMarkers, linkInlineMarkers } from "./footnotes";
+// — Rendering: markdown → the content a report publishes —
+export { renderArtifacts } from "./render";
+export { renderMarkdown, paragraphId, slugify } from "./markdown";
+export { splitSections, sectionFor, paragraphIndex } from "./sections";
+export { extractPassages } from "./passages";
