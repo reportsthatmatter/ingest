@@ -32,3 +32,5 @@ export { renderArtifacts } from "./render.js";
 export { renderMarkdown, paragraphId, slugify } from "./markdown.js";
 export { splitSections, sectionFor, paragraphIndex } from "./sections.js";
 export { extractPassages } from "./passages.js";
+// — Publishing rendered content to reportsthatmatter (see src/publish.ts) —
+export { contentHash, manifestFor, fileHash, tokenFor, authorises, manifestProblems, isPublishablePath, isReportId, } from "./publish.js";
