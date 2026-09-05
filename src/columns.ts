@@ -59,8 +59,42 @@ const BLANK_THRESHOLD = 0.9;
 const MIN_STRADDLING = 0.22;
 const MIN_STRADDLING_LINES = 6;
 
-function isBlankAt(line: string, x: number): boolean {
-  return x >= line.length || line[x] === " " || line[x] === "\t";
+/**
+ * How far a line's own gap may drift from its neighbours' and still count as
+ * the same gutter.
+ *
+ * A justified or right-ranged column does not put its last character at the
+ * same absolute position on every line — a two-digit line number, or one more
+ * syllable in the last word, shifts the gap by a character. `splitAt` already
+ * searches ±6 characters around the page's nominal gutter for exactly this
+ * reason. Detection needs the same tolerance one level up: scanning strictly
+ * per absolute column, a gap at column 38 on ten lines and column 39 on two
+ * others is *two* candidate columns short of the 90% majority each, not one
+ * column comfortably over it — so a page whose gutter drifts by even a single
+ * character was never detected at all.
+ */
+const POSITION_JITTER = 1;
+
+/**
+ * Whether this line has a genuine gap — a real run of blank columns, the same
+ * `{2,}` definition `splitAt` uses below, not a single inter-word space —
+ * overlapping `[x - POSITION_JITTER, x + POSITION_JITTER]`.
+ *
+ * A single space is not a gap: two ordinary short words a space apart (an "of"
+ * or a page number) sit at the same column on every line of a templated or
+ * tabular page, and widening a *single* blank character by a character each
+ * side is enough to swallow a short word whole and read it as gutter. A gap
+ * has to already be a gap — width 2 or more — before its position is allowed
+ * to drift.
+ */
+function hasGapNear(line: string, x: number): boolean {
+  if (x >= line.length) return true;
+  for (const match of line.matchAll(/ {2,}/g)) {
+    const start = match.index ?? 0;
+    const end = start + match[0].length;
+    if (start - POSITION_JITTER <= x && x < end + POSITION_JITTER) return true;
+  }
+  return false;
 }
 
 /**
@@ -85,7 +119,7 @@ export function detectGutter(lines: string[]): Gutter | null {
   for (let x = lo; x <= hi + 1; x++) {
     const blank =
       x <= hi &&
-      content.filter((line) => isBlankAt(line, x)).length / content.length >=
+      content.filter((line) => hasGapNear(line, x)).length / content.length >=
         BLANK_THRESHOLD;
     if (blank) {
       if (run === -1) run = x;
@@ -138,20 +172,21 @@ export function splitColumns(lines: string[]): string[] {
    * gutter. A line with no such run is genuinely full-width.
    */
   const centre = (gutter.start + gutter.end) / 2;
-  const splitAt = (line: string): number | null => {
+  const localGap = (line: string): { start: number; end: number } | null => {
     const lo = Math.max(0, gutter.start - 6);
     const hi = Math.min(line.length, gutter.end + 6);
-    let best: number | null = null;
+    let best: { start: number; end: number } | null = null;
     for (const match of line.matchAll(/ {2,}/g)) {
       const start = match.index ?? 0;
       const end = start + match[0].length;
       if (end < lo || start > hi) continue;
-      if (best === null || Math.abs(start - centre) < Math.abs(best - centre)) {
-        best = start;
+      if (best === null || Math.abs(start - centre) < Math.abs(best.start - centre)) {
+        best = { start, end };
       }
     }
     return best;
   };
+  const splitAt = (line: string): number | null => localGap(line)?.start ?? null;
 
   const fullWidth = (line: string) =>
     line.slice(gutter.start, gutter.end).trim().length > 0 && splitAt(line) === null;
@@ -198,11 +233,16 @@ export function splitColumns(lines: string[]): string[] {
     const sliced = lines.map((line, i) => {
       if (!inSpan[i]) return "";
       if (fullWidth(line)) return from === 0 ? line : "";
-      // The left column ends where this line's own gap begins; the right
-      // column always starts at the page's gutter, so its indentation — which
-      // is what marks a new paragraph — stays comparable across lines.
+      // The left column ends where this line's own gap begins.
       if (to !== undefined) return line.slice(from, splitAt(line) ?? to);
-      return line.slice(from);
+      // The right column starts at the page's gutter, so its indentation —
+      // which is what marks a new paragraph — stays comparable across lines.
+      // Never *later* than this line's own gap ends, though: a short line
+      // above (a heading, a short-lived left-column entry) can leave this
+      // line's real local gap narrower than the page's, and cutting at the
+      // page's fixed position then takes the first character or two of the
+      // next word with it — "loads" arriving as "oads" is how this was found.
+      return line.slice(Math.min(from, localGap(line)?.end ?? from));
     });
     // Trim the blank lines at each end; the ones between paragraphs stay.
     let first = 0;
