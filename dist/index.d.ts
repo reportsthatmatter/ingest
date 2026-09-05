@@ -1,9 +1,10 @@
 /**
- * The ingestion library's public surface.
+ * The library's public surface.
  *
- * Two audiences. A **report** imports `pipeline` and the passes, to declare
- * how it is built. A **host** — the site repo's CLI — imports the runner and
- * the checks, to execute that declaration over a corpus.
+ * Two audiences. A **report** imports `pipeline` and the passes to declare how
+ * it is built, and `renderArtifacts` to turn the markdown that produces into
+ * the content it publishes. A **host** — the site repo's CLI — imports the
+ * runner and the checks, to execute that declaration over a corpus.
  *
  * Everything not exported here is internal and free to change. See README.md
  * for what a pass is and when one gets promoted into the library.
@@ -33,3 +34,10 @@ export type { Block, Provenance } from "./paragraphs";
 export { linkFlushMarkers, linkInlineMarkers } from "./footnotes";
 export type { Footnote } from "./footnotes";
 export type { Suspect } from "./ocr";
+export { renderArtifacts } from "./render";
+export type { RenderedArtifacts, ReportMeta, SectionSummary } from "./render";
+export { renderMarkdown, paragraphId, slugify } from "./markdown";
+export { splitSections, sectionFor, paragraphIndex } from "./sections";
+export type { Section } from "./sections";
+export { extractPassages } from "./passages";
+export type { Passage } from "./passages";
