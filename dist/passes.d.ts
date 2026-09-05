@@ -1,5 +1,5 @@
-import { takePrintedNumber, splitFootnoteBlock, type SplitPage } from "./clean";
-import { bodyIndent } from "./paragraphs";
+import { takePrintedNumber, splitFootnoteBlock, type SplitPage } from "./clean.js";
+import { bodyIndent } from "./paragraphs.js";
 /**
  * A pass is one named decision about how to read a source.
  *

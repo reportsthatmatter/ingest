@@ -1,8 +1,8 @@
-import { type Page } from "./extract";
-import type { ResolvedPasses } from "./define";
-import { type Correction } from "./corrections";
-import { type Footnote } from "./footnotes";
-import { type Suspect } from "./ocr";
+import { type Page } from "./extract.js";
+import type { ResolvedPasses } from "./define.js";
+import { type Correction } from "./corrections.js";
+import { type Footnote } from "./footnotes.js";
+import { type Suspect } from "./ocr.js";
 export type IngestResult = {
     markdown: string;
     corrections: number;

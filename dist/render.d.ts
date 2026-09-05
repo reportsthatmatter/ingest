@@ -1,4 +1,4 @@
-import { type Section } from "./sections";
+import { type Section } from "./sections.js";
 /** A section as the contents page needs it — everything but the html. */
 export type SectionSummary = Omit<Section, "html">;
 export type ReportMeta = {

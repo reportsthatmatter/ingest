@@ -1,6 +1,6 @@
-import { stripRepeatedPageFurniture, takePrintedNumber, splitFootnoteBlock } from "./clean";
-import { bodyIndent } from "./paragraphs";
-import { splitColumns } from "./columns";
+import { stripRepeatedPageFurniture, takePrintedNumber, splitFootnoteBlock } from "./clean.js";
+import { bodyIndent } from "./paragraphs.js";
+import { splitColumns } from "./columns.js";
 /**
  * Takes the printed page number off each page. These documents are cited by
  * page ("Report at 62"), so the printed number is the citation unit readers

@@ -17,7 +17,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node scripts/fix-extensions.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check-dist": "pnpm build && git diff --exit-code dist"

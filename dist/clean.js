@@ -1,4 +1,4 @@
-import { normaliseWhitespace } from "./extract";
+import { normaliseWhitespace } from "./extract.js";
 const PAGE_EDGE_DEPTH = 3;
 const MIN_REPEATED_FURNITURE = 3;
 const PAGE_NUMBER = /^\s*(\d{1,4}|[ivxlcdm]{1,8})\s*$/i;

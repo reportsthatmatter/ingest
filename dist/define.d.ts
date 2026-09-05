@@ -1,4 +1,4 @@
-import type { Pass, VolumePass, BodyPass } from "./passes";
+import type { Pass, VolumePass, BodyPass } from "./passes.js";
 export type Volume = {
     path: string;
     sha256?: string;

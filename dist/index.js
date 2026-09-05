@@ -10,25 +10,25 @@
  * for what a pass is and when one gets promoted into the library.
  */
 // — What a report declares —
-export { pipeline, resolvePasses } from "./define";
-export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, runningFurniture, geometry, columns, quoteInset, } from "./passes";
-export { detectGutter, splitColumns } from "./columns";
+export { pipeline, resolvePasses } from "./define.js";
+export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, runningFurniture, geometry, columns, quoteInset, } from "./passes.js";
+export { detectGutter, splitColumns } from "./columns.js";
 // — Running a build —
-export { extractPages, normaliseWhitespace } from "./extract";
-export { ingest, ingestPages, ingestPageGroups } from "./pipeline";
-export { resolveVolume, checkVolume, fileChecksum } from "./volumes";
+export { extractPages, normaliseWhitespace } from "./extract.js";
+export { ingest, ingestPages, ingestPageGroups } from "./pipeline.js";
+export { resolveVolume, checkVolume, fileChecksum } from "./volumes.js";
 // — Checking a build —
-export { runChecks, structuralChecks, losslessCheck, retentionCheck, severedSentenceCheck, } from "./fidelity";
-export { computeBaseline, diffBaselines } from "./baseline";
-export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler";
+export { runChecks, structuralChecks, losslessCheck, retentionCheck, severedSentenceCheck, } from "./fidelity.js";
+export { computeBaseline, diffBaselines } from "./baseline.js";
+export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler.js";
 // — Human corrections —
-export { parseCorrections, parseDismissals, applyCorrections, correctionVocabulary, } from "./corrections";
-export { rejoinHyphenated, vocabulary } from "./hyphens";
+export { parseCorrections, parseDismissals, applyCorrections, correctionVocabulary, } from "./corrections.js";
+export { rejoinHyphenated, vocabulary } from "./hyphens.js";
 // — Building a bespoke pass —
-export { takePrintedNumber, splitFootnoteBlock, bodyIndent } from "./passes";
-export { linkFlushMarkers, linkInlineMarkers } from "./footnotes";
+export { takePrintedNumber, splitFootnoteBlock, bodyIndent } from "./passes.js";
+export { linkFlushMarkers, linkInlineMarkers } from "./footnotes.js";
 // — Rendering: markdown → the content a report publishes —
-export { renderArtifacts } from "./render";
-export { renderMarkdown, paragraphId, slugify } from "./markdown";
-export { splitSections, sectionFor, paragraphIndex } from "./sections";
-export { extractPassages } from "./passages";
+export { renderArtifacts } from "./render.js";
+export { renderMarkdown, paragraphId, slugify } from "./markdown.js";
+export { splitSections, sectionFor, paragraphIndex } from "./sections.js";
+export { extractPassages } from "./passages.js";

@@ -1,4 +1,4 @@
-import { normaliseWhitespace } from "./extract";
+import { normaliseWhitespace } from "./extract.js";
 const NOTE_INLINE = /^\s{0,8}(\d{1,4})\s{0,3}(?=[A-Za-z"“(])/;
 const NOTE_STACKED = /^\s{0,10}(\d{1,4})\s*$/;
 /**
