@@ -72,6 +72,46 @@ shared one, not to accept the fork.
 If you are writing a correction to undo something the parser did, you needed a
 different pass or a bug fix.
 
+## Rendering and publishing
+
+`full.md` is the ingestion pipeline's output and a report repo's own
+authority — but it is not what a reader sees. Turning it into what
+[reportsthatmatter.org](https://reportsthatmatter.org) actually serves, and
+getting that in front of readers, are two more steps this library covers:
+
+```ts
+import { renderArtifacts } from "@rtm/ingest";
+
+const { meta, fullBody, fragments } = renderArtifacts(readFileSync("full.md", "utf8"));
+```
+
+`meta` is the section list, word count, and the paragraph→section lookup a
+`?p=` link is routed through; `fullBody` and `fragments` are the report's
+content with **no site layout in either** — the app owns the page, the report
+owns the text. Paragraph ids — the thing a citation actually resolves through
+— are generated here, in the pinned library, specifically so that an
+id-affecting change is a version a report adopts deliberately, the same way a
+pipeline change already is.
+
+**Publishing** takes that output live, without a site deploy:
+
+```bash
+RTM_PUBLISH_SECRET=<the site's PUBLISH_SECRET> \
+  pnpm exec rtm-publish <report-id> --base https://reportsthatmatter.org
+```
+
+Run from the report repo's own root, where `full.md` lives. It renders that
+file, uploads the result under a content hash the site's endpoint verifies
+before it goes live (a publish that would 404 in production is refused, not
+shipped half-finished), and points the site at it. `--status` shows what is
+currently being served for a report; `--rollback <hash>` re-points at any
+version still stored, without re-uploading. See
+[reportsthatmatter/reportsthatmatter's AGENTS.md](https://github.com/reportsthatmatter/reportsthatmatter/blob/main/AGENTS.md#publishing-a-report-how-it-works-now)
+for the full account, including where the secret lives and the one sharp
+edge worth knowing before touching any of this: **a report published to R2 is
+not touched by a site deploy**, so it can go stale relative to this repo's own
+`full.md` until someone explicitly republishes it.
+
 ## Checking your work
 
 ```bash
