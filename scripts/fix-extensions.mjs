@@ -1,4 +1,6 @@
-/* Adds explicit .js extensions to relative import/export specifiers in dist/.
+/* Fixes up what `tsc` doesn't get right for a package meant to be run, not
+ * just imported: explicit .js extensions on relative specifiers, and the
+ * executable bit on anything with a shebang.
  *
  * tsconfig.build.json uses moduleResolution "bundler" so tsc emits relative
  * specifiers verbatim, without an extension — correct for a bundler's own
@@ -7,11 +9,18 @@
  * once anything imports deep enough to walk its module graph, which failed
  * with `Cannot find module '.../dist/define'` for exactly this reason.
  *
+ * `tsc` also does not preserve or set the executable bit, so a `"bin"` entry
+ * — src/bin/publish.ts, the `rtm-publish` CLI — would compile to a file
+ * `chmod +x` had to be run on by hand after every single build, and silently
+ * regress the moment someone forgot. Any emitted file whose first line is a
+ * shebang gets marked executable here instead, so it can't drift from the
+ * source that declares it should be one.
+ *
  * Runs after `tsc` in `pnpm build`, over dist/**\/*.js and dist/**\/*.d.ts —
  * a .d.ts with the same unresolvable specifier fails a consumer's typecheck
  * the same way a .js fails their runtime.
  */
-import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, chmodSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 
 const root = join(import.meta.dirname, "..", "dist");
@@ -37,6 +46,7 @@ function walk(dir) {
       const before = readFileSync(path, "utf8");
       const after = fixed(before, path);
       if (after !== before) writeFileSync(path, after);
+      if (path.endsWith(".js") && after.startsWith("#!")) chmodSync(path, 0o755);
     }
   }
 }

@@ -41,3 +41,5 @@ export { splitSections, sectionFor, paragraphIndex } from "./sections.js";
 export type { Section } from "./sections.js";
 export { extractPassages } from "./passages.js";
 export type { Passage } from "./passages.js";
+export { contentHash, manifestFor, fileHash, tokenFor, authorises, manifestProblems, isPublishablePath, isReportId, } from "./publish.js";
+export type { PublishFile, Manifest } from "./publish.js";

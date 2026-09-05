@@ -79,3 +79,16 @@ export { splitSections, sectionFor, paragraphIndex } from "./sections";
 export type { Section } from "./sections";
 export { extractPassages } from "./passages";
 export type { Passage } from "./passages";
+
+// — Publishing rendered content to reportsthatmatter (see src/publish.ts) —
+export {
+  contentHash,
+  manifestFor,
+  fileHash,
+  tokenFor,
+  authorises,
+  manifestProblems,
+  isPublishablePath,
+  isReportId,
+} from "./publish";
+export type { PublishFile, Manifest } from "./publish";
