@@ -1,5 +1,6 @@
 import { parse } from "yaml";
 import type { Block } from "./paragraphs";
+import type { Footnote } from "./footnotes";
 
 /**
  * A human judgement about this document's text, expressed as data.
@@ -72,11 +73,18 @@ export function parseCorrections(yamlText: string, reportId: string): Correction
   return corrections;
 }
 
-function inScope(block: Block, where: Correction["where"]): boolean {
+/** Where a piece of text sits, in the terms a correction's `where` scopes against. */
+type Location = { volume?: number; printed?: number | null };
+
+function inScopeAt(at: Location, where: Correction["where"]): boolean {
   if (!where) return true;
-  if (where.volume !== undefined && block.at?.volume !== where.volume) return false;
-  if (where.printed !== undefined && block.at?.printed !== where.printed) return false;
+  if (where.volume !== undefined && at.volume !== where.volume) return false;
+  if (where.printed !== undefined && at.printed !== where.printed) return false;
   return true;
+}
+
+function inScope(block: Block, where: Correction["where"]): boolean {
+  return inScopeAt({ volume: block.at?.volume, printed: block.at?.printed }, where);
 }
 
 /** Every string a block carries that a correction could address. */
@@ -86,35 +94,50 @@ function texts(block: Block): string[] {
   return [block.text];
 }
 
+function countMatches(text: string, find: string): number {
+  let count = 0;
+  let index = text.indexOf(find);
+  while (index !== -1) {
+    count += 1;
+    index = text.indexOf(find, index + find.length);
+  }
+  return count;
+}
+
 /**
- * Applies corrections to the parsed blocks.
+ * Applies corrections to the parsed blocks, and to footnote-definition text.
  *
- * **Every correction must match exactly once.** Zero matches or more than one
- * fails the build, naming the id. A stale correction is a loud error and never
- * a silent skip — that is what keeps the output reproducible while the parser
- * underneath it changes, and what stops a correction from quietly rotting into
- * a lie about what was reviewed.
+ * **Every correction must match exactly once** — across the body and the
+ * footnotes together, since a report's `find` is not told in advance which
+ * side its text sits on. Zero matches or more than one fails the build,
+ * naming the id. A stale correction is a loud error and never a silent skip
+ * — that is what keeps the output reproducible while the parser underneath
+ * it changes, and what stops a correction from quietly rotting into a lie
+ * about what was reviewed.
+ *
+ * Footnotes are optional and default to none, so every existing call that
+ * only has blocks to correct is unaffected.
  */
 export function applyCorrections(
   blocks: Block[],
   corrections: Correction[],
-  reportId: string
-): { blocks: Block[]; applied: number } {
-  if (!corrections.length) return { blocks, applied: 0 };
+  reportId: string,
+  footnotes: Footnote[] = []
+): { blocks: Block[]; footnotes: Footnote[]; applied: number } {
+  if (!corrections.length) return { blocks, footnotes, applied: 0 };
 
   const out = blocks.map((block) => ({ ...block }) as Block);
+  const outNotes = footnotes.map((note) => ({ ...note }));
 
   for (const correction of corrections) {
     let matches = 0;
     for (const block of out) {
       if (!inScope(block, correction.where)) continue;
-      for (const text of texts(block)) {
-        let index = text.indexOf(correction.find);
-        while (index !== -1) {
-          matches += 1;
-          index = text.indexOf(correction.find, index + correction.find.length);
-        }
-      }
+      for (const text of texts(block)) matches += countMatches(text, correction.find);
+    }
+    for (const note of outNotes) {
+      if (!inScopeAt({ volume: note.volume, printed: note.printed }, correction.where)) continue;
+      matches += countMatches(note.text, correction.find);
     }
 
     if (matches !== 1) {
@@ -142,9 +165,13 @@ export function applyCorrections(
         block.text = block.text.replace(correction.find, correction.replace);
       }
     }
+    for (const note of outNotes) {
+      if (!inScopeAt({ volume: note.volume, printed: note.printed }, correction.where)) continue;
+      note.text = note.text.replace(correction.find, correction.replace);
+    }
   }
 
-  return { blocks: out, applied: corrections.length };
+  return { blocks: out, footnotes: outNotes, applied: corrections.length };
 }
 
 /** Words a correction introduces, so the lossless check does not call them invented. */

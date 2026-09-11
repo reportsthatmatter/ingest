@@ -5,6 +5,7 @@ import {
   parseDismissals,
 } from "../src/corrections";
 import type { Block } from "../src/paragraphs";
+import type { Footnote } from "../src/footnotes";
 
 const at = (volume: number, printed: number) => ({ volume, pdfIndex: printed, printed });
 
@@ -12,6 +13,11 @@ const blocks = (): Block[] => [
   { kind: "paragraph", text: "So Help 1;fe Godp. 451 was cited.", at: at(2, 380) },
   { kind: "paragraph", text: "An unrelated paragraph.", at: at(2, 381) },
   { kind: "paragraph", text: "So Help 1;fe Godp. 451 was cited.", at: at(1, 12) },
+];
+
+const notes = (): Footnote[] => [
+  { number: 11, text: "1bid.", page: 1, volume: 1, printed: 62 },
+  { number: 6, text: "iNm the nozzle failed.", page: 1, volume: 1, printed: 61 },
 ];
 
 const yaml = (body: string) => `version: 1\ncorrections:\n${body}`;
@@ -97,6 +103,38 @@ describe("applyCorrections", () => {
     const fix = yaml('  - id: c-2\n    find: "wrogn"\n    replace: "wrong"\n');
     const result = applyCorrections(list, parseCorrections(fix, "x"), "x");
     expect((result.blocks[0] as { items: string[] }).items[0]).toBe("a wrong item");
+  });
+
+  it("reaches footnote-definition text, not just body blocks (reportsthatmatter-3jb)", () => {
+    const fix = yaml(
+      '  - id: c-11\n    where: { volume: 1, printed: 62 }\n    find: "1bid."\n    replace: "11 Ibid."\n'
+    );
+    const result = applyCorrections([], parseCorrections(fix, "x"), "x", notes());
+    expect(result.footnotes[0].text).toBe("11 Ibid.");
+    // The block list, empty here, is untouched and returned as given.
+    expect(result.blocks).toEqual([]);
+  });
+
+  it("scopes a footnote correction to its printed page like a block correction", () => {
+    const fix = yaml(
+      '  - id: c-12\n    where: { volume: 1, printed: 99 }\n    find: "1bid."\n    replace: "x"\n'
+    );
+    expect(() => applyCorrections([], parseCorrections(fix, "x"), "x", notes())).toThrow(
+      /c-12.*matched 0/is
+    );
+  });
+
+  it("counts a match once whether it sits in a block or a footnote, so an unscoped find that hits both is ambiguous", () => {
+    const shared: Block[] = [{ kind: "paragraph", text: "1bid. appears here too.", at: at(1, 1) }];
+    const fix = yaml('  - id: c-13\n    find: "1bid."\n    replace: "x"\n');
+    expect(() =>
+      applyCorrections(shared, parseCorrections(fix, "x"), "x", notes())
+    ).toThrow(/c-13.*matched 2/is);
+  });
+
+  it("defaults footnotes to none, so a caller with only blocks is unaffected", () => {
+    const result = applyCorrections(blocks(), parseCorrections(ONE, "x"), "x");
+    expect(result.footnotes).toEqual([]);
   });
 });
 

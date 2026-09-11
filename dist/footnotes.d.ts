@@ -4,6 +4,8 @@ export type Footnote = {
     page: number;
     volume?: number;
     pdfIndex?: number;
+    /** The printed page number the note sits on — what a correction's `where` scopes against. */
+    printed?: number | null;
 };
 /**
  * Parses a page's footnote block into individual notes, in either layout —

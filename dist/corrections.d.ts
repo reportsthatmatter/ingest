@@ -1,4 +1,5 @@
 import type { Block } from "./paragraphs.js";
+import type { Footnote } from "./footnotes.js";
 /**
  * A human judgement about this document's text, expressed as data.
  *
@@ -40,16 +41,22 @@ export type Correction = {
 };
 export declare function parseCorrections(yamlText: string, reportId: string): Correction[];
 /**
- * Applies corrections to the parsed blocks.
+ * Applies corrections to the parsed blocks, and to footnote-definition text.
  *
- * **Every correction must match exactly once.** Zero matches or more than one
- * fails the build, naming the id. A stale correction is a loud error and never
- * a silent skip — that is what keeps the output reproducible while the parser
- * underneath it changes, and what stops a correction from quietly rotting into
- * a lie about what was reviewed.
+ * **Every correction must match exactly once** — across the body and the
+ * footnotes together, since a report's `find` is not told in advance which
+ * side its text sits on. Zero matches or more than one fails the build,
+ * naming the id. A stale correction is a loud error and never a silent skip
+ * — that is what keeps the output reproducible while the parser underneath
+ * it changes, and what stops a correction from quietly rotting into a lie
+ * about what was reviewed.
+ *
+ * Footnotes are optional and default to none, so every existing call that
+ * only has blocks to correct is unaffected.
  */
-export declare function applyCorrections(blocks: Block[], corrections: Correction[], reportId: string): {
+export declare function applyCorrections(blocks: Block[], corrections: Correction[], reportId: string, footnotes?: Footnote[]): {
     blocks: Block[];
+    footnotes: Footnote[];
     applied: number;
 };
 /** Words a correction introduces, so the lossless check does not call them invented. */

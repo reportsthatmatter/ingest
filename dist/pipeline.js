@@ -43,6 +43,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
                 ...note,
                 volume: split.volume,
                 pdfIndex: split.pdfIndex,
+                printed: split.printed,
             }));
             footnotes.push(...parsed);
             if (parsed.length)
@@ -135,15 +136,19 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     }
     // Corrections are the last word on the text: applied after the structure is
     // settled, before it is serialised, so re-running reproduces the same output.
-    const corrected = applyCorrections(mergeAcrossPages(bodyChunks), corrections, meta.title);
+    // Footnote-definition text goes through the same pass — a footnote's OCR
+    // degrades at least as badly as the body's, and until this it had nowhere
+    // a correction could reach it (reportsthatmatter-3jb).
+    const corrected = applyCorrections(mergeAcrossPages(bodyChunks), corrections, meta.title, footnotes);
     let body = blocksToMarkdown(corrected.blocks);
+    const notes = corrected.footnotes;
     // Rejoin words the typesetter broke at a line end, decided from the
     // document's own vocabulary. Before autoFix, so a repaired word is judged
     // whole rather than as two fragments.
     body = rejoinHyphenated(body, vocabulary(sourceText));
     const fixed = autoFix(body);
     body = fixed.text;
-    const known = new Set(footnotes.map((note) => note.number));
+    const known = new Set(notes.map((note) => note.number));
     body = linkInlineMarkers(body, known);
     const suspects = rankSuspects(pages.flatMap((page) => findSuspects(page.lines.join(" "), page.index).map((suspect) => ({
         ...suspect,
@@ -153,17 +158,17 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     // Footnote and citation text is where the scan degrades worst, so the same
     // certain-substitution pass matters more here than it does in the body.
     let noteFixes = 0;
-    for (const note of footnotes) {
+    for (const note of notes) {
         const result = autoFix(note.text);
         note.text = result.text;
         noteFixes += result.applied;
     }
-    const endnotes = renderEndnotes(footnotes);
+    const endnotes = renderEndnotes(notes);
     const markdown = [
         frontMatter({
             ...meta,
             pages: pages.length,
-            footnotes: footnotes.length,
+            footnotes: notes.length,
             // Omitted at zero so a report with no corrections is unchanged, and
             // visible the moment there is a human judgement on the record.
             ...(corrected.applied ? { corrections: corrected.applied } : {}),
@@ -179,7 +184,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     return {
         markdown,
         sourceText,
-        footnotes,
+        footnotes: notes,
         suspects,
         autoFixes: fixed.applied + noteFixes,
         corrections: corrected.applied,

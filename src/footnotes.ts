@@ -6,6 +6,8 @@ export type Footnote = {
   page: number;
   volume?: number;
   pdfIndex?: number;
+  /** The printed page number the note sits on — what a correction's `where` scopes against. */
+  printed?: number | null;
 };
 
 const NOTE_INLINE = /^\s{0,8}(\d{1,4})\s{0,3}(?=[A-Za-z"“(])/;
