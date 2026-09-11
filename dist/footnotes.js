@@ -50,6 +50,33 @@ export function parseFootnotes(lines, page) {
  * corrupts the citation into a reference to an unrelated note.
  */
 const CITES_A_NUMBER = /(\b(?:nos?|nn?|pp?|art|ch|sec|para|vol|ex|fig|tbl|id|at|see)\.?|§)\s*$/i;
+/**
+ * A month name *immediately* after the candidate — allowing only more
+ * punctuation and one more "and DD" — is a day in a date list, not a
+ * footnote: "made on 11,[^13] and 19 March 2003" (reportsthatmatter-axw).
+ * Reports with thousands of footnotes make this common: virtually every
+ * day-of-month number (1-31) is *some* footnote's number somewhere in a
+ * document that size, so the "is N known" check alone barely filters
+ * day-of-month candidates at all.
+ *
+ * Deliberately tight: the month has to follow with nothing but whitespace,
+ * commas, and at most one more bare number in between. Loosening this to "a
+ * month anywhere in the next N characters" breaks a real footnote that
+ * happens to sit before a sentence mentioning a date — "told him the same.
+ * 10 On November 13," is footnote 10, not a date, and "On November" would
+ * satisfy a looser check.
+ */
+const MONTH_SOON_AFTER = /^[\s,]{0,4}(?:and\s+\d{1,2}[\s,]{0,4})?(January|February|March|April|May|June|July|August|September|October|November|December)\b/i;
+/**
+ * A phone-number-shaped run right after the candidate ("7219 3890") is the
+ * rest of a phone number, not a footnote — a repeated "Telephone orders: 20
+ * 7219 3890" block in Leveson's back matter, apparently a UK "020" area code
+ * with its leading zero already lost before this pass ever sees it
+ * (reportsthatmatter-axw). Specific on purpose — two groups of exactly four
+ * digits — so it does not also swallow a genuine footnote that happens to
+ * precede an ordinary number (a page count, a year).
+ */
+const PHONE_NUMBER_SOON_AFTER = /^\s+\d{4}\s+\d{4}\b/;
 export function linkInlineMarkers(text, known) {
     return text.replace(/([.,;:!?"'\)])\s+(\d{1,4})(?=\s|$)/g, (whole, punctuation, digits, offset) => {
         const value = Number.parseInt(digits, 10);
@@ -58,6 +85,13 @@ export function linkInlineMarkers(text, known) {
         // Look at what sits immediately before the punctuation.
         const preceding = text.slice(Math.max(0, offset - 12), offset + 1);
         if (CITES_A_NUMBER.test(preceding))
+            return whole;
+        // Look at what follows the candidate.
+        const followingStart = offset + whole.length;
+        const following = text.slice(followingStart, followingStart + 28);
+        if (MONTH_SOON_AFTER.test(following))
+            return whole;
+        if (PHONE_NUMBER_SOON_AFTER.test(following))
             return whole;
         return `${punctuation}[^${value}]`;
     });

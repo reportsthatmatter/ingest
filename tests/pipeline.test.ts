@@ -295,6 +295,29 @@ describe("footnotes", () => {
     expect(out).toBe("the same. 99 Next.");
   });
 
+  // reportsthatmatter-axw: a day-of-month number that coincidentally matches
+  // a real footnote number elsewhere in the document should not be linked.
+  it("does not link a day-of-month immediately followed by its month", () => {
+    const out = linkInlineMarkers("made on 11, 13, and 19 March 2003", new Set([13]));
+    expect(out).toBe("made on 11, 13, and 19 March 2003");
+  });
+
+  it("does not link a date's day even without a list of other days", () => {
+    const out = linkInlineMarkers("On, 13 July 2011, the PM spoke", new Set([13]));
+    expect(out).toBe("On, 13 July 2011, the PM spoke");
+  });
+
+  it("does not link the second half of a phone number", () => {
+    const out = linkInlineMarkers("Telephone orders: 20 7219 3890", new Set([20]));
+    expect(out).toBe("Telephone orders: 20 7219 3890");
+  });
+
+  it("still links a footnote that happens to sit before an unrelated date", () => {
+    // The exact case a looser "month anywhere nearby" guard would break.
+    const out = linkInlineMarkers("told him the same. 10 On November 13,", new Set([10]));
+    expect(out).toBe("told him the same.[^10] On November 13,");
+  });
+
   it("renders each note number once", () => {
     const rendered = renderEndnotes([
       { number: 1, text: "a", page: 1 },
