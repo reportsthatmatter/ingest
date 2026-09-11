@@ -143,14 +143,22 @@ export function renderMarkdown(markdown) {
     };
     const notes = collectNotes(content);
     const { html, used } = withSidenotes(md.render(stripNotesSection(content)), notes);
-    // Not every note has a reference in the text — footnote recall is imperfect,
-    // and a note we cannot place is still evidence. List the remainder rather
-    // than dropping it.
-    const orphans = [...notes].filter(([number]) => !used.has(number));
+    // Not every note has a reference in the text — footnote recall is
+    // imperfect, and a note we cannot place is still evidence. List the
+    // remainder rather than dropping it. Per instance, not per number: with a
+    // restarting numbering scheme a number can carry several definitions, and
+    // `used` counts only how many of a number's definitions — from the front,
+    // the order withSidenotes consumes them in — were actually resolved, so
+    // one chapter's "20" can be placed while another's goes unreferenced.
+    const orphans = [];
+    for (const [number, texts] of notes) {
+        const resolved = used.get(number) ?? 0;
+        texts.slice(resolved).forEach((text, i) => orphans.push({ number, text, instance: resolved + i }));
+    }
     if (!orphans.length)
         return html;
     const items = orphans
-        .map(([number, text]) => `<li id="note-${number}"><sup>${number}</sup> ${escapeText(text)}</li>`)
+        .map(({ number, text, instance }) => `<li id="note-${number}${instance > 0 ? `-${instance + 1}` : ""}"><sup>${number}</sup> ${escapeText(text)}</li>`)
         .join("");
     return (`${html}\n<section class="orphan-notes">` +
         `<h2>Notes not linked in the text</h2>` +
@@ -162,11 +170,23 @@ export function renderMarkdown(markdown) {
 export function stripNotesSection(markdown) {
     return markdown.replace(/\n## Notes\n[\s\S]*$/, "\n");
 }
-/** `[^12]: text` definitions, keyed by number. */
+/**
+ * `[^12]: text` definitions, keyed by number, in document order.
+ *
+ * More than one per number is the case this exists to handle: a report whose
+ * footnote numbering restarts (Leveson: per chapter) writes several
+ * genuinely different notes under the same label (`footnotes.ts`'s
+ * `renderEndnotes`). `withSidenotes` resolves each `[^N]` reference against
+ * these positionally — the first `[^20]` in the body to this number's first
+ * definition, the second to its second, and so on — rather than a single
+ * shared lookup that let one chapter's reference resolve to another's text.
+ */
 export function collectNotes(markdown) {
     const notes = new Map();
     for (const match of markdown.matchAll(/^\[\^(\d+)\]:[ \t]*(.+)$/gm)) {
-        notes.set(match[1], match[2].trim());
+        const list = notes.get(match[1]) ?? [];
+        list.push(match[2].trim());
+        notes.set(match[1], list);
     }
     return notes;
 }
@@ -192,13 +212,19 @@ const LONG_NOTE_CHARS = 400;
  * where there is no margin to put a sidenote in.
  */
 export function withSidenotes(html, notes) {
-    const used = new Set();
+    const used = new Map();
     let counter = 0;
     const out = html.replace(/\[\^(\d+)\]/g, (whole, number) => {
-        const note = notes.get(number);
-        if (!note)
+        const list = notes.get(number);
+        if (!list?.length)
             return whole;
-        used.add(number);
+        // Resolve to this number's definitions in order, one reference to one
+        // definition — see collectNotes. More references than definitions (a
+        // note genuinely cited twice, or recall missed one) fall back to the
+        // last definition rather than losing the note.
+        const seen = used.get(number) ?? 0;
+        const note = list[Math.min(seen, list.length - 1)];
+        used.set(number, seen + 1);
         counter += 1;
         const toggleId = `sn-${number}-${counter}`;
         const long = note.length > LONG_NOTE_CHARS;

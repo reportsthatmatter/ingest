@@ -158,6 +158,35 @@ describe("sidenotes", () => {
     expect(html).not.toContain("<h2>Notes</h2>");
   });
 
+  // reportsthatmatter-ooj: Leveson restarts footnote numbering per chapter,
+  // so "[^20]" legitimately names two unrelated notes in one document.
+  it("resolves a restarting numbering scheme end to end, chapter reference to chapter note", () => {
+    const html = renderMarkdown(
+      "## Chapter Two\n\nFirst chapter's point.[^20]\n\n## Chapter Five\n\n" +
+        "Second chapter's point.[^20]\n\n## Notes\n\n[^20]: Chapter two's note." +
+        "\n\n[^20]: Chapter five's note."
+    );
+    const firstSidenote = html.indexOf("Chapter two's note.");
+    const secondSidenote = html.indexOf("Chapter five's note.");
+    expect(firstSidenote).toBeGreaterThan(-1);
+    expect(secondSidenote).toBeGreaterThan(firstSidenote);
+    // Each note appears exactly once — not both texts glued under one marker.
+    expect(html.match(/Chapter two's note\./g)).toHaveLength(1);
+    expect(html.match(/Chapter five's note\./g)).toHaveLength(1);
+  });
+
+  it("orphans only the instance of a repeated number that was never referenced", () => {
+    const html = renderMarkdown(
+      "Only this chapter's point is cited.[^20]\n\n## Notes\n\n[^20]: Cited note." +
+        "\n\n[^20]: Never-referenced note from elsewhere."
+    );
+    expect(html).toContain("Cited note.");
+    expect(html).toContain("Notes not linked in the text");
+    expect(html).toContain("Never-referenced note from elsewhere.");
+    // The cited instance must not also appear in the orphan list.
+    expect(html.match(/Cited note\./g)).toHaveLength(1);
+  });
+
   it("lists notes it could not place instead of dropping them", () => {
     const html = renderMarkdown('Body with no reference.\n\n## Notes\n\n[^99]: An unplaced note.');
     expect(html).toContain("Notes not linked in the text");
@@ -171,13 +200,13 @@ describe("sidenotes", () => {
   });
 
   it("escapes markup in note text", () => {
-    const { html } = withSidenotes("<p>x[^1]</p>", new Map([["1", "<script>bad</script>"]]));
+    const { html } = withSidenotes("<p>x[^1]</p>", new Map([["1", ["<script>bad</script>"]]]));
     expect(html).not.toContain("<script>bad</script>");
     expect(html).toContain("&lt;script&gt;");
   });
 
   it("gives each reference its own toggle", () => {
-    const notes = new Map([["1", "note one"]]);
+    const notes = new Map([["1", ["note one"]]]);
     const { html } = withSidenotes("<p>a[^1] b[^1]</p>", notes);
     const ids = [...html.matchAll(/id="(sn-[^"]+)"/g)].map((m) => m[1]);
     expect(new Set(ids).size).toBe(ids.length);
@@ -188,26 +217,50 @@ describe("sidenotes", () => {
     // the text it supports over the rest of the page — see
     // docs/plans/2026-08-09-sidenote-design-research.md. Short notes (the
     // overwhelming majority, by measured distribution) are untouched.
-    const short = new Map([["1", "See ECF No. 252 at 15."]]);
-    const long = new Map([["1", "See ECF No. 252 at 53 & n.283; ".repeat(20).trim()]]);
+    const short = new Map([["1", ["See ECF No. 252 at 15."]]]);
+    const long = new Map([["1", ["See ECF No. 252 at 53 & n.283; ".repeat(20).trim()]]]);
     expect(withSidenotes("<p>x[^1]</p>", short).html).not.toContain('class="sidenote long"');
     expect(withSidenotes("<p>x[^1]</p>", long).html).toContain('class="sidenote long"');
   });
 
   it("gives a long note an in-place expand affordance using its own toggle", () => {
-    const long = new Map([["1", "citation ".repeat(60).trim()]]);
+    const long = new Map([["1", ["citation ".repeat(60).trim()]]]);
     const { html } = withSidenotes("<p>x[^1]</p>", long);
     const toggleId = html.match(/id="(sn-[^"]+)"/)?.[1];
     expect(toggleId).toBeTruthy();
     expect(html).toContain(`<label class="sidenote-expand" for="${toggleId}">`);
+  });
+
+  // reportsthatmatter-ooj: a restarting numbering scheme (Leveson: per
+  // chapter) writes several genuinely different notes under the same label.
+  it("resolves repeated references to the same number positionally, not to one shared note", () => {
+    const notes = new Map([["20", ["chapter two's note", "chapter five's note"]]]);
+    const { html, used } = withSidenotes("<p>a[^20] ... b[^20]</p>", notes);
+    const [first, second] = [...html.matchAll(/<span class="sidenote">.*?<\/span>/g)];
+    expect(first[0]).toContain("chapter two's note");
+    expect(second[0]).toContain("chapter five's note");
+    expect(used.get("20")).toBe(2);
+  });
+
+  it("falls back to the last definition when a number is referenced more times than it has notes", () => {
+    const notes = new Map([["1", ["only note"]]]);
+    const { html } = withSidenotes("<p>a[^1] b[^1] c[^1]</p>", notes);
+    const spans = [...html.matchAll(/<span class="sidenote">.*?<\/span>/g)];
+    expect(spans).toHaveLength(3);
+    for (const span of spans) expect(span[0]).toContain("only note");
   });
 });
 
 describe("collectNotes", () => {
   it("reads the note definitions", () => {
     const notes = collectNotes("[^1]: First note.\n\n[^2]: Second note.");
-    expect(notes.get("1")).toBe("First note.");
-    expect(notes.get("2")).toBe("Second note.");
+    expect(notes.get("1")).toEqual(["First note."]);
+    expect(notes.get("2")).toEqual(["Second note."]);
+  });
+
+  it("keeps repeated definitions under the same number as separate instances", () => {
+    const notes = collectNotes("[^20]: Chapter two's note.\n\n[^20]: Chapter five's note.");
+    expect(notes.get("20")).toEqual(["Chapter two's note.", "Chapter five's note."]);
   });
 });
 

@@ -311,6 +311,22 @@ describe("footnotes", () => {
     ]);
     expect(rendered).toBe("[^7]: See ECF No. 252 at 79 and the following page.");
   });
+
+  // reportsthatmatter-ooj: Leveson restarts footnote numbering per chapter,
+  // so the same number legitimately names two unrelated notes far apart in
+  // this array — unlike the page-break tail above, these are NOT adjacent.
+  it("keeps distinct notes that happen to share a non-adjacent number as separate definitions", () => {
+    const rendered = renderEndnotes([
+      { number: 20, text: "chapter two's note", page: 40 },
+      { number: 21, text: "chapter two's next note", page: 40 },
+      { number: 20, text: "chapter five's unrelated note", page: 210 },
+    ]);
+    expect(rendered.split("\n\n")).toEqual([
+      "[^20]: chapter two's note",
+      "[^21]: chapter two's next note",
+      "[^20]: chapter five's unrelated note",
+    ]);
+  });
 });
 
 describe("ocr", () => {

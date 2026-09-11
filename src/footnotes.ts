@@ -84,26 +84,38 @@ export function linkInlineMarkers(text: string, known: Set<number>): string {
 }
 
 /**
- * One definition per note number.
+ * One definition per genuinely distinct note.
  *
- * A number can arrive twice — most often because the note runs over a page
- * break and its tail is parsed as a fresh note. Dropping the second copy loses
- * that tail, so distinct text is appended instead; only exact repeats are
- * discarded.
+ * A number can repeat for two different reasons, and they need opposite
+ * handling. **Adjacent** entries sharing a number are the same note: either
+ * an exact repeat (the note was collected twice, nothing new) or a tail that
+ * ran over a page break and got re-parsed as a fresh note — concatenated
+ * back onto the entry above it rather than dropped. **Non-adjacent** entries
+ * sharing a number are different notes: a report whose numbering restarts
+ * (Leveson: per chapter) reuses "20" for something else once the previous
+ * chapter's own "20" is many notes behind it in this array — collapsing
+ * those together, as a single global `Map` keyed by number used to, meant a
+ * chapter's footnote reference could resolve to a different chapter's text
+ * (reportsthatmatter-ooj). Those keep separate definitions under the same
+ * `[^N]` label; `markdown.ts`'s `withSidenotes` resolves each reference
+ * against them positionally, in the order both were written — sound because
+ * both the references in the body and the definitions collected here follow
+ * the same page-by-page reading order, and a note is normally cited once.
  */
 export function renderEndnotes(notes: Footnote[]): string {
   if (!notes.length) return "";
 
-  const byNumber = new Map<number, string[]>();
+  const merged: Footnote[] = [];
   for (const note of notes) {
-    const parts = byNumber.get(note.number) ?? [];
-    if (!parts.includes(note.text)) parts.push(note.text);
-    byNumber.set(note.number, parts);
+    const previous = merged[merged.length - 1];
+    if (previous && previous.number === note.number) {
+      if (previous.text !== note.text) previous.text = `${previous.text} ${note.text}`;
+      continue;
+    }
+    merged.push({ ...note });
   }
 
-  return [...byNumber.entries()]
-    .map(([number, parts]) => `[^${number}]: ${parts.join(" ")}`)
-    .join("\n\n");
+  return merged.map((note) => `[^${note.number}]: ${note.text}`).join("\n\n");
 }
 
 /**

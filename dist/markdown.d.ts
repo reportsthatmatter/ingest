@@ -32,8 +32,18 @@ export declare function paragraphId(text: string, taken: Set<string>): string;
 export declare function renderMarkdown(markdown: string): string;
 /** The collected `## Notes` block, which sidenotes replace in the body. */
 export declare function stripNotesSection(markdown: string): string;
-/** `[^12]: text` definitions, keyed by number. */
-export declare function collectNotes(markdown: string): Map<string, string>;
+/**
+ * `[^12]: text` definitions, keyed by number, in document order.
+ *
+ * More than one per number is the case this exists to handle: a report whose
+ * footnote numbering restarts (Leveson: per chapter) writes several
+ * genuinely different notes under the same label (`footnotes.ts`'s
+ * `renderEndnotes`). `withSidenotes` resolves each `[^N]` reference against
+ * these positionally — the first `[^20]` in the body to this number's first
+ * definition, the second to its second, and so on — rather than a single
+ * shared lookup that let one chapter's reference resolve to another's text.
+ */
+export declare function collectNotes(markdown: string): Map<string, string[]>;
 /**
  * Turns footnote references into sidenotes.
  *
@@ -45,9 +55,9 @@ export declare function collectNotes(markdown: string): Map<string, string>;
  * note, so it works without CSS, without JavaScript, and on a narrow screen
  * where there is no margin to put a sidenote in.
  */
-export declare function withSidenotes(html: string, notes: Map<string, string>): {
+export declare function withSidenotes(html: string, notes: Map<string, string[]>): {
     html: string;
-    used: Set<string>;
+    used: Map<string, number>;
 };
 /** Headings get slug ids so a section can be linked as well as a paragraph. */
 export declare function slugify(text: string): string;
