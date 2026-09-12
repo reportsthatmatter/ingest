@@ -34,6 +34,75 @@ describe("markdown", () => {
   });
 });
 
+describe("linkify", () => {
+  it("does not link an OCR-garbled fragment with an uppercase TLD (reportsthatmatter-yhb)", () => {
+    // Confirmed on production before this fix: a mis-scanned fragment like
+    // this reads as a domain under markdown-it's default fuzzy matching,
+    // purely by TLD-shaped coincidence, and renders as a live, wrong
+    // <a href>. A real TLD is never written uppercase.
+    expect(renderMarkdown("See Z.TZ for details.")).not.toContain("<a href");
+  });
+
+  it("does not link a dropped-space sentence boundary that lands on a real two-letter ccTLD", () => {
+    // The dominant real-world case, not a contrived one: a missing space
+    // after a sentence-ending period, immediately before a short
+    // capitalised word that happens to be a real ccTLD. Confirmed on
+    // production before this fix — 156 instances in us-911-commission
+    // alone ("people.To the extent", "flight.At 8:46", "Omari.As the
+    // investigation" read as links to .to/.at/.as).
+    for (const text of ["people.To the extent possible.", "flight.At 8:46 it happened."]) {
+      expect(renderMarkdown(text)).not.toContain("<a href");
+    }
+  });
+
+  it("still links a genuine www.-prefixed citation", () => {
+    const html = renderMarkdown("See www.hsgac.senate.gov for the record.");
+    expect(html).toContain('<a href="http://www.hsgac.senate.gov">');
+  });
+
+  it("still links an explicit http(s) URL", () => {
+    const html = renderMarkdown("See http://example.com/path for the record.");
+    expect(html).toContain('<a href="http://example.com/path">');
+  });
+
+  it("still links a genuine schemeless bare domain with a lowercase TLD", () => {
+    // A capitalised *label* right before the TLD is an ordinary brand name
+    // ("FT.com", "GroupSystems.com" — Columbia's own investigation board
+    // used GroupSystems software, cited by that bare domain, live on
+    // production) — nothing about it resembles the dropped-space or
+    // OCR-garble patterns this fix targets, both of which are given away
+    // by the *TLD* itself, not the label before it.
+    for (const [text, href] of [
+      ["cited GroupSystems.com in the report.", "http://GroupSystems.com"],
+      ["published in the FT.com archive.", "http://FT.com"],
+      [
+        "visit nationalarchives.gov.uk/doc/open-government-licence/version/3 for terms.",
+        "http://nationalarchives.gov.uk/doc/open-government-licence/version/3",
+      ],
+    ] as const) {
+      expect(renderMarkdown(text)).toContain(`<a href="${href}">`);
+    }
+  });
+
+  it("does not link a www. domain an OCR line-wrap broke before its real TLD arrives", () => {
+    // "www.oilspillcommission.\ngov)" (Deepwater Horizon) rejoins as
+    // "www.oilspillcommission. gov)" — the domain never actually
+    // completes with a TLD, so this must stay unlinked, not resolve to
+    // the nonexistent domain "www.oilspillcommission".
+    const html = renderMarkdown("found at www.oilspillcommission. gov) for more.");
+    expect(html).not.toContain("<a href");
+  });
+
+  it("still links a short, all-lowercase-TLD OCR fragment (an accepted residual)", () => {
+    // Not every false positive is chased: telling a short garbled
+    // fragment ("a.cz") apart from a short real domain ("FT.com") by
+    // shape alone, once both have a lowercase TLD, risks losing the real
+    // ones. This documents the accepted gap rather than leaving it an
+    // undocumented surprise.
+    expect(renderMarkdown("Visit a.cz today.")).toContain("<a href");
+  });
+});
+
 describe("splitFrontMatter", () => {
   it("parses metadata and strips it from the content", () => {
     const { data, content } = splitFrontMatter('---\ntitle: "A"\npages: 12\n---\nBody.');

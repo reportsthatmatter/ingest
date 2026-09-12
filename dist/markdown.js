@@ -68,6 +68,54 @@ export function paragraphId(text, taken) {
     }
 }
 /**
+ * markdown-it's default `linkify: true` recognises URLs with no `http(s):`
+ * prefix by guessing at a domain from bare text, and two shapes of OCR
+ * artifact both happen to satisfy that guess (reportsthatmatter-yhb —
+ * confirmed on production, not hypothetical; 301 instances across the
+ * corpus, verified by diffing every report's rendered output before and
+ * after this fix):
+ *
+ * - Short mis-scanned fragments that coincidentally end in a real TLD:
+ *   `Z.TZ`, `a.cz`, `aU.SE`, `q.cn` are not links, they are garbled words.
+ * - Far more common: a dropped space at a sentence boundary, immediately
+ *   before a short capitalised word that happens to be a real two-letter
+ *   ccTLD — `people.To the extent…`, `flight.At 8:46…`, `Omari.As the
+ *   investigation…` read as links to `.to` (Tonga), `.at` (Austria), `.as`
+ *   (American Samoa). Accounts for the bulk of the 301: 156 of them in
+ *   `us-911-commission` alone.
+ *
+ * Both share one tell a genuine domain never has: the TLD itself is not
+ * lowercase. A citation might reasonably read `guardian.co.uk`,
+ * `FT.com`, or `GroupSystems.com` — capitalised *labels* are ordinary
+ * brand names — but nobody writes a TLD as anything but lowercase, and a
+ * dropped-space sentence boundary always leaves the following word
+ * capitalised. Filtering on that, via `validateLink` (the documented hook
+ * for exactly this), rejects both artifact shapes while keeping every
+ * genuine schemeless citation the corpus has — including several that an
+ * earlier, blunter version of this fix (requiring an explicit `www.`)
+ * would have cost: `guardian.co.uk`, `GroupSystems.com`, and 94 of
+ * Leveson's own `levesoninquiry.org.uk/…` citation links, none of which
+ * carry a `www.` prefix in the source and all of which are live, working
+ * links on production today.
+ *
+ * A residual is accepted, not chased further: a handful of short,
+ * all-lowercase-TLD fragments (`a.cz`, `q.cn`, `cu.in` — Challenger,
+ * Columbia, jack-smith-vol1's own worst OCR regions) still auto-link.
+ * Telling those apart from a short real domain (`FT.com`) by shape alone
+ * risks losing the real ones; this fix targets the two confirmed,
+ * systemic patterns above, not every possible false positive.
+ */
+function configureLinkify(md) {
+    const defaultValidateLink = md.validateLink.bind(md);
+    md.validateLink = (url) => {
+        if (!defaultValidateLink(url))
+            return false;
+        const host = url.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "").split(/[/?#]/)[0];
+        const tld = host.split(".").pop();
+        return !tld || tld === tld.toLowerCase();
+    };
+}
+/**
  * Renders report markdown to HTML.
  *
  * Top-level paragraphs get a text-derived id and a permalink anchor. Page
@@ -78,6 +126,7 @@ export function paragraphId(text, taken) {
 export function renderMarkdown(markdown) {
     const { content } = splitFrontMatter(markdown);
     const md = new MarkdownIt({ html: false, linkify: true, typographer: false });
+    configureLinkify(md);
     md.core.ruler.push("rtm_anchors", (state) => {
         const tokens = state.tokens;
         const taken = new Set();
