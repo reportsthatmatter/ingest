@@ -11,6 +11,15 @@ export type Footnote = {
  * Parses a page's footnote block into individual notes, in either layout —
  * number inline with its text, or number alone on its line with the text
  * beneath. Continuation lines fold into the note above them.
+ *
+ * A run of one or more garbled note-starts (see GARBLED_NOTE_START) is only
+ * split out under its own number when the next cleanly-read number confirms
+ * exactly how many notes are missing — e.g. 5, one garbled candidate, then a
+ * clean 7 proves the candidate is 6. Without that confirmation (a second gap
+ * in the same run, or the block simply ending) the count is ambiguous, so
+ * the run folds upward exactly as it always has: a wrong guess would
+ * mislabel a real note, which is worse than an honest merge
+ * (reportsthatmatter-lie).
  */
 export declare function parseFootnotes(lines: string[], page: number): Footnote[];
 export declare function linkInlineMarkers(text: string, known: Set<number>): string;

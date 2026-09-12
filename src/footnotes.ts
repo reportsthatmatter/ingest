@@ -14,11 +14,69 @@ const NOTE_INLINE = /^\s{0,8}(\d{1,4})\s{0,3}(?=[A-Za-z"“(])/;
 const NOTE_STACKED = /^\s{0,10}(\d{1,4})\s*$/;
 
 /**
+ * A note-start whose leading digit(s) survived OCR but not cleanly — a
+ * stray character sits between the digit and its text ("0 %id.", from "6
+ * Ibid." misread) or before the digit itself ("‘ 0 bid.", from "10 Ibid.").
+ * NOTE_INLINE requires the text to follow the digit directly (just
+ * whitespace between), so either shape slips past it and would otherwise
+ * fold silently into whatever note came before (reportsthatmatter-lie).
+ *
+ * Matching requires a digit inside the junk run — a line that starts with
+ * pure whitespace before its text (a note whose number OCR dropped
+ * entirely, leaving no trace) is not distinguishable from an ordinary
+ * continuation line and must not be guessed at.
+ */
+const GARBLED_NOTE_START = /^([^A-Za-z"“(]{1,10})(?=[A-Za-z"“(])/;
+
+type Token =
+  | { kind: "inline"; number: number; text: string }
+  | { kind: "stacked"; number: number }
+  | { kind: "garbled"; text: string; raw: string }
+  | { kind: "text"; raw: string };
+
+function classify(line: string): Token {
+  const inline = line.match(NOTE_INLINE);
+  if (inline) {
+    return {
+      kind: "inline",
+      number: Number.parseInt(inline[1], 10),
+      text: normaliseWhitespace(line.slice(inline[0].length)),
+    };
+  }
+
+  const stacked = line.match(NOTE_STACKED);
+  if (stacked) {
+    return { kind: "stacked", number: Number.parseInt(stacked[1], 10) };
+  }
+
+  const garbled = line.match(GARBLED_NOTE_START);
+  if (garbled && /\d/.test(garbled[1])) {
+    return {
+      kind: "garbled",
+      text: normaliseWhitespace(line.slice(garbled[0].length)),
+      raw: line,
+    };
+  }
+
+  return { kind: "text", raw: line };
+}
+
+/**
  * Parses a page's footnote block into individual notes, in either layout —
  * number inline with its text, or number alone on its line with the text
  * beneath. Continuation lines fold into the note above them.
+ *
+ * A run of one or more garbled note-starts (see GARBLED_NOTE_START) is only
+ * split out under its own number when the next cleanly-read number confirms
+ * exactly how many notes are missing — e.g. 5, one garbled candidate, then a
+ * clean 7 proves the candidate is 6. Without that confirmation (a second gap
+ * in the same run, or the block simply ending) the count is ambiguous, so
+ * the run folds upward exactly as it always has: a wrong guess would
+ * mislabel a real note, which is worse than an honest merge
+ * (reportsthatmatter-lie).
  */
 export function parseFootnotes(lines: string[], page: number): Footnote[] {
+  const tokens = lines.filter((line) => line.trim()).map(classify);
   const notes: Footnote[] = [];
 
   const append = (text: string) => {
@@ -27,26 +85,61 @@ export function parseFootnotes(lines: string[], page: number): Footnote[] {
     last.text = normaliseWhitespace(`${last.text} ${text}`);
   };
 
-  for (const line of lines) {
-    if (!line.trim()) continue;
+  let i = 0;
+  while (i < tokens.length) {
+    const token = tokens[i];
 
-    const inline = line.match(NOTE_INLINE);
-    if (inline) {
-      notes.push({
-        number: Number.parseInt(inline[1], 10),
-        text: normaliseWhitespace(line.slice(inline[0].length)),
-        page,
-      });
+    if (token.kind === "inline") {
+      notes.push({ number: token.number, text: token.text, page });
+      i += 1;
       continue;
     }
 
-    const stacked = line.match(NOTE_STACKED);
-    if (stacked) {
-      notes.push({ number: Number.parseInt(stacked[1], 10), text: "", page });
+    if (token.kind === "stacked") {
+      notes.push({ number: token.number, text: "", page });
+      i += 1;
       continue;
     }
 
-    append(line);
+    if (token.kind === "text") {
+      append(token.raw);
+      i += 1;
+      continue;
+    }
+
+    // A garbled candidate: collect the whole run of garbled/text tokens up
+    // to the next clean boundary (or the end of the block) before deciding
+    // whether it can be split at all.
+    const runStart = i;
+    let j = i;
+    while (j < tokens.length && (tokens[j].kind === "garbled" || tokens[j].kind === "text")) {
+      j += 1;
+    }
+    const boundary = tokens[j];
+    const lastNumber = notes.length ? notes[notes.length - 1].number : undefined;
+    const garbledCount = tokens
+      .slice(runStart, j)
+      .filter((t) => t.kind === "garbled").length;
+
+    const confirmed =
+      boundary !== undefined &&
+      lastNumber !== undefined &&
+      (boundary.kind === "inline" || boundary.kind === "stacked") &&
+      boundary.number === lastNumber + garbledCount + 1;
+
+    let expected = (lastNumber ?? 0) + 1;
+    for (let k = runStart; k < j; k++) {
+      const t = tokens[k];
+      if (t.kind === "garbled" && confirmed) {
+        notes.push({ number: expected, text: t.text, page });
+        expected += 1;
+      } else if (t.kind === "garbled") {
+        append(t.raw);
+      } else if (t.kind === "text") {
+        append(t.raw);
+      }
+    }
+    i = j;
   }
 
   // A stacked note whose text never arrived carries nothing worth keeping.

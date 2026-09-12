@@ -1,6 +1,6 @@
 {
   "name": "@rtm/ingest",
-  "version": "0.12.8",
+  "version": "0.12.9",
   "description": "PDF \u2192 Markdown for public inquiry reports, deterministically",
   "license": "MIT",
   "type": "module",

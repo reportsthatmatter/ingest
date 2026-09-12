@@ -370,6 +370,36 @@ describe("footnotes", () => {
     expect(notes[0].text).toBe("See ECF No. 252 at 15 and the following page.");
   });
 
+  // reportsthatmatter-lie: an OCR-misread leading digit ("6" as "0", "I" as
+  // "%") breaks NOTE_INLINE entirely, so the whole note used to fold into
+  // the one above it. Recoverable here because the note two past it (7)
+  // still reads cleanly, which proves exactly one note is missing between
+  // them — the real Challenger PDF p.61 footnotes 5-7.
+  it("recovers a garbled leading digit when the next real number confirms exactly one note is missing", () => {
+    const notes = parseFootnotes(
+      [
+        "5 bid.",
+        "0 %id. The nozzle to case joint design is significantly different.",
+        "7 bid.",
+      ],
+      61
+    );
+    expect(notes.map((n) => n.number)).toEqual([5, 6, 7]);
+    expect(notes[1].text).toBe(
+      "id. The nozzle to case joint design is significantly different."
+    );
+  });
+
+  // Same shape, but nothing downstream ever confirms how many notes are
+  // missing — could be one gap or several. Guessing would risk mislabelling
+  // a real note under the wrong number, so this must fall back to the
+  // historical (imperfect but honest) behaviour of folding it upward.
+  it("leaves an unconfirmable garbled run folded into the note above, rather than guess", () => {
+    const notes = parseFootnotes(["8 Ibid.", "Ibid.", "0. bid."], 62);
+    expect(notes.map((n) => n.number)).toEqual([8]);
+    expect(notes[0].text).toBe("Ibid. Ibid. 0. bid.");
+  });
+
   it("links inline markers that follow sentence punctuation", () => {
     const out = linkInlineMarkers("told him the same. 10 On November 13,", new Set([10]));
     expect(out).toBe("told him the same.[^10] On November 13,");
