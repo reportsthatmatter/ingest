@@ -55,6 +55,20 @@ export declare const printedPageNumber: () => PagePass;
  * across the document, a bare number is the honest output.
  */
 export declare const flushFootnoteMarkers: () => PagePass;
+/**
+ * Reads this report's own "7.1", "10.14"-style paragraph numbering as a
+ * paragraph break, not just an indent past the margin (reportsthatmatter-hzf).
+ *
+ * Opt-in, and it must stay that way: a report that does not number its
+ * paragraphs this way still has plenty of lines that coincidentally open
+ * with a decimal-shaped number wrapped onto its own line — a measurement
+ * like "5.8 to\n7.0 percent" would sever mid-sentence at "7.0" rather than
+ * merely stay merged, which is worse than the defect this fixes. Confirmed
+ * empirically: applying it unconditionally moved every report in the
+ * corpus, most of them by severing sentences that were never numbered
+ * paragraphs at all.
+ */
+export declare const numberedParagraphs: () => PagePass;
 /** Separates the footnote block at the foot of each page from the body. */
 export declare const footnoteBlock: () => PagePass;
 /**

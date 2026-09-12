@@ -85,6 +85,24 @@ describe("flushFootnoteMarkers", () => {
   });
 });
 
+describe("numberedParagraphs", () => {
+  it("is off unless a report declares it", async () => {
+    // A report that does not number its paragraphs "7.1", "10.14" still has
+    // plenty of lines that coincidentally open with a decimal-shaped number
+    // wrapped onto its own line, and reading those as paragraph breaks
+    // would sever a sentence rather than a paragraph.
+    expect(resolvePasses(pipeline(base)).numberedParagraphs).toBe(false);
+  });
+
+  it("is on when declared", async () => {
+    const { numberedParagraphs } = await import("../src/passes");
+    const resolved = resolvePasses(
+      pipeline({ ...base, passes: [numberedParagraphs()] })
+    );
+    expect(resolved.numberedParagraphs).toBe(true);
+  });
+});
+
 describe("quoteInset", () => {
   it("is undefined unless declared, so the default stands", async () => {
     expect(resolvePasses(pipeline(base)).quoteInset).toBeUndefined();

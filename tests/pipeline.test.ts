@@ -8,6 +8,7 @@ import {
   mergeAcrossPages,
   endsSentence,
   isTabularPage,
+  DEFAULT_QUOTE_INSET,
 } from "../src/paragraphs";
 import {
   parseFootnotes,
@@ -28,6 +29,7 @@ import { runningFurniture } from "../src/passes";
 const MULTI_VOLUME = {
   geometry: "per-volume" as const,
   flushFootnoteMarkers: false,
+  numberedParagraphs: false,
   bodyPasses: [],
   volumePasses: [runningFurniture()],
 };
@@ -187,6 +189,94 @@ describe("toBlocks", () => {
       "and once more.",
     ]);
     expect(blocks.filter((b) => b.kind === "paragraph")).toHaveLength(2);
+  });
+
+  it("starts a new paragraph on a numbered opener when numberedParagraphs is on, even with no blank line and no indent (reportsthatmatter-hzf)", () => {
+    // The "7.1", "10.14" hanging-indent numbering these reports use puts the
+    // number at the margin and the paragraph's own text one tab-stop in —
+    // the same column continuation lines sit at — so a blank line is the
+    // only other signal, and some pages of this report don't have one.
+    const blocks = toBlocks(
+      [
+        "3.75   The evidence I have received suggests that Mr Litvinenko became",
+        "       increasingly concerned for his safety.",
+        "3.76   Mr Felshtinsky gave evidence about a meeting that he had with",
+        "       General Khokholkov.",
+      ],
+      7,
+      DEFAULT_QUOTE_INSET,
+      true
+    );
+    const paragraphs = blocks.filter((b) => b.kind === "paragraph");
+    expect(paragraphs).toHaveLength(2);
+    expect(paragraphs[0]).toMatchObject({
+      text: "3.75 The evidence I have received suggests that Mr Litvinenko became increasingly concerned for his safety.",
+    });
+    expect(paragraphs[1]).toMatchObject({
+      text: "3.76 Mr Felshtinsky gave evidence about a meeting that he had with General Khokholkov.",
+    });
+  });
+
+  it("still starts a new paragraph on a numbered opener when a blank line does separate them", () => {
+    const blocks = toBlocks(
+      [
+        "3.82   Having arrived in Nalchik, Mr Litvinenko crossed into Georgia.",
+        "",
+        "3.83   Next Mr Litvinenko got a message to Marina Litvinenko.",
+      ],
+      7
+    );
+    expect(blocks.filter((b) => b.kind === "paragraph")).toHaveLength(2);
+  });
+
+  it("does NOT read a numbered opener as a paragraph break unless numberedParagraphs is declared", () => {
+    // Off by default is the point: a report that does not use "7.1"-style
+    // numbering still has plenty of lines that coincidentally open with a
+    // decimal-shaped number wrapped onto its own line -- Challenger's own
+    // test-method appendices do this routinely ("...compression of 5.8 to"
+    // / "7.0 percent for O-ring material..."), and without the guard this
+    // reads as a paragraph break in the middle of one sentence.
+    const blocks = toBlocks([
+      "     Thiokol cited a compression of 5.8 to",
+      "7.0 percent for the O-ring material.",
+    ]);
+    expect(blocks.filter((b) => b.kind === "paragraph")).toHaveLength(1);
+  });
+
+  it("does not read a bare 'N.' as a paragraph opener even with numberedParagraphs on", () => {
+    // A single number is far too common a shape for a sentence to end a
+    // wrapped line on by coincidence -- a room number, a reference, a
+    // measurement. Only the two-part "7.1" chapter.paragraph shape is a
+    // safe signal; requiring it is what tells "382. Mr Begak had checked
+    // in" (a room number, Litvinenko) apart from a genuine "3.77 Mr
+    // Felshtinsky immediately reported...".
+    const blocks = toBlocks(
+      [
+        "     Mr Sokolenko was allocated room",
+        "382. Mr Begak had checked into a different hotel earlier in the day.",
+      ],
+      7,
+      DEFAULT_QUOTE_INSET,
+      true
+    );
+    expect(blocks.filter((b) => b.kind === "paragraph")).toHaveLength(1);
+  });
+
+  it("does not read a quantity like '1.8 million' as a paragraph opener even with numberedParagraphs on", () => {
+    // The two-part shape alone is not quite enough: a genuine statistic can
+    // take exactly the same shape ("1.8 million") as a chapter.paragraph
+    // number. What a real paragraph opener never does is put a bare unit
+    // word straight after the number as the first word of its own prose.
+    const blocks = toBlocks(
+      [
+        "     The Sun's article suggested",
+        "1.8 million people on sickness benefit were fit for work.",
+      ],
+      7,
+      DEFAULT_QUOTE_INSET,
+      true
+    );
+    expect(blocks.filter((b) => b.kind === "paragraph")).toHaveLength(1);
   });
 
   it("reads a roman-numeral all-caps line as a section heading", () => {

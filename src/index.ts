@@ -17,6 +17,7 @@ export {
   printedPageNumber,
   footnoteBlock,
   flushFootnoteMarkers,
+  numberedParagraphs,
   runningFurniture,
   geometry,
   columns,

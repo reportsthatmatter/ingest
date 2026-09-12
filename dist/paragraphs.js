@@ -106,9 +106,34 @@ const DIVISION_TOP = /^(Part|Appendix|Annex|Volume)$/;
 export function isDivisionHeading(text) {
     return /^(Part|Chapter|Appendix|Annex|Volume|Section) (?:\d{1,3}|[IVXLC]{1,7}):/.test(text);
 }
-/** "7.1", "10.14" — the paragraph numbering these reports run throughout. */
+/**
+ * A common quantity word immediately after the candidate ("1.8 million
+ * people…") means the number is a mid-sentence figure, not a paragraph
+ * number — a genuine paragraph does not open with a bare unit word as its
+ * first word of prose. "...The Sun's article...suggested\n\n1.8 million
+ * people on sickness benefit were fit for work..." reads "1.8" as opening
+ * paragraph 1.8 (Leveson), when it is a statistic the line wrapped after.
+ */
+const QUANTITY_WORD_FOLLOWS = /^(per\s?cent|percent|million|billion|thousand|hundred|degrees?|inches?|centimetres?|centimeters?|metres?|meters?|miles?|kilometres?|kilometers?|pounds?|kg|km|years?|months?|weeks?|days?|hours?|minutes?|seconds?|times)\b/i;
+/**
+ * "7.1", "10.14" — the chapter.paragraph numbering these reports run
+ * throughout.
+ *
+ * The second number is mandatory on purpose. A bare "N." alone is far too
+ * common a shape for an ordinary sentence to end a wrapped line on by
+ * coincidence — "...Mr Sokolenko was allocated room\n\n382. Mr Begak had
+ * checked in..." reads "382" as the start of paragraph 382, when it is
+ * just a room number the line wrapped after. Requiring both halves is what
+ * makes this safe to use as a paragraph-break signal (numberedParagraphs,
+ * reportsthatmatter-hzf): a genuine two-part chapter.paragraph number is
+ * not a shape ordinary prose produces by accident — except a quantity,
+ * which is, hence the second guard above.
+ */
 function opensNumberedParagraph(text) {
-    return /^\d{1,3}[.)]\d{0,3}\s/.test(text.trim());
+    const match = text.trim().match(/^\d{1,3}[.)]\d{1,3}\s+(.*)$/);
+    if (!match)
+        return false;
+    return !QUANTITY_WORD_FOLLOWS.test(match[1]);
 }
 /**
  * Titles are set in caps or title case; running prose is not. Used to tell a
@@ -274,7 +299,7 @@ function isHeading(text, allowDivisions = true) {
  * a new paragraph. Blank lines are a secondary signal, and block quotes (set
  * far to the right) are kept as quotes.
  */
-export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET) {
+export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false) {
     // The left margin is a property of the document's layout, not of one page. A
     // short page — the last of a section, say — can have too few lines to infer
     // it from, and getting it wrong turns an ordinary paragraph into a quote.
@@ -477,7 +502,27 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
         }
         const indent = indentOf(line);
         const kind = quoted[i] ? "quote" : "paragraph";
-        const startsParagraph = !quoted[i] && indent > margin + 1;
+        // These reports' own "7.1", "10.14" numbering is a hanging indent — the
+        // number sits at the margin and the paragraph's own text one tab-stop
+        // in, the same column ordinary continuation lines sit at — so indent
+        // alone cannot tell a numbered opener apart from the line above
+        // continuing. Most of the time a blank line does that job instead, but
+        // it is not reliable: some pages carry one between every numbered
+        // paragraph, others carry none at all, and where it is missing five and
+        // more consecutive paragraphs silently weld into one
+        // (reportsthatmatter-hzf).
+        //
+        // Opt-in, and it must stay that way: a report that does not number its
+        // paragraphs this way still has plenty of lines that coincidentally open
+        // with a decimal-shaped number wrapped onto its own line — "5.8 to\n7.0
+        // percent" reads as "5.8 to" ending a paragraph and "7.0 percent..."
+        // opening a new one, a measurement severed mid-sentence, in a document
+        // (Challenger's test-method appendices) that never numbers a paragraph
+        // this way at all. Confirmed empirically: applying this unconditionally
+        // moved every report in the corpus, not just the ones that use the
+        // convention.
+        const startsParagraph = !quoted[i] &&
+            (indent > margin + 1 || (numberedParagraphs && opensNumberedParagraph(single)));
         if ((startsParagraph || kind !== currentKind) && current.length)
             flush();
         currentKind = kind;
