@@ -11,26 +11,26 @@ export type Footnote = {
 };
 
 /**
- * A note-start's text may follow the digit either directly (the common
- * case, requiring only whitespace between) or past exactly one stray OCR
- * character ("0 %id.", from "6 Ibid." with the "6" misread and the "I" of
- * "Ibid." landing as "%"; "216 !d." with "Id."'s "I" landing as "!") — or
- * may itself simply start with a number, which is legitimate and common
- * ("42 U.S.C. § 4332(c)."). These need separate, narrower branches, not one
- * shared permissive lookahead:
+ * A note-start's text normally follows the digit directly (just whitespace
+ * between), but OCR sometimes drops one stray character in between — the
+ * "I" of "Ibid." landing as "%" or "!" ("0 %id.", from "6 Ibid." with the
+ * "6" itself misread; "216 !d.", from "Id."). The second branch tolerates
+ * exactly one such character before the real letter.
  *
- * - Allowing the junk hop *and* a digit lookahead together matches ordinary
- *   dates ("4/2010 Evaluation of...") as a bogus note, since the "/" would
- *   count as the stray character and "2010" as the following text.
- * - Allowing a digit lookahead with *no* required space lets a number split
- *   against itself: "109" alone backtracks to digit "10" plus a zero-width
- *   lookahead at its own trailing "9", misreading a stacked note's whole
- *   number as "10" with body text "9". A real digit-led citation is always
- *   separated from its note number by an actual space, so that branch
- *   requires one.
+ * A digit lookahead (tolerating footnote text that itself starts with a
+ * number, e.g. "42 U.S.C. § 4332(c).") was tried and reverted
+ * (reportsthatmatter-lie): footnote and endnote text in these documents
+ * routinely wraps a citation's *own* page number or year onto a new
+ * physical line ("45 Smith v. Jones", "2010 Fed. Reg. 12345"), which is a
+ * continuation of the note above it, not a new one — a shape far more
+ * common than a genuine number-led note, and one this file's regex-only,
+ * per-line approach cannot tell apart from the real thing. That confirmed
+ * against the corpus at rollout: US v. Deepwater Horizon's recognised
+ * footnote count collapsed from 775 to 277. Only the letter-lookahead
+ * shape is safe to recover this way.
  */
 const NOTE_INLINE =
-  /^\s{0,8}(\d{1,4})(?:\s{0,3}[^\sA-Za-z\d]\s{0,3}(?=[A-Za-z"“(])|\s{0,3}(?=[A-Za-z"“(])|\s{1,3}(?=[0-9]))/;
+  /^\s{0,8}(\d{1,4})(?:\s{0,3}[^\sA-Za-z\d]\s{0,3}(?=[A-Za-z"“(])|\s{0,3}(?=[A-Za-z"“(]))/;
 const NOTE_STACKED = /^\s{0,10}(\d{1,4})\s*$/;
 
 /**
