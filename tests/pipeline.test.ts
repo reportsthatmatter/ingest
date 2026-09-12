@@ -390,14 +390,51 @@ describe("footnotes", () => {
     );
   });
 
-  // Same shape, but nothing downstream ever confirms how many notes are
-  // missing — could be one gap or several. Guessing would risk mislabelling
-  // a real note under the wrong number, so this must fall back to the
-  // historical (imperfect but honest) behaviour of folding it upward.
-  it("leaves an unconfirmable garbled run folded into the note above, rather than guess", () => {
+  // A run with no confirming number after it (the block just ends) can't be
+  // proven to be exactly one note, so a misread digit stays as read rather
+  // than being folded away or guessed at — same trade-off already accepted
+  // for a stray trailing candidate in "footnote block anchoring" below.
+  it("leaves an unconfirmable run's numbers as read, rather than guess how many are missing", () => {
     const notes = parseFootnotes(["8 Ibid.", "Ibid.", "0. bid."], 62);
-    expect(notes.map((n) => n.number)).toEqual([8]);
-    expect(notes[0].text).toBe("Ibid. Ibid. 0. bid.");
+    expect(notes.map((n) => n.number)).toEqual([8, 0]);
+    expect(notes[1].text).toBe("bid.");
+  });
+
+  // reportsthatmatter-lie: a footnote's own text starting with a number is
+  // legitimate and common (a U.S. Code or C.F.R. citation) — must not be
+  // swallowed into the note number itself, or mistaken for a missing note.
+  it("keeps a footnote number distinct from citation text that starts with a number", () => {
+    const notes = parseFootnotes(
+      ["24 Richard J. Lazarus, The Making of Environmental Law, 70.", "25 42 U.S.C. § 4332(c)."],
+      120
+    );
+    expect(notes.map((n) => n.number)).toEqual([24, 25]);
+    expect(notes[1].text).toBe("42 U.S.C. § 4332(c).");
+  });
+
+  // The false-positive risk of the above: a stray "/" plus a following
+  // digit must not be read as "junk then a number continues the note text"
+  // — that would turn an ordinary date into a bogus new note.
+  it("reads a footnote number followed directly by citation text starting with a date", () => {
+    const notes = parseFootnotes(
+      ["108 Some prior note.", "109 4/2010 Evaluation of Federal Regulatory Oversight."],
+      60
+    );
+    expect(notes.map((n) => n.number)).toEqual([108, 109]);
+    expect(notes[1].text).toBe("4/2010 Evaluation of Federal Regulatory Oversight.");
+  });
+
+  // The false-positive risk of allowing a digit lookahead at all: a bare
+  // stacked number must not split against its own trailing digits (digit
+  // "10" plus a zero-width lookahead at its own "9"), and a date on the
+  // note's continuation line must not be mistaken for a second note.
+  it("does not split a stacked note's own number, or its date-shaped continuation", () => {
+    const notes = parseFootnotes(
+      ["109", "    4/2010 Evaluation of Federal Regulatory Oversight."],
+      60
+    );
+    expect(notes.map((n) => n.number)).toEqual([109]);
+    expect(notes[0].text).toBe("4/2010 Evaluation of Federal Regulatory Oversight.");
   });
 
   it("links inline markers that follow sentence punctuation", () => {
