@@ -449,6 +449,30 @@ describe("lists are citable", () => {
 
     expect(html).not.toMatch(/<li id=/);
   });
+
+  // reportsthatmatter-ru3: an empty first item (a bare "-", common in
+  // OCR-garbled figure/diagram captions) has no inline token of its own, so
+  // an unscoped search for "the first inline token" walks past the whole
+  // list and grabs unrelated text further into the document — confirmed on
+  // Challenger p.184, where a figure caption reduced to a lone "-"
+  // immediately preceded a "## DOWNSTREAM SECONDARY" heading and the list's
+  // id became "downstream-secondary".
+  it("falls back to the paragraph default when the first item is empty, rather than borrow a later item in the same list", () => {
+    const html = renderMarkdown(
+      "---\ntitle: t\n---\n\n- \n- a real second item\n\n## DOWNSTREAM SECONDARY\n"
+    );
+
+    expect(html).toMatch(/<ul id="para[^"]*"/);
+    expect(html).not.toMatch(/real-second-item/);
+    expect(html).not.toMatch(/downstream-secondary/);
+  });
+
+  it("does not borrow a heading past the list's own close when the only item is empty", () => {
+    const html = renderMarkdown("---\ntitle: t\n---\n\n- \n\n## DOWNSTREAM SECONDARY\n");
+
+    expect(html).toMatch(/<ul id="para[^"]*"/);
+    expect(html).not.toMatch(/downstream-secondary/);
+  });
 });
 
 describe("repeated page anchors", () => {

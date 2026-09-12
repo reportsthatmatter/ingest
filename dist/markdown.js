@@ -136,13 +136,37 @@ export function renderMarkdown(markdown) {
             // A bulleted list is a citable unit too — in these reports the list is
             // often the finding. Its id comes from its first item, by the same rule
             // paragraphs use, so re-ingestion cannot repoint the citation.
+            //
+            // The search for that item's inline content must stop at the first
+            // item's own close: unbounded, it walks past a genuinely empty first
+            // item (a bare "-", common in OCR-garbled figure/diagram captions) and
+            // grabs the next inline token anywhere later in the document — a
+            // second item, or text entirely outside the list (reportsthatmatter-ru3).
+            // An empty first item gets the same "para" default an empty paragraph
+            // gets, not a borrowed id.
             if (token.type === "bullet_list_open" && token.level === 0) {
-                const firstItem = tokens.slice(i).find((later) => later.type === "inline");
-                if (firstItem) {
-                    token.attrSet("id", paragraphId(firstItem.content, taken));
-                    if (page !== null)
-                        token.attrSet("data-page", String(page));
+                let firstItemText = "";
+                let itemDepth = 0;
+                for (let j = i + 1; j < tokens.length; j++) {
+                    const later = tokens[j];
+                    if (later.type === "list_item_open") {
+                        itemDepth += 1;
+                        continue;
+                    }
+                    if (later.type === "list_item_close") {
+                        itemDepth -= 1;
+                        if (itemDepth === 0)
+                            break; // end of the first item
+                        continue;
+                    }
+                    if (itemDepth >= 1 && later.type === "inline") {
+                        firstItemText = later.content;
+                        break;
+                    }
                 }
+                token.attrSet("id", paragraphId(firstItemText, taken));
+                if (page !== null)
+                    token.attrSet("data-page", String(page));
                 continue;
             }
             if (token.type !== "paragraph_open" || token.level !== 0)
