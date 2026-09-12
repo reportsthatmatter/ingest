@@ -1,42 +1,57 @@
 import { normaliseWhitespace } from "./extract.js";
-/**
- * A note-start's text normally follows the digit directly (just whitespace
- * between), but OCR sometimes drops one stray character in between — the
- * "I" of "Ibid." landing as "%" or "!" ("0 %id.", from "6 Ibid." with the
- * "6" itself misread; "216 !d.", from "Id."). The second branch tolerates
- * exactly one such character before the real letter.
- *
- * A digit lookahead (tolerating footnote text that itself starts with a
- * number, e.g. "42 U.S.C. § 4332(c).") was tried and reverted
- * (reportsthatmatter-lie): footnote and endnote text in these documents
- * routinely wraps a citation's *own* page number or year onto a new
- * physical line ("45 Smith v. Jones", "2010 Fed. Reg. 12345"), which is a
- * continuation of the note above it, not a new one — a shape far more
- * common than a genuine number-led note, and one this file's regex-only,
- * per-line approach cannot tell apart from the real thing. That confirmed
- * against the corpus at rollout: US v. Deepwater Horizon's recognised
- * footnote count collapsed from 775 to 277. Only the letter-lookahead
- * shape is safe to recover this way.
- */
-const NOTE_INLINE = /^\s{0,8}(\d{1,4})(?:\s{0,3}[^\sA-Za-z\d]\s{0,3}(?=[A-Za-z"“(])|\s{0,3}(?=[A-Za-z"“(]))/;
+const NOTE_INLINE = /^\s{0,8}(\d{1,4})\s{0,3}(?=[A-Za-z"“(])/;
 const NOTE_STACKED = /^\s{0,10}(\d{1,4})\s*$/;
+/**
+ * A note-start whose digit is followed by exactly one stray OCR character
+ * before its real text — the "I" of "Ibid." landing as "%" or "!" ("0
+ * %id.", from "6 Ibid." with the "6" itself misread; "216 !d.", from
+ * "Id."). One character only, and it must not itself be a digit: anything
+ * looser (an open run of junk, or tolerating a second digit) starts
+ * matching ordinary citation continuations — "45. Ibid" (a page number
+ * ending a wrapped citation) or "25 42 U.S.C. § 4332(c)." (a footnote
+ * whose real text happens to start with a number) are far more common in
+ * these documents than a genuinely garbled note-start, and either shape
+ * tried unconditionally collapsed US v. Deepwater Horizon's recognised
+ * footnote count from 775 to under 300 (reportsthatmatter-lie). Matching
+ * this pattern is therefore only ever a *candidate* — see parseFootnotes
+ * for the confirmation that decides whether to trust it.
+ */
+const GARBLED_INLINE = /^\s{0,8}(\d{1,4})\s{0,3}[^\sA-Za-z\d]\s{0,3}(?=[A-Za-z"“(])/;
+function classify(line) {
+    const inline = line.match(NOTE_INLINE);
+    if (inline) {
+        return {
+            kind: "inline",
+            number: Number.parseInt(inline[1], 10),
+            text: normaliseWhitespace(line.slice(inline[0].length)),
+        };
+    }
+    const stacked = line.match(NOTE_STACKED);
+    if (stacked) {
+        return { kind: "stacked", number: Number.parseInt(stacked[1], 10) };
+    }
+    const garbled = line.match(GARBLED_INLINE);
+    if (garbled) {
+        return { kind: "garbled", text: normaliseWhitespace(line.slice(garbled[0].length)), raw: line };
+    }
+    return { kind: "text", raw: line };
+}
 /**
  * Parses a page's footnote block into individual notes, in either layout —
  * number inline with its text, or number alone on its line with the text
  * beneath. Continuation lines fold into the note above them.
  *
- * A note whose leading digit(s) OCR outright misread (not just surrounded
- * by noise, but wrong: "6" read as "0") still parses as its own note under
- * the wrong number — NOTE_INLINE has no way to know the digit is wrong. A
- * repair pass afterwards catches the case where a number breaks the
- * sequence but the note *two* past it confirms exactly one is missing (5,
- * misread-as-0, 7 — 7 proves the middle one is 6) and relabels just that
- * one note. Without that confirmation — a bigger gap, or the run ending —
- * the count stays ambiguous and the number is left as read: a wrong guess
- * would mislabel a real note under someone else's number, worse than a
- * visibly-off one (reportsthatmatter-lie).
+ * A run of one or more GARBLED_INLINE candidates is only split out under
+ * its own number when the next cleanly-read number confirms exactly how
+ * many notes are missing — e.g. 5, one candidate, then a clean 7 proves
+ * the candidate is 6. Without that confirmation (a second gap in the same
+ * run, or the block simply ending) the count is ambiguous, so the run
+ * folds upward exactly as it always has: a wrong guess would mislabel a
+ * real note under someone else's number, which is worse than an honest
+ * merge (reportsthatmatter-lie).
  */
 export function parseFootnotes(lines, page) {
+    const tokens = lines.filter((line) => line.trim()).map(classify);
     const notes = [];
     const append = (text) => {
         const last = notes[notes.length - 1];
@@ -44,31 +59,54 @@ export function parseFootnotes(lines, page) {
             return;
         last.text = normaliseWhitespace(`${last.text} ${text}`);
     };
-    for (const line of lines) {
-        if (!line.trim())
-            continue;
-        const inline = line.match(NOTE_INLINE);
-        if (inline) {
-            notes.push({
-                number: Number.parseInt(inline[1], 10),
-                text: normaliseWhitespace(line.slice(inline[0].length)),
-                page,
-            });
+    let i = 0;
+    while (i < tokens.length) {
+        const token = tokens[i];
+        if (token.kind === "inline") {
+            notes.push({ number: token.number, text: token.text, page });
+            i += 1;
             continue;
         }
-        const stacked = line.match(NOTE_STACKED);
-        if (stacked) {
-            notes.push({ number: Number.parseInt(stacked[1], 10), text: "", page });
+        if (token.kind === "stacked") {
+            notes.push({ number: token.number, text: "", page });
+            i += 1;
             continue;
         }
-        append(line);
-    }
-    for (let i = 1; i < notes.length - 1; i++) {
-        const prev = notes[i - 1].number;
-        const next = notes[i + 1].number;
-        if (notes[i].number !== prev + 1 && next === prev + 2) {
-            notes[i] = { ...notes[i], number: prev + 1 };
+        if (token.kind === "text") {
+            append(token.raw);
+            i += 1;
+            continue;
         }
+        // A garbled candidate: collect the whole run of garbled/text tokens up
+        // to the next clean boundary (or the end of the block) before deciding
+        // whether it can be split at all.
+        const runStart = i;
+        let j = i;
+        while (j < tokens.length && (tokens[j].kind === "garbled" || tokens[j].kind === "text")) {
+            j += 1;
+        }
+        const boundary = tokens[j];
+        const lastNumber = notes.length ? notes[notes.length - 1].number : undefined;
+        const garbledCount = tokens.slice(runStart, j).filter((t) => t.kind === "garbled").length;
+        const confirmed = boundary !== undefined &&
+            lastNumber !== undefined &&
+            (boundary.kind === "inline" || boundary.kind === "stacked") &&
+            boundary.number === lastNumber + garbledCount + 1;
+        let expected = (lastNumber ?? 0) + 1;
+        for (let k = runStart; k < j; k++) {
+            const t = tokens[k];
+            if (t.kind === "garbled" && confirmed) {
+                notes.push({ number: expected, text: t.text, page });
+                expected += 1;
+            }
+            else if (t.kind === "garbled") {
+                append(t.raw);
+            }
+            else if (t.kind === "text") {
+                append(t.raw);
+            }
+        }
+        i = j;
     }
     // A stacked note whose text never arrived carries nothing worth keeping.
     return notes.filter((note) => note.text);

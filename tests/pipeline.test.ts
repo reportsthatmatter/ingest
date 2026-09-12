@@ -390,14 +390,14 @@ describe("footnotes", () => {
     );
   });
 
-  // A run with no confirming number after it (the block just ends) can't be
-  // proven to be exactly one note, so a misread digit stays as read rather
-  // than being folded away or guessed at — same trade-off already accepted
-  // for a stray trailing candidate in "footnote block anchoring" below.
-  it("leaves an unconfirmable run's numbers as read, rather than guess how many are missing", () => {
+  // Same shape, but nothing downstream ever confirms how many notes are
+  // missing — could be one gap or several. Guessing would risk mislabelling
+  // a real note under the wrong number, so this must fall back to the
+  // historical (imperfect but honest) behaviour of folding it upward.
+  it("leaves an unconfirmable garbled run folded into the note above, rather than guess", () => {
     const notes = parseFootnotes(["8 Ibid.", "Ibid.", "0. bid."], 62);
-    expect(notes.map((n) => n.number)).toEqual([8, 0]);
-    expect(notes[1].text).toBe("bid.");
+    expect(notes.map((n) => n.number)).toEqual([8]);
+    expect(notes[0].text).toBe("Ibid. Ibid. 0. bid.");
   });
 
   // reportsthatmatter-lie: recovering a footnote number followed by

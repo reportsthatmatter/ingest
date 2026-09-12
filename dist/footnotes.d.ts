@@ -12,16 +12,14 @@ export type Footnote = {
  * number inline with its text, or number alone on its line with the text
  * beneath. Continuation lines fold into the note above them.
  *
- * A note whose leading digit(s) OCR outright misread (not just surrounded
- * by noise, but wrong: "6" read as "0") still parses as its own note under
- * the wrong number — NOTE_INLINE has no way to know the digit is wrong. A
- * repair pass afterwards catches the case where a number breaks the
- * sequence but the note *two* past it confirms exactly one is missing (5,
- * misread-as-0, 7 — 7 proves the middle one is 6) and relabels just that
- * one note. Without that confirmation — a bigger gap, or the run ending —
- * the count stays ambiguous and the number is left as read: a wrong guess
- * would mislabel a real note under someone else's number, worse than a
- * visibly-off one (reportsthatmatter-lie).
+ * A run of one or more GARBLED_INLINE candidates is only split out under
+ * its own number when the next cleanly-read number confirms exactly how
+ * many notes are missing — e.g. 5, one candidate, then a clean 7 proves
+ * the candidate is 6. Without that confirmation (a second gap in the same
+ * run, or the block simply ending) the count is ambiguous, so the run
+ * folds upward exactly as it always has: a wrong guess would mislabel a
+ * real note under someone else's number, which is worse than an honest
+ * merge (reportsthatmatter-lie).
  */
 export declare function parseFootnotes(lines: string[], page: number): Footnote[];
 export declare function linkInlineMarkers(text: string, known: Set<number>): string;
