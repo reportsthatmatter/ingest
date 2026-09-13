@@ -18,6 +18,7 @@ export declare function structuralChecks(markdown: string): Check[];
  * tolerating the reordering that lifting footnotes necessarily causes.
  */
 export declare function losslessCheck(sourceText: string, markdown: string, extraVocabulary?: string[]): Check;
+export declare function digitDensityCheck(sourceText: string): Check;
 /** Layer 3: the output must not have lost a meaningful share of the source. */
 export declare function retentionCheck(sourceText: string, markdown: string): Check;
 export declare function severedSentenceCheck(markdown: string): Check;

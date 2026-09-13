@@ -126,6 +126,43 @@ export function losslessCheck(
   };
 }
 
+/**
+ * Layer 0: does the source extraction contain enough digits to be trustworthy
+ * at all? A PDF's body-text font can be subsetted with no ToUnicode mapping
+ * for its digit glyphs specifically — pdftotext then returns clean, readable
+ * prose with every numeral silently absent, which every other check in this
+ * file is blind to: layers 1-4 all compare the *output* against this same
+ * *source* text, so a source that already lost its digits looks perfectly
+ * consistent (reportsthatmatter-1kv, confirmed against FCIC's real PDF). No
+ * extraction flag fixes this — the Unicode mapping is simply missing — so
+ * the only thing this check can do is fail loudly rather than publish
+ * silently-incomplete prose.
+ *
+ * The threshold is calibrated against the corpus's own already-published
+ * source PDFs, not a guess: measured directly (pp.30-100, digits per 1000
+ * words), they range from 96 (Challenger, largely narrative) to 742 (a
+ * citation-dense legal opinion). FCIC measured at 10.3 — an order of
+ * magnitude below the lowest legitimate example. The threshold sits well
+ * below every real report and well above FCIC's broken extraction, so it
+ * has room to be wrong in either direction without false-triggering.
+ */
+const MIN_DIGITS_PER_1000_WORDS = 30;
+
+export function digitDensityCheck(sourceText: string): Check {
+  const wordCount = sourceText.split(/\s+/).filter(Boolean).length;
+  const digitCount = (sourceText.match(/\d/g) ?? []).length;
+  const perThousandWords = wordCount ? (digitCount / wordCount) * 1000 : 0;
+
+  return {
+    name: "source text has a plausible digit density",
+    ok: perThousandWords >= MIN_DIGITS_PER_1000_WORDS,
+    detail:
+      `${perThousandWords.toFixed(1)} digits/1000 words ` +
+      `(need >= ${MIN_DIGITS_PER_1000_WORDS} — a font subset missing its digit ` +
+      `glyphs' Unicode mapping can silently drop every numeral)`,
+  };
+}
+
 /** Layer 3: the output must not have lost a meaningful share of the source. */
 export function retentionCheck(sourceText: string, markdown: string): Check {
   const sourceWords = words(sourceText).length;
@@ -212,6 +249,7 @@ export function runChecks(
     );
   }
   return [
+    digitDensityCheck(sourceText),
     ...structuralChecks(markdown),
     losslessCheck(sourceText, markdown, extraVocabulary),
     retentionCheck(sourceText, markdown),

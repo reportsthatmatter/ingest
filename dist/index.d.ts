@@ -20,7 +20,7 @@ export type { Page } from "./extract.js";
 export { ingest, ingestPages, ingestPageGroups } from "./pipeline.js";
 export type { IngestResult, Metadata } from "./pipeline.js";
 export { resolveVolume, checkVolume, fileChecksum } from "./volumes.js";
-export { runChecks, structuralChecks, losslessCheck, retentionCheck, severedSentenceCheck, } from "./fidelity.js";
+export { runChecks, structuralChecks, losslessCheck, retentionCheck, severedSentenceCheck, digitDensityCheck, } from "./fidelity.js";
 export type { Check } from "./fidelity.js";
 export { computeBaseline, diffBaselines } from "./baseline.js";
 export type { Baseline } from "./baseline.js";

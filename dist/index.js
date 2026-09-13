@@ -18,7 +18,7 @@ export { extractPages, normaliseWhitespace } from "./extract.js";
 export { ingest, ingestPages, ingestPageGroups } from "./pipeline.js";
 export { resolveVolume, checkVolume, fileChecksum } from "./volumes.js";
 // — Checking a build —
-export { runChecks, structuralChecks, losslessCheck, retentionCheck, severedSentenceCheck, } from "./fidelity.js";
+export { runChecks, structuralChecks, losslessCheck, retentionCheck, severedSentenceCheck, digitDensityCheck, } from "./fidelity.js";
 export { computeBaseline, diffBaselines } from "./baseline.js";
 export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler.js";
 // — Human corrections —

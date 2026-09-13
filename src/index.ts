@@ -48,6 +48,7 @@ export {
   losslessCheck,
   retentionCheck,
   severedSentenceCheck,
+  digitDensityCheck,
 } from "./fidelity";
 export type { Check } from "./fidelity";
 export { computeBaseline, diffBaselines } from "./baseline";

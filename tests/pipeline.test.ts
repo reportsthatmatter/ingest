@@ -20,6 +20,7 @@ import {
   structuralChecks,
   losslessCheck,
   retentionCheck,
+  digitDensityCheck,
   runChecks,
 } from "../src/fidelity";
 import { ingestPageGroups } from "../src/pipeline";
@@ -586,6 +587,34 @@ describe("fidelity", () => {
   it("catches a document that lost most of its content", () => {
     const source = Array.from({ length: 200 }, (_, i) => `word${i}`).join(" ");
     expect(retentionCheck(source, "word1 word2").ok).toBe(false);
+  });
+
+  // reportsthatmatter-1kv: FCIC's PDF has a body-text font subset with no
+  // ToUnicode mapping for its digit glyphs, so pdftotext returns clean prose
+  // with every numeral silently dropped — confirmed against the real PDF
+  // (page 32: "which until  was the largest shareholder", the year gone
+  // without a trace). Real digit density across the already-published
+  // corpus (measured directly from each report's own source PDF, pp.30-100)
+  // ranges 96-742 per 1000 words; FCIC measured at 10.3 — an order of
+  // magnitude below the lowest legitimate example, not just "a bit sparse".
+  describe("digit density", () => {
+    it("flags a source text with almost no digits at all", () => {
+      const words = Array.from({ length: 1000 }, () => "word");
+      words[500] = "9"; // one digit in a thousand words: FCIC's actual shape
+      const check = digitDensityCheck(words.join(" "));
+      expect(check.ok).toBe(false);
+    });
+
+    it("passes a source text with a normal digit density", () => {
+      const words = Array.from({ length: 1000 }, (_, i) => (i % 5 === 0 ? "2010" : "word"));
+      const check = digitDensityCheck(words.join(" "));
+      expect(check.ok).toBe(true);
+    });
+
+    it("does not divide by zero on empty input", () => {
+      expect(() => digitDensityCheck("")).not.toThrow();
+      expect(digitDensityCheck("").ok).toBe(false);
+    });
   });
 });
 
