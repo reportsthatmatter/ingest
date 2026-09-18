@@ -19,6 +19,9 @@ export function pipeline(def) {
     if (geometries.length > 1) {
         throw new Error(`${def.id}: more than one geometry pass declared`);
     }
+    if ((def.passes ?? []).filter((pass) => pass.stage === "allCapsHeadings").length > 1) {
+        throw new Error(`${def.id}: more than one allCapsHeadings pass declared`);
+    }
     return def;
 }
 /**
@@ -35,6 +38,7 @@ export function resolvePasses(def) {
         flushFootnoteMarkers: passes.some((pass) => pass.name === "flushFootnoteMarkers"),
         numberedParagraphs: passes.some((pass) => pass.name === "numberedParagraphs"),
         quoteInset: passes.find((pass) => pass.stage === "quoteInset")?.columns,
+        allCapsHeadings: passes.find((pass) => pass.stage === "allCapsHeadings")?.enabled ?? true,
         bodyPasses: passes.filter((pass) => pass.stage === "body"),
         volumePasses: passes.filter((pass) => pass.stage === "volume"),
     };

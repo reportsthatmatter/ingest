@@ -46,7 +46,20 @@ export type QuoteInsetPass = {
   readonly columns: number;
 };
 
-export type Pass = PagePass | BodyPass | VolumePass | GeometryPass | QuoteInsetPass;
+/** Declares whether a standalone all-caps line may be read as a heading. */
+export type AllCapsHeadingsPass = {
+  readonly name: "allCapsHeadings";
+  readonly stage: "allCapsHeadings";
+  readonly enabled: boolean;
+};
+
+export type Pass =
+  | PagePass
+  | BodyPass
+  | VolumePass
+  | GeometryPass
+  | QuoteInsetPass
+  | AllCapsHeadingsPass;
 
 /**
  * Takes the printed page number off each page. These documents are cited by
@@ -146,6 +159,24 @@ export const quoteInset = (columns: number): QuoteInsetPass => ({
   name: "quoteInset",
   stage: "quoteInset",
   columns,
+});
+
+/**
+ * Whether a standalone line set in capitals is read as a heading.
+ *
+ * On by default: most reports in the corpus title their sections in caps
+ * ("EXECUTIVE SUMMARY") and nothing else marks them. Saville does not — its
+ * structure is its Chapter divisions, found on their own — but it transcribes
+ * 1972 telegrams and operation orders verbatim in capitals, and their wrapped
+ * lines pass the all-caps test one by one, tearing a quotation into a run of
+ * bogus headings. In the plain-text layer a quoted all-caps line and a caps
+ * title look the same, so this is a fact the report declares, not one the
+ * parser can infer. Division and numbered headings are unaffected.
+ */
+export const allCapsHeadings = (enabled: boolean): AllCapsHeadingsPass => ({
+  name: "allCapsHeadings",
+  stage: "allCapsHeadings",
+  enabled,
 });
 
 /**

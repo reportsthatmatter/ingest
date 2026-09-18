@@ -215,7 +215,7 @@ export function tabularContext(lines) {
         return before > 0 && after > 0;
     });
 }
-function isHeading(text, allowDivisions = true) {
+function isHeading(text, allowDivisions = true, allowAllCaps = true) {
     const trimmed = text.trim();
     if (!trimmed)
         return null;
@@ -269,14 +269,19 @@ function isHeading(text, allowDivisions = true) {
             // cannot tell us the level. In these reports the top-level sections are
             // set in caps and the subsections in title case, which can.
             const isSection = title === title.toUpperCase();
-            return { level: isSection ? 2 : 3, text: title };
+            // A report that opts out of all-caps headings sets its quoted documents
+            // in caps, lettered items and all ("B. HE BELIEVES…" in a Saville
+            // signal); as a heading it would lose its "B." too.
+            if (!isSection || allowAllCaps)
+                return { level: isSection ? 2 : 3, text: title };
         }
     }
     // A standalone all-caps line with no terminal punctuation. Financial reports
     // set their tables in caps too, so a "heading" carrying money, percentages,
     // long numbers or a list of tickers is data, not structure.
     const letters = body.replace(/[^A-Za-z]/g, "");
-    if (letters.length >= 4 &&
+    if (allowAllCaps &&
+        letters.length >= 4 &&
         body === body.toUpperCase() &&
         !/[.]$/.test(body) &&
         !/[$%]/.test(body) &&
@@ -299,7 +304,7 @@ function isHeading(text, allowDivisions = true) {
  * a new paragraph. Blank lines are a secondary signal, and block quotes (set
  * far to the right) are kept as quotes.
  */
-export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false) {
+export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false, allCapsHeadings = true) {
     // The left margin is a property of the document's layout, not of one page. A
     // short page — the last of a section, say — can have too few lines to infer
     // it from, and getting it wrong turns an ordinary paragraph into a quote.
@@ -325,7 +330,8 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
             return false;
         // TOC_ENTRY's whitespace-gap branch needs the line's real spacing, which
         // normaliseWhitespace below would collapse away before it gets a look.
-        return (TOC_ENTRY.test(line) || isHeading(normaliseWhitespace(line), !inTable[i]) !== null);
+        return (TOC_ENTRY.test(line) ||
+            isHeading(normaliseWhitespace(line), !inTable[i], allCapsHeadings) !== null);
     });
     const quoted = lines.map((line, i) => {
         if (!line.trim() || structural[i] || indentOf(line) < margin + quoteInset)
@@ -385,7 +391,7 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
             blocks.push({ kind: "quote", text });
             return;
         }
-        const heading = isHeading(text, !inTable[currentStart]);
+        const heading = isHeading(text, !inTable[currentStart], allCapsHeadings);
         if (heading)
             blocks.push({ kind: "heading", ...heading });
         else
@@ -476,7 +482,7 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
             continue;
         }
         openDivisionIndent = -1;
-        const standalone = isHeading(single, !inTable[i]);
+        const standalone = isHeading(single, !inTable[i], allCapsHeadings);
         if (standalone) {
             flush();
             if (isDivisionHeading(standalone.text)) {

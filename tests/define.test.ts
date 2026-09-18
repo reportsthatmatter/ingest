@@ -116,3 +116,18 @@ describe("quoteInset", () => {
     expect(resolvePasses(pipeline({ ...base, passes: [quoteInset(3)] })).quoteInset).toBe(3);
   });
 });
+
+describe("allCapsHeadings", () => {
+  it("is on unless a report opts out", () => {
+    expect(resolvePasses(pipeline(base)).allCapsHeadings).toBe(true);
+  });
+
+  it("is off when a report declares allCapsHeadings(false)", async () => {
+    // Saville quotes 1972 telegrams in capitals; its real structure comes
+    // from Chapter divisions, which do not depend on this heuristic.
+    const { allCapsHeadings } = await import("../src/passes");
+    expect(
+      resolvePasses(pipeline({ ...base, passes: [allCapsHeadings(false)] })).allCapsHeadings
+    ).toBe(false);
+  });
+});

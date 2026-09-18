@@ -279,7 +279,8 @@ export function tabularContext(lines: string[]): boolean[] {
 
 function isHeading(
   text: string,
-  allowDivisions = true
+  allowDivisions = true,
+  allowAllCaps = true
 ): { level: number; text: string } | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
@@ -335,7 +336,10 @@ function isHeading(
       // cannot tell us the level. In these reports the top-level sections are
       // set in caps and the subsections in title case, which can.
       const isSection = title === title.toUpperCase();
-      return { level: isSection ? 2 : 3, text: title };
+      // A report that opts out of all-caps headings sets its quoted documents
+      // in caps, lettered items and all ("B. HE BELIEVES…" in a Saville
+      // signal); as a heading it would lose its "B." too.
+      if (!isSection || allowAllCaps) return { level: isSection ? 2 : 3, text: title };
     }
   }
 
@@ -344,6 +348,7 @@ function isHeading(
   // long numbers or a list of tickers is data, not structure.
   const letters = body.replace(/[^A-Za-z]/g, "");
   if (
+    allowAllCaps &&
     letters.length >= 4 &&
     body === body.toUpperCase() &&
     !/[.]$/.test(body) &&
@@ -374,7 +379,8 @@ export function toBlocks(
   lines: string[],
   documentMargin?: number,
   quoteInset: number = DEFAULT_QUOTE_INSET,
-  numberedParagraphs = false
+  numberedParagraphs = false,
+  allCapsHeadings = true
 ): Block[] {
   // The left margin is a property of the document's layout, not of one page. A
   // short page — the last of a section, say — can have too few lines to infer
@@ -403,7 +409,8 @@ export function toBlocks(
     // TOC_ENTRY's whitespace-gap branch needs the line's real spacing, which
     // normaliseWhitespace below would collapse away before it gets a look.
     return (
-      TOC_ENTRY.test(line) || isHeading(normaliseWhitespace(line), !inTable[i]) !== null
+      TOC_ENTRY.test(line) ||
+      isHeading(normaliseWhitespace(line), !inTable[i], allCapsHeadings) !== null
     );
   });
 
@@ -467,7 +474,7 @@ export function toBlocks(
       blocks.push({ kind: "quote", text });
       return;
     }
-    const heading = isHeading(text, !inTable[currentStart]);
+    const heading = isHeading(text, !inTable[currentStart], allCapsHeadings);
     if (heading) blocks.push({ kind: "heading", ...heading });
     else blocks.push({ kind: "paragraph", text });
   };
@@ -572,7 +579,7 @@ export function toBlocks(
     }
     openDivisionIndent = -1;
 
-    const standalone = isHeading(single, !inTable[i]);
+    const standalone = isHeading(single, !inTable[i], allCapsHeadings);
     if (standalone) {
       flush();
       if (isDivisionHeading(standalone.text)) {

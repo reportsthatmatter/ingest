@@ -22,6 +22,7 @@ export {
   geometry,
   columns,
   quoteInset,
+  allCapsHeadings,
 } from "./passes";
 export type {
   Pass,
@@ -30,6 +31,7 @@ export type {
   VolumePass,
   GeometryPass,
   QuoteInsetPass,
+  AllCapsHeadingsPass,
 } from "./passes";
 export { detectGutter, splitColumns } from "./columns";
 export type { Gutter } from "./columns";

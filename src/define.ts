@@ -1,4 +1,11 @@
-import type { Pass, GeometryPass, VolumePass, BodyPass, QuoteInsetPass } from "./passes";
+import type {
+  Pass,
+  GeometryPass,
+  VolumePass,
+  BodyPass,
+  QuoteInsetPass,
+  AllCapsHeadingsPass,
+} from "./passes";
 
 export type Volume = { path: string; sha256?: string };
 
@@ -33,6 +40,7 @@ export type ResolvedPasses = {
   flushFootnoteMarkers: boolean;
   numberedParagraphs: boolean;
   quoteInset?: number;
+  allCapsHeadings: boolean;
   bodyPasses: BodyPass[];
   volumePasses: VolumePass[];
 };
@@ -59,6 +67,9 @@ export function pipeline(def: PipelineDef): PipelineDef {
   if (geometries.length > 1) {
     throw new Error(`${def.id}: more than one geometry pass declared`);
   }
+  if ((def.passes ?? []).filter((pass) => pass.stage === "allCapsHeadings").length > 1) {
+    throw new Error(`${def.id}: more than one allCapsHeadings pass declared`);
+  }
 
   return def;
 }
@@ -81,6 +92,10 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     quoteInset: passes.find(
       (pass): pass is QuoteInsetPass => pass.stage === "quoteInset"
     )?.columns,
+    allCapsHeadings:
+      passes.find(
+        (pass): pass is AllCapsHeadingsPass => pass.stage === "allCapsHeadings"
+      )?.enabled ?? true,
     bodyPasses: passes.filter((pass): pass is BodyPass => pass.stage === "body"),
     volumePasses: passes.filter((pass): pass is VolumePass => pass.stage === "volume"),
   };

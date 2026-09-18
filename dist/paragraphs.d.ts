@@ -101,7 +101,7 @@ export declare function tabularContext(lines: string[]): boolean[];
  * a new paragraph. Blank lines are a secondary signal, and block quotes (set
  * far to the right) are kept as quotes.
  */
-export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean): Block[];
+export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean): Block[];
 export declare function endsSentence(text: string): boolean;
 export declare function mergeAcrossPages(blocks: Block[]): Block[];
 export declare function blocksToMarkdown(blocks: Block[]): string;

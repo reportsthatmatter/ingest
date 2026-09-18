@@ -63,6 +63,7 @@ export function ingestPageGroups(
     geometry: "document",
     flushFootnoteMarkers: false,
     numberedParagraphs: false,
+    allCapsHeadings: true,
     bodyPasses: [],
     volumePasses: [],
   },
@@ -134,7 +135,8 @@ export function ingestPageGroups(
               pageLines,
               margins[resolved.geometry === "per-volume" ? groupIndex : 0],
               resolved.quoteInset,
-              resolved.numberedParagraphs
+              resolved.numberedParagraphs,
+              resolved.allCapsHeadings
             )
       ).map((block) => ({ ...block, at }));
 

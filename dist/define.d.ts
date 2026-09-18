@@ -33,6 +33,7 @@ export type ResolvedPasses = {
     flushFootnoteMarkers: boolean;
     numberedParagraphs: boolean;
     quoteInset?: number;
+    allCapsHeadings: boolean;
     bodyPasses: BodyPass[];
     volumePasses: VolumePass[];
 };

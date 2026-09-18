@@ -11,8 +11,8 @@
  */
 export { pipeline, resolvePasses } from "./define.js";
 export type { PipelineDef, Volume, ResolvedPasses } from "./define.js";
-export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, runningFurniture, geometry, columns, quoteInset, } from "./passes.js";
-export type { Pass, PagePass, BodyPass, VolumePass, GeometryPass, QuoteInsetPass, } from "./passes.js";
+export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, runningFurniture, geometry, columns, quoteInset, allCapsHeadings, } from "./passes.js";
+export type { Pass, PagePass, BodyPass, VolumePass, GeometryPass, QuoteInsetPass, AllCapsHeadingsPass, } from "./passes.js";
 export { detectGutter, splitColumns } from "./columns.js";
 export type { Gutter } from "./columns.js";
 export { extractPages, normaliseWhitespace } from "./extract.js";

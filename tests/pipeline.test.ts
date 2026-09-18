@@ -31,6 +31,7 @@ const MULTI_VOLUME = {
   geometry: "per-volume" as const,
   flushFootnoteMarkers: false,
   numberedParagraphs: false,
+  allCapsHeadings: true,
   bodyPasses: [],
   volumePasses: [runningFurniture()],
 };
@@ -1430,5 +1431,96 @@ describe("hanging-indent numbered paragraphs are not quotations", () => {
 
     expect(result.markdown).not.toMatch(/^> leave Russia/m);
     expect(result.markdown).toMatch(/4\.11 Marina Litvinenkoʼs evidence.*leave Russia/s);
+  });
+});
+
+describe("allCapsHeadings (reportsthatmatter-lnw)", () => {
+  // Saville transcribes 1972 telegrams verbatim, in capitals. Some of their
+  // wrapped lines pass the standalone all-caps heading test on their own, and
+  // the "[sic]" annotations between them stop the same-level rejoin from
+  // folding them back, so one quoted telegram became four bogus headings.
+  const lines = readFileSync(
+    join(import.meta.dirname, "fixtures/pages/saville-quoted-telegram.txt"),
+    "utf8"
+  ).split("\n");
+  const headings = (blocks: ReturnType<typeof toBlocks>) =>
+    blocks.filter((block) => block.kind === "heading");
+
+  it("reads a quoted all-caps telegram as headings by default (the defect)", () => {
+    expect(headings(toBlocks(lines, undefined, 10, true)).length).toBeGreaterThan(0);
+  });
+
+  it("keeps the telegram as text when a report opts out", () => {
+    const blocks = toBlocks(lines, undefined, 10, true, false);
+    expect(headings(blocks)).toEqual([]);
+    expect(blocksToMarkdown(blocks)).toContain(
+      "JAMES CONNOLLY REPUBLICAN CLUB, DERRY CRA WITH WHICH ARE"
+    );
+  });
+
+  it("keeps a lettered item of a quoted all-caps signal as text, marker and all", () => {
+    // p.294's signal from Brigadier MacLellan: "B. HE BELIEVES…" matched the
+    // lettered-subsection path, which shipped it as a section heading and
+    // dropped its "B." along the way.
+    const blocks = toBlocks(
+      [
+        "              A. HE ESTIMATES 8000 TO 12000 WILL TAKE PART USING SEVERAL ASSY",
+        "              [ASSEMBLY] AREAS AND ROUTES.",
+        "",
+        "              B. HE BELIEVES MASSIVE CONFRONTATION WITH SF [SECURITY FORCES]",
+        "              WILL SHATTER SUCH PEACE AS IS LEFT IN CITY: CREATE INTENSE VIOLENCE",
+        "              AND REMOVE LAST VESTIGES OF MODERATE GOODWILL ETC.",
+      ],
+      10,
+      10,
+      true,
+      false
+    );
+    expect(headings(blocks)).toEqual([]);
+    expect(blocksToMarkdown(blocks)).toContain("B. HE BELIEVES MASSIVE CONFRONTATION");
+  });
+
+  it("still finds a title-case lettered subsection when all-caps headings are off", () => {
+    const blocks = toBlocks(
+      [
+        "A. Withdrawing the Army",
+        "",
+        "9.101   The first option was the complete withdrawal of the Army from the",
+        "        streets, which the Government did not regard as practicable then.",
+      ],
+      undefined,
+      10,
+      true,
+      false
+    );
+    expect(headings(blocks)).toMatchObject([{ level: 3, text: "Withdrawing the Army" }]);
+  });
+
+  it("still finds a division heading when all-caps headings are off", () => {
+    const blocks = toBlocks(
+      [
+        "Chapter 9: The weeks before Bloody Sunday",
+        "",
+        "9.165   When shown this document, David still did not recall having gone",
+        "        to Londonderry. His recollection was that he invariably reported.",
+      ],
+      undefined,
+      10,
+      true,
+      false
+    );
+    expect(headings(blocks)).toMatchObject([
+      { level: 3, text: "Chapter 9: The weeks before Bloody Sunday" },
+    ]);
+  });
+
+  it("still reads a standalone all-caps title as a heading by default", () => {
+    const blocks = toBlocks([
+      "EXECUTIVE SUMMARY",
+      "",
+      "    The question is one the Inquiry had to confront directly and at length.",
+      "It runs through the evidence given over many months of hearings here.",
+    ]);
+    expect(headings(blocks)).toMatchObject([{ level: 2, text: "EXECUTIVE SUMMARY" }]);
   });
 });

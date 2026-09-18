@@ -15,6 +15,7 @@ Leveson defect shipped (#118 §1.5); these exist so a heuristic meets real input
 | `psi-quoted-bullets.txt` | `us-psi-financial-crisis/archive/PSI REPORT …pdf` | 146 | Bullets **inside a quoted email**: lifting them out of the quotation presents someone else's words as the report's |
 | `challenger-ocr-noise.txt` | `challenger-accident/archive/GPO-CRPT-99hrpt1016…pdf` | 265 | Badly garbled scan (`c h a r a c t e r i z a t i o n`) — the messiest input in the corpus |
 | `jack-smith-inline-notes.txt` | `jack-smith-report/archive/Report-of-Special-Counsel-Smith-Volume-1…pdf` | 40 | Inline footnote markers sitting against punctuation |
+| `saville-quoted-telegram.txt` | `uk-saville-inquiry/archive/bloody-sunday-inquiry-vol1-hc29-i.pdf` | 280 | A 1972 telegram quoted verbatim in capitals — its wrapped lines read as a run of headings unless the report declares `allCapsHeadings(false)` |
 
 To add one: pick the page, extract it, and record it here with what it is for.
 A fixture that does not contain its hard case is worse than none, because it

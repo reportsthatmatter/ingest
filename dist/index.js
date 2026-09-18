@@ -11,7 +11,7 @@
  */
 // — What a report declares —
 export { pipeline, resolvePasses } from "./define.js";
-export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, runningFurniture, geometry, columns, quoteInset, } from "./passes.js";
+export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, runningFurniture, geometry, columns, quoteInset, allCapsHeadings, } from "./passes.js";
 export { detectGutter, splitColumns } from "./columns.js";
 // — Running a build —
 export { extractPages, normaliseWhitespace } from "./extract.js";
