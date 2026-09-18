@@ -131,3 +131,11 @@ describe("allCapsHeadings", () => {
     ).toBe(false);
   });
 });
+
+describe("paragraphNotes", () => {
+  it("is off unless a report declares it", async () => {
+    const { paragraphNotes } = await import("../src/passes");
+    expect(resolvePasses(pipeline(base)).paragraphNotes).toBe(false);
+    expect(resolvePasses(pipeline({ ...base, passes: [paragraphNotes()] })).paragraphNotes).toBe(true);
+  });
+});

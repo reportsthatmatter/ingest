@@ -31,6 +31,10 @@ export function extractPages(pdfPath) {
 export function normaliseWhitespace(text) {
     return text
         .replace(/ /g, " ")
+        // U+FFFD is pdftotext's stand-in for a glyph with no text mapping: no
+        // character survives in it to recover. Saville sets a decorative mark
+        // after every paragraph number, and 814 of them reached the page as "�".
+        .replace(/�/g, " ")
         .replace(/[‘’]/g, "'")
         .replace(/[“”]/g, '"')
         .replace(/–/g, "–")

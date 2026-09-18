@@ -24,7 +24,7 @@ function stripFrontMatter(markdown: string): string {
  * either in place makes ordinary words ("prospects.[^11]") look invented.
  */
 function comparable(text: string): string {
-  return text.replace(/\[\^\d+\]:?/g, " ");
+  return text.replace(/\[\^\d+(?:-\d+)?\]:?/g, " ");
 }
 
 function words(text: string): string[] {
@@ -52,13 +52,12 @@ export function structuralChecks(markdown: string): Check[] {
     detail: markdown.includes("\f") ? "form feed present" : "none",
   });
 
-  const orphaned = markdown.match(/\[\^(\d+)\]/g) ?? [];
+  const label = (ref: string) => ref.replace(/^\[\^|\]:?$/g, "");
+  const orphaned = markdown.match(/\[\^\d+(?:-\d+)?\](?!:)/g) ?? [];
   const defined = new Set(
-    (markdown.match(/^\[\^(\d+)\]:/gm) ?? []).map((d) => d.replace(/[^\d]/g, ""))
+    (markdown.match(/^\[\^\d+(?:-\d+)?\]:/gm) ?? []).map(label)
   );
-  const missing = orphaned
-    .map((ref) => ref.replace(/[^\d]/g, ""))
-    .filter((n) => !defined.has(n));
+  const missing = orphaned.map(label).filter((n) => !defined.has(n));
   checks.push({
     name: "every footnote reference has a note",
     ok: missing.length === 0,

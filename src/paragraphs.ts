@@ -280,7 +280,8 @@ export function tabularContext(lines: string[]): boolean[] {
 function isHeading(
   text: string,
   allowDivisions = true,
-  allowAllCaps = true
+  allowAllCaps = true,
+  allowNumbered = true
 ): { level: number; text: string } | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
@@ -313,7 +314,7 @@ function isHeading(
 
   // "I. THE RESULTS OF THE INVESTIGATION" — roman numeral sections.
   // "A. Mr. Trump's Pressure on State Officials" — lettered subsections.
-  const numbered = body.match(/^([IVXLC]{1,6}|[A-Z]|\d{1,2})\.\s+(.+)$/);
+  const numbered = allowNumbered ? body.match(/^([IVXLC]{1,6}|[A-Z]|\d{1,2})\.\s+(.+)$/) : null;
   if (numbered) {
     const title = numbered[2].trim();
     // A numbered *sentence* is a list item, not a heading. Reports set their
@@ -369,6 +370,146 @@ function isHeading(
 }
 
 /**
+ * A contents entry located by paragraph rather than page: "Internment   8.35".
+ * Saville opens each chapter with one of these (`chapterContents`).
+ */
+const PARAGRAPH_CONTENTS_ENTRY = /^(.*\S)(?<![.,;:])[ \t]{3,}(\d{1,2}\.\d{1,3})\s*$/;
+/** The column label over a contents list's locators. */
+const CONTENTS_COLUMN_LABEL = /^\s*(?:Paragraphs?|Pages?)\s*$/;
+
+/**
+ * Tidies a paragraph-located contents list before it is read: drops the
+ * "Paragraph" label over its locator column, which otherwise folds into the
+ * chapter title above it ("Chapter 3: The events of the day Paragraph"), and
+ * rejoins an entry that wraps before its locator —
+ *
+ *   The meeting between the British and Northern Irish Prime Ministers on
+ *   7th October 1971                                                   8.89
+ *
+ * — only inside a run of entries, and only at the entries' own indent.
+ */
+function joinParagraphContents(lines: string[]): string[] {
+  const out: string[] = [];
+  const nextFilled = (i: number) => {
+    for (let j = i + 1; j < lines.length; j++) if (lines[j].trim()) return j;
+    return -1;
+  };
+  let inList = false;
+  let listIndent = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim()) {
+      out.push(line);
+      continue;
+    }
+    const next = nextFilled(i);
+    const nextIsEntry = next >= 0 && PARAGRAPH_CONTENTS_ENTRY.test(lines[next]);
+    if (CONTENTS_COLUMN_LABEL.test(line) && nextIsEntry) {
+      inList = true;
+      continue;
+    }
+    if (PARAGRAPH_CONTENTS_ENTRY.test(line)) {
+      inList = true;
+      listIndent = indentOf(line);
+      out.push(line);
+      continue;
+    }
+    // An entry too long to leave the usual gap before its locator:
+    // "…Brian Faulkner on 27th January 1972 9.499". Only inside a list, at
+    // its indent — alone, a line ending on a paragraph number is prose.
+    const tight = line.match(/^(.*\S)\s(\d{1,2}\.\d{1,3})\s*$/);
+    if (inList && tight && Math.abs(indentOf(line) - listIndent) <= 1) {
+      out.push(`${tight[1]}   ${tight[2]}`);
+      continue;
+    }
+    if (
+      inList &&
+      next === i + 1 &&
+      nextIsEntry &&
+      Math.abs(indentOf(line) - indentOf(lines[next])) <= 1
+    ) {
+      lines = [...lines];
+      lines[next] = `${line.replace(/\s+$/, "")} ${lines[next].trimStart()}`;
+      continue;
+    }
+    inList = false;
+    out.push(line);
+  }
+  return out;
+}
+
+/**
+ * Reads the structure a report's own contents lists name (`chapterContents`).
+ *
+ * A body line that is exactly the title of a paragraph-located contents entry
+ * is the subsection heading that entry points at — Saville's subsections are
+ * set in plain sentence case, which nothing else can tell from a short
+ * paragraph. And a chapter title cut at a line wrap ("Chapter 8: The period
+ * from August to" / "December 1971") is completed when the two together are
+ * exactly an entry in the contents. Exact matches only: the contents is the
+ * document's own statement of its structure, and a near miss is not one.
+ */
+export function contentsHeadings(blocks: Block[]): Block[] {
+  const entries = new Set<string>();
+  const subsections = new Set<string>();
+  for (const block of blocks) {
+    if (block.kind !== "contents") continue;
+    entries.add(block.text);
+    if (/^\d{1,2}\.\d{1,3}$/.test(block.page)) subsections.add(block.text);
+  }
+  if (!entries.size) return blocks;
+
+  const out: Block[] = [];
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
+    const next = blocks[i + 1];
+    if (
+      block.kind === "heading" &&
+      isDivisionHeading(block.text) &&
+      !entries.has(block.text) &&
+      next?.kind === "paragraph" &&
+      entries.has(`${block.text} ${next.text}`)
+    ) {
+      out.push({ ...block, text: `${block.text} ${next.text}` });
+      i++;
+      continue;
+    }
+    // An outline entry whose title wraps: "Chapter 24: The movement of Mortar
+    // Platoon Armoured Personnel Carriers into" / "the Bogside   27" — the
+    // first line reads as a division, the tail as an entry of its own.
+    if (
+      block.kind === "heading" &&
+      isDivisionHeading(block.text) &&
+      next?.kind === "contents" &&
+      /^[a-z]/.test(next.text)
+    ) {
+      out.push({ ...next, text: `${block.text} ${next.text}` });
+      i++;
+      continue;
+    }
+    // A subsection title joined onto the end of the paragraph before it,
+    // across a page break: "…shared by many others in 1 PARA. A "plan within
+    // a plan"".
+    if (block.kind === "paragraph") {
+      const title = [...subsections].find(
+        (t) => block.text.endsWith(` ${t}`) && /[.!?"”]$/.test(block.text.slice(0, -t.length - 1))
+      );
+      if (title) {
+        out.push({ ...block, text: block.text.slice(0, -title.length - 1) });
+        out.push({ kind: "heading", level: 4, text: title, at: block.at });
+        continue;
+      }
+    }
+    if (block.kind === "paragraph" && subsections.has(block.text)) {
+      out.push({ kind: "heading", level: 4, text: block.text, at: block.at });
+      continue;
+    }
+    out.push(block);
+  }
+  return out;
+}
+
+/**
  * Reflows hard-wrapped lines back into paragraphs.
  *
  * The signal is indentation: a line indented past the running left margin opens
@@ -380,8 +521,11 @@ export function toBlocks(
   documentMargin?: number,
   quoteInset: number = DEFAULT_QUOTE_INSET,
   numberedParagraphs = false,
-  allCapsHeadings = true
+  allCapsHeadings = true,
+  paragraphContents = false,
+  numberedHeadings = true
 ): Block[] {
+  if (paragraphContents) lines = joinParagraphContents(lines);
   // The left margin is a property of the document's layout, not of one page. A
   // short page — the last of a section, say — can have too few lines to infer
   // it from, and getting it wrong turns an ordinary paragraph into a quote.
@@ -410,7 +554,7 @@ export function toBlocks(
     // normaliseWhitespace below would collapse away before it gets a look.
     return (
       TOC_ENTRY.test(line) ||
-      isHeading(normaliseWhitespace(line), !inTable[i], allCapsHeadings) !== null
+      isHeading(normaliseWhitespace(line), !inTable[i], allCapsHeadings, numberedHeadings) !== null
     );
   });
 
@@ -474,7 +618,7 @@ export function toBlocks(
       blocks.push({ kind: "quote", text });
       return;
     }
-    const heading = isHeading(text, !inTable[currentStart], allCapsHeadings);
+    const heading = isHeading(text, !inTable[currentStart], allCapsHeadings, numberedHeadings);
     if (heading) blocks.push({ kind: "heading", ...heading });
     else blocks.push({ kind: "paragraph", text });
   };
@@ -532,9 +676,9 @@ export function toBlocks(
 
     // Matched against the raw line, not `single` — the whitespace-gap branch
     // needs real spacing, which normaliseWhitespace collapses to one space.
-    const contents = line.match(
-      /^(.*\S)(?:[.·]{4,}\s*|(?<![.,;:])[ \t]{3,})(\d{1,4})\s*$/
-    );
+    const contents =
+      line.match(/^(.*\S)(?:[.·]{4,}\s*|(?<![.,;:])[ \t]{3,})(\d{1,4})\s*$/) ??
+      (paragraphContents ? line.match(PARAGRAPH_CONTENTS_ENTRY) : null);
     if (contents && contents[1].trim()) {
       flush();
       openDivisionIndent = -1;
@@ -579,7 +723,7 @@ export function toBlocks(
     }
     openDivisionIndent = -1;
 
-    const standalone = isHeading(single, !inTable[i], allCapsHeadings);
+    const standalone = isHeading(single, !inTable[i], allCapsHeadings, numberedHeadings);
     if (standalone) {
       flush();
       if (isDivisionHeading(standalone.text)) {

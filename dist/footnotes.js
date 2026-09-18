@@ -196,14 +196,14 @@ export function renderEndnotes(notes) {
     const merged = [];
     for (const note of notes) {
         const previous = merged[merged.length - 1];
-        if (previous && previous.number === note.number) {
+        if (previous && (previous.label ?? previous.number) === (note.label ?? note.number)) {
             if (previous.text !== note.text)
                 previous.text = `${previous.text} ${note.text}`;
             continue;
         }
         merged.push({ ...note });
     }
-    return merged.map((note) => `[^${note.number}]: ${note.text}`).join("\n\n");
+    return merged.map((note) => `[^${note.label ?? note.number}]: ${note.text}`).join("\n\n");
 }
 /**
  * Footnote markers that sit flush against the word before them.

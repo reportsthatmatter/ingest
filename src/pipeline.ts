@@ -1,5 +1,6 @@
 import { extractPages, type Page } from "./extract";
-import { splitPage, collapseDoubleSpacing } from "./clean";
+import { splitPage, takePrintedNumber, collapseDoubleSpacing, type SplitPage } from "./clean";
+import { extractParagraphNotes } from "./paragraph-notes";
 import type { ResolvedPasses } from "./define";
 import { applyCorrections, type Correction } from "./corrections";
 import { rejoinHyphenated, vocabulary } from "./hyphens";
@@ -9,6 +10,7 @@ import {
   isContentsPage,
   parseContentsPage,
   mergeAcrossPages,
+  contentsHeadings,
   bodyIndent,
   type Block,
 } from "./paragraphs";
@@ -84,7 +86,12 @@ export function ingestPageGroups(
   let pageOffset = 0;
   const splitGroups = pageGroups.map((group) =>
     group.map(() => {
-      const split = splitPage(pages[pageOffset++], expectedNote);
+      const page = pages[pageOffset++];
+      // Notes under each paragraph are read across the volume below, not
+      // as a block at the page foot.
+      const split = resolved.paragraphNotes
+        ? splitPageNumberOnly(page)
+        : splitPage(page, expectedNote);
 
       if (split.footnotes.length) {
         const parsed = parseFootnotes(split.footnotes, split.index).map((note) => ({
@@ -105,6 +112,15 @@ export function ingestPageGroups(
       return split;
     })
   );
+
+  if (resolved.paragraphNotes) {
+    let block = 1;
+    for (const group of splitGroups) {
+      const read = extractParagraphNotes(group, block);
+      footnotes.push(...read.notes);
+      block = read.nextBlock;
+    }
+  }
 
   // Which passes run is a declared property of the document, not something
   // inferred from how many arguments were typed on the command line.
@@ -133,10 +149,14 @@ export function ingestPageGroups(
           ? parseContentsPage(pageLines)
           : toBlocks(
               pageLines,
-              margins[resolved.geometry === "per-volume" ? groupIndex : 0],
+              resolved.geometry === "per-page"
+                ? pageMargin(split.body, margins[0])
+                : margins[resolved.geometry === "per-volume" ? groupIndex : 0],
               resolved.quoteInset,
               resolved.numberedParagraphs,
-              resolved.allCapsHeadings
+              resolved.allCapsHeadings,
+              resolved.chapterContents,
+              resolved.numberedHeadings ?? true
             )
       ).map((block) => ({ ...block, at }));
 
@@ -201,7 +221,9 @@ export function ingestPageGroups(
   // degrades at least as badly as the body's, and until this it had nowhere
   // a correction could reach it (reportsthatmatter-3jb).
   const corrected = applyCorrections(
-    mergeAcrossPages(bodyChunks),
+    resolved.chapterContents
+      ? contentsHeadings(mergeAcrossPages(bodyChunks))
+      : mergeAcrossPages(bodyChunks),
     corrections,
     meta.title,
     footnotes
@@ -217,8 +239,13 @@ export function ingestPageGroups(
   const fixed = autoFix(body);
   body = fixed.text;
 
-  const known = new Set(notes.map((note) => note.number));
-  body = linkInlineMarkers(body, known);
+  // Paragraph notes are linked where they were read, against the paragraph
+  // above them; a document-wide number lookup would only relink stray
+  // numbers to notes whose "1" means something different on every page.
+  if (!resolved.paragraphNotes) {
+    const known = new Set(notes.map((note) => note.number));
+    body = linkInlineMarkers(body, known);
+  }
 
   const suspects = rankSuspects(
     pages.flatMap((page) =>
@@ -266,6 +293,44 @@ export function ingestPageGroups(
     autoFixes: fixed.applied + noteFixes,
     corrections: corrected.applied,
     pages: pages.length,
+  };
+}
+
+/**
+ * One page's own left margin, for a document whose margin moves from page to
+ * page (Saville's facing pages sit 7 and 16 columns in, and drift between
+ * pages of the same side).
+ *
+ * A numbered paragraph gives it exactly: its text starts at the margin, one
+ * gap after the number ("9.165   When shown…"). That is preferred to the most
+ * common indent, which a page carrying a long quotation hands to the quote —
+ * Saville p.275, where a telegram outnumbers the prose around it. A page with
+ * neither, or too short to say, takes the document's.
+ */
+function pageMargin(body: string[], fallback: number): number {
+  const counts = new Map<number, number>();
+  for (const line of body) {
+    const opener = line.match(NUMBERED_OPENER);
+    if (opener) counts.set(opener[0].length, (counts.get(opener[0].length) ?? 0) + 1);
+  }
+  if (counts.size) return [...counts].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0];
+  const lines = body.filter((line) => line.trim());
+  return lines.length >= PAGE_MARGIN_MIN_LINES ? bodyIndent(lines) : fallback;
+}
+/** "9.165   " up to where its text starts; the glyph after it may be unmapped. */
+const NUMBERED_OPENER = /^\s{0,8}\d{1,2}\.\d{1,3}[ \uFFFD]{2,}(?=\S)/;
+const PAGE_MARGIN_MIN_LINES = 8;
+
+/** The printed page number off, and nothing else: no page-foot note block. */
+function splitPageNumberOnly(page: Page): SplitPage {
+  const { printed, lines } = takePrintedNumber(page.lines);
+  return {
+    index: page.index,
+    volume: page.volume,
+    pdfIndex: page.pdfIndex,
+    printed,
+    body: lines,
+    footnotes: [],
   };
 }
 

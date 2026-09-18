@@ -29,11 +29,14 @@ export type PipelineDef = {
     passes?: Pass[];
 };
 export type ResolvedPasses = {
-    geometry: "per-volume" | "document";
+    geometry: "per-volume" | "per-page" | "document";
     flushFootnoteMarkers: boolean;
     numberedParagraphs: boolean;
+    paragraphNotes?: boolean;
+    chapterContents?: boolean;
     quoteInset?: number;
     allCapsHeadings: boolean;
+    numberedHeadings?: boolean;
     bodyPasses: BodyPass[];
     volumePasses: VolumePass[];
 };

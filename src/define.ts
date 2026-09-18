@@ -5,6 +5,7 @@ import type {
   BodyPass,
   QuoteInsetPass,
   AllCapsHeadingsPass,
+  NumberedHeadingsPass,
 } from "./passes";
 
 export type Volume = { path: string; sha256?: string };
@@ -36,11 +37,14 @@ export type PipelineDef = {
 };
 
 export type ResolvedPasses = {
-  geometry: "per-volume" | "document";
+  geometry: "per-volume" | "per-page" | "document";
   flushFootnoteMarkers: boolean;
   numberedParagraphs: boolean;
+  paragraphNotes?: boolean;
+  chapterContents?: boolean;
   quoteInset?: number;
   allCapsHeadings: boolean;
+  numberedHeadings?: boolean;
   bodyPasses: BodyPass[];
   volumePasses: VolumePass[];
 };
@@ -89,12 +93,18 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     geometry: geometry?.scope ?? "document",
     flushFootnoteMarkers: passes.some((pass) => pass.name === "flushFootnoteMarkers"),
     numberedParagraphs: passes.some((pass) => pass.name === "numberedParagraphs"),
+    paragraphNotes: passes.some((pass) => pass.name === "paragraphNotes"),
+    chapterContents: passes.some((pass) => pass.name === "chapterContents"),
     quoteInset: passes.find(
       (pass): pass is QuoteInsetPass => pass.stage === "quoteInset"
     )?.columns,
     allCapsHeadings:
       passes.find(
         (pass): pass is AllCapsHeadingsPass => pass.stage === "allCapsHeadings"
+      )?.enabled ?? true,
+    numberedHeadings:
+      passes.find(
+        (pass): pass is NumberedHeadingsPass => pass.stage === "numberedHeadings"
       )?.enabled ?? true,
     bodyPasses: passes.filter((pass): pass is BodyPass => pass.stage === "body"),
     volumePasses: passes.filter((pass): pass is VolumePass => pass.stage === "volume"),

@@ -40,6 +40,43 @@ export const numberedParagraphs = () => ({
     name: "numberedParagraphs",
     stage: "page",
 });
+/**
+ * Reads notes set beneath the paragraph they belong to, numbered afresh for
+ * each paragraph, in two columns read down each one (Saville,
+ * reportsthatmatter-0rx). Replaces the page-foot footnote reading for the
+ * report that declares it — see `paragraph-notes.ts`.
+ *
+ * Opt-in: in a report whose notes sit at the page foot and number through,
+ * the same shape turns up in numbered lists, and a note taken from the wrong
+ * place is worse than one left where it was printed.
+ */
+export const paragraphNotes = () => ({
+    name: "paragraphNotes",
+    stage: "page",
+});
+/**
+ * Reads the contents list each chapter opens with, whose entries are located
+ * by paragraph ("Internment   8.35"), and takes the report's structure from
+ * it: a body line exactly matching an entry is that subsection's heading, and
+ * a chapter title cut at a line wrap is completed from the contents (Saville,
+ * whose subsections are set in plain sentence case). See `contentsHeadings`.
+ */
+export const chapterContents = () => ({
+    name: "chapterContents",
+    stage: "page",
+});
+/**
+ * Whether a numbered or lettered line ("1. Withdrawing the Army", "C. The
+ * Scarman Inquiry") may be read as a heading. On by default — Jack Smith's
+ * report is structured that way. A report whose structure comes from its
+ * divisions and contents (Saville) quotes documents with numbered items of
+ * their own, and as headings they would lose their numbers.
+ */
+export const numberedHeadings = (enabled) => ({
+    name: "numberedHeadings",
+    stage: "numberedHeadings",
+    enabled,
+});
 /** Separates the footnote block at the foot of each page from the body. */
 export const footnoteBlock = () => ({ name: "footnoteBlock", stage: "page" });
 /**

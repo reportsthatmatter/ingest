@@ -2,6 +2,12 @@ import { normaliseWhitespace } from "./extract";
 
 export type Footnote = {
   number: number;
+  /**
+   * The note's label where its number alone does not identify it — "3-117",
+   * the printed number then which block it came from (`paragraph-notes.ts`).
+   * Rendered as its number; absent for every document numbered once through.
+   */
+  label?: string;
   text: string;
   page: number;
   volume?: number;
@@ -235,14 +241,14 @@ export function renderEndnotes(notes: Footnote[]): string {
   const merged: Footnote[] = [];
   for (const note of notes) {
     const previous = merged[merged.length - 1];
-    if (previous && previous.number === note.number) {
+    if (previous && (previous.label ?? previous.number) === (note.label ?? note.number)) {
       if (previous.text !== note.text) previous.text = `${previous.text} ${note.text}`;
       continue;
     }
     merged.push({ ...note });
   }
 
-  return merged.map((note) => `[^${note.number}]: ${note.text}`).join("\n\n");
+  return merged.map((note) => `[^${note.label ?? note.number}]: ${note.text}`).join("\n\n");
 }
 
 /**

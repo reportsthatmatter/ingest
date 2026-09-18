@@ -43,7 +43,7 @@ const STOPWORDS = new Set([
 export function paragraphId(text, taken) {
     const words = text
         .toLowerCase()
-        .replace(/\[\^\d+\]/g, " ")
+        .replace(/\[\^\d+(?:-\d+)?\]/g, " ")
         .replace(/[^\p{L}\p{N}\s-]/gu, " ")
         .split(/\s+/)
         .filter(Boolean);
@@ -231,7 +231,7 @@ export function renderMarkdown(markdown) {
     if (!orphans.length)
         return html;
     const items = orphans
-        .map(({ number, text, instance }) => `<li id="note-${number}${instance > 0 ? `-${instance + 1}` : ""}"><sup>${number}</sup> ${escapeText(text)}</li>`)
+        .map(({ number, text, instance }) => `<li id="note-${number}${instance > 0 ? `-${instance + 1}` : ""}"><sup>${number.replace(/-\d+$/, "")}</sup> ${escapeText(text)}</li>`)
         .join("");
     return (`${html}\n<section class="orphan-notes">` +
         `<h2>Notes not linked in the text</h2>` +
@@ -256,7 +256,7 @@ export function stripNotesSection(markdown) {
  */
 export function collectNotes(markdown) {
     const notes = new Map();
-    for (const match of markdown.matchAll(/^\[\^(\d+)\]:[ \t]*(.+)$/gm)) {
+    for (const match of markdown.matchAll(/^\[\^(\d+(?:-\d+)?)\]:[ \t]*(.+)$/gm)) {
         const list = notes.get(match[1]) ?? [];
         list.push(match[2].trim());
         notes.set(match[1], list);
@@ -287,19 +287,23 @@ const LONG_NOTE_CHARS = 400;
 export function withSidenotes(html, notes) {
     const used = new Map();
     let counter = 0;
-    const out = html.replace(/\[\^(\d+)\]/g, (whole, number) => {
-        const list = notes.get(number);
+    const out = html.replace(/\[\^(\d+(?:-\d+)?)\]/g, (whole, label) => {
+        // "3-117" is note 3 under one paragraph (`paragraph-notes.ts`): the
+        // label keeps it apart from every other note 3, and 3 is what the reader
+        // sees, as printed.
+        const number = label.replace(/-\d+$/, "");
+        const list = notes.get(label);
         if (!list?.length)
             return whole;
         // Resolve to this number's definitions in order, one reference to one
         // definition — see collectNotes. More references than definitions (a
         // note genuinely cited twice, or recall missed one) fall back to the
         // last definition rather than losing the note.
-        const seen = used.get(number) ?? 0;
+        const seen = used.get(label) ?? 0;
         const note = list[Math.min(seen, list.length - 1)];
-        used.set(number, seen + 1);
+        used.set(label, seen + 1);
         counter += 1;
-        const toggleId = `sn-${number}-${counter}`;
+        const toggleId = `sn-${label}-${counter}`;
         const long = note.length > LONG_NOTE_CHARS;
         return (`<label class="sidenote-toggle" for="${toggleId}" aria-label="Note ${number}">` +
             `<sup>${number}</sup></label>` +

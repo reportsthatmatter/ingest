@@ -95,13 +95,25 @@ export declare function isTabularPage(lines: string[]): boolean;
  */
 export declare function tabularContext(lines: string[]): boolean[];
 /**
+ * Reads the structure a report's own contents lists name (`chapterContents`).
+ *
+ * A body line that is exactly the title of a paragraph-located contents entry
+ * is the subsection heading that entry points at — Saville's subsections are
+ * set in plain sentence case, which nothing else can tell from a short
+ * paragraph. And a chapter title cut at a line wrap ("Chapter 8: The period
+ * from August to" / "December 1971") is completed when the two together are
+ * exactly an entry in the contents. Exact matches only: the contents is the
+ * document's own statement of its structure, and a near miss is not one.
+ */
+export declare function contentsHeadings(blocks: Block[]): Block[];
+/**
  * Reflows hard-wrapped lines back into paragraphs.
  *
  * The signal is indentation: a line indented past the running left margin opens
  * a new paragraph. Blank lines are a secondary signal, and block quotes (set
  * far to the right) are kept as quotes.
  */
-export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean): Block[];
+export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean): Block[];
 export declare function endsSentence(text: string): boolean;
 export declare function mergeAcrossPages(blocks: Block[]): Block[];
 export declare function blocksToMarkdown(blocks: Block[]): string;

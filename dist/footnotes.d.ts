@@ -1,5 +1,11 @@
 export type Footnote = {
     number: number;
+    /**
+     * The note's label where its number alone does not identify it — "3-117",
+     * the printed number then which block it came from (`paragraph-notes.ts`).
+     * Rendered as its number; absent for every document numbered once through.
+     */
+    label?: string;
     text: string;
     page: number;
     volume?: number;

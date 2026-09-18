@@ -37,8 +37,11 @@ export function resolvePasses(def) {
         geometry: geometry?.scope ?? "document",
         flushFootnoteMarkers: passes.some((pass) => pass.name === "flushFootnoteMarkers"),
         numberedParagraphs: passes.some((pass) => pass.name === "numberedParagraphs"),
+        paragraphNotes: passes.some((pass) => pass.name === "paragraphNotes"),
+        chapterContents: passes.some((pass) => pass.name === "chapterContents"),
         quoteInset: passes.find((pass) => pass.stage === "quoteInset")?.columns,
         allCapsHeadings: passes.find((pass) => pass.stage === "allCapsHeadings")?.enabled ?? true,
+        numberedHeadings: passes.find((pass) => pass.stage === "numberedHeadings")?.enabled ?? true,
         bodyPasses: passes.filter((pass) => pass.stage === "body"),
         volumePasses: passes.filter((pass) => pass.stage === "volume"),
     };

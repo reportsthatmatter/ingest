@@ -16,6 +16,10 @@ Leveson defect shipped (#118 §1.5); these exist so a heuristic meets real input
 | `challenger-ocr-noise.txt` | `challenger-accident/archive/GPO-CRPT-99hrpt1016…pdf` | 265 | Badly garbled scan (`c h a r a c t e r i z a t i o n`) — the messiest input in the corpus |
 | `jack-smith-inline-notes.txt` | `jack-smith-report/archive/Report-of-Special-Counsel-Smith-Volume-1…pdf` | 40 | Inline footnote markers sitting against punctuation |
 | `saville-quoted-telegram.txt` | `uk-saville-inquiry/archive/bloody-sunday-inquiry-vol1-hc29-i.pdf` | 280 | A 1972 telegram quoted verbatim in capitals — its wrapped lines read as a run of headings unless the report declares `allCapsHeadings(false)` |
+| `saville-paragraph-notes.txt` | `uk-saville-inquiry/archive/bloody-sunday-inquiry-vol1-hc29-i.pdf` | 143 | Notes under each paragraph, numbered from 1 again each time, in two columns whose text wraps within each column (`paragraphNotes`) |
+| `saville-map-legend.txt` | `uk-saville-inquiry/archive/bloody-sunday-inquiry-vol1-hc29-i.pdf` | 70 | A numbered map legend ("1   Jackie Duddy") shaped like a note block, which nothing in the text refers to |
+| `saville-chapter-contents.txt` | `uk-saville-inquiry/archive/bloody-sunday-inquiry-vol1-hc29-i.pdf` | 147 | A chapter title that wraps, then the chapter's own contents located by paragraph, one entry wrapped before its locator (`chapterContents`) |
+| `saville-recto.txt`, `saville-verso.txt` | `uk-saville-inquiry/archive/bloody-sunday-inquiry-vol1-hc29-i.pdf` | 179, 180 | Facing pages whose body margins differ (16 and 7) — one document margin severs the right-hand page (`geometry("per-page")`) |
 
 To add one: pick the page, extract it, and record it here with what it is for.
 A fixture that does not contain its hard case is worse than none, because it

@@ -18,11 +18,14 @@ export {
   footnoteBlock,
   flushFootnoteMarkers,
   numberedParagraphs,
+  paragraphNotes,
+  chapterContents,
   runningFurniture,
   geometry,
   columns,
   quoteInset,
   allCapsHeadings,
+  numberedHeadings,
 } from "./passes";
 export type {
   Pass,
@@ -32,6 +35,7 @@ export type {
   GeometryPass,
   QuoteInsetPass,
   AllCapsHeadingsPass,
+  NumberedHeadingsPass,
 } from "./passes";
 export { detectGutter, splitColumns } from "./columns";
 export type { Gutter } from "./columns";
