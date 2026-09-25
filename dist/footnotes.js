@@ -152,6 +152,23 @@ const MONTH_SOON_AFTER = /^[\s,]{0,4}(?:and\s+\d{1,2}[\s,]{0,4})?(January|Februa
  * precede an ordinary number (a page count, a year).
  */
 const PHONE_NUMBER_SOON_AFTER = /^\s+\d{4}\s+\d{4}\b/;
+/**
+ * A count, not a note: "In the case of Long Beach, 75 out of 75 AAA rated
+ * … securities" (PSI, p.6 of the Executive Summary). Linked, it both put a
+ * stray note in the sentence and, because a number's definitions are
+ * resolved in order (`markdown.ts`'s `withSidenotes`), handed every later
+ * note 75 the definition meant for the one before it
+ * (reportsthatmatter-g1f).
+ */
+const COUNT_SOON_AFTER = /^\s+out\s+of\b/i;
+/**
+ * A contents page's dot leader: "A. Subcommittee Investigation . . . . 1".
+ * The number is a page, and linking it took the definition of note 1 away
+ * from the Executive Summary's own first note (PSI; reportsthatmatter-g1f).
+ * Five dots or more, so an ellipsis closing a sentence (". . . .") still
+ * reads as the sentence end it is.
+ */
+const DOT_LEADER_BEFORE = /(?:\.\s?){5,}$/;
 export function linkInlineMarkers(text, known) {
     return text.replace(/([.,;:!?"'\)])\s+(\d{1,4})(?=\s|$)/g, (whole, punctuation, digits, offset) => {
         const value = Number.parseInt(digits, 10);
@@ -161,12 +178,16 @@ export function linkInlineMarkers(text, known) {
         const preceding = text.slice(Math.max(0, offset - 12), offset + 1);
         if (CITES_A_NUMBER.test(preceding))
             return whole;
+        if (DOT_LEADER_BEFORE.test(text.slice(Math.max(0, offset - 16), offset + 1)))
+            return whole;
         // Look at what follows the candidate.
         const followingStart = offset + whole.length;
         const following = text.slice(followingStart, followingStart + 28);
         if (MONTH_SOON_AFTER.test(following))
             return whole;
         if (PHONE_NUMBER_SOON_AFTER.test(following))
+            return whole;
+        if (COUNT_SOON_AFTER.test(following))
             return whole;
         return `${punctuation}[^${value}]`;
     });

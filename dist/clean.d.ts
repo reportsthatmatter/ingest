@@ -7,6 +7,13 @@ export type SplitPage = {
     printed: number | null;
     body: string[];
     footnotes: string[];
+    /**
+     * The tail of the previous page's last note, where it opens this page's
+     * block above the first numbered note (`runOverStart`). Never parsed for
+     * note numbers: a run-over line that starts "169 (Text messages…" is a
+     * page reference inside a citation, not note 169.
+     */
+    runOver?: string[];
 };
 /**
  * Two layouts, both common.
@@ -58,6 +65,7 @@ export declare function takePrintedNumber(input: string[]): {
 export declare function splitFootnoteBlock(lines: string[], expectedNote: number): {
     body: string[];
     footnotes: string[];
+    runOver: string[];
 };
 /**
  * The two page-local passes composed: take the printed number, then separate
