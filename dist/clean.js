@@ -94,12 +94,116 @@ export function takePrintedNumber(input) {
 export function splitFootnoteBlock(lines, expectedNote) {
     const candidates = noteCandidates(lines);
     if (!candidates.length)
-        return { body: lines, footnotes: [] };
+        return { body: lines, footnotes: [], runOver: [] };
     const start = chooseBlockStart(candidates, expectedNote, lines.length);
     if (start === null)
-        return { body: lines, footnotes: [] };
-    return { body: lines.slice(0, start.line), footnotes: lines.slice(start.line) };
+        return { body: lines, footnotes: [], runOver: [] };
+    const at = start.line;
+    if (isDisplacedFirstLine(lines, at)) {
+        // The note's number, then the line that belongs straight after it.
+        return {
+            body: lines.slice(0, at - 1),
+            footnotes: [lines[at], lines[at - 1], ...lines.slice(at + 1)],
+            runOver: [],
+        };
+    }
+    const from = runOverStart(lines, at);
+    return { body: lines.slice(0, from), footnotes: lines.slice(at), runOver: lines.slice(from, at) };
 }
+const indentOf = (line) => line.length - line.trimStart().length;
+/**
+ * A note's first line of text set *above* its own number.
+ *
+ * The number is superscript, so it sits a fraction lower than the words
+ * beside it, and `pdftotext -layout` sometimes files it (with a word or two)
+ * on the line below the rest of that line:
+ *
+ *   `     ECF No. 252 at 48-49 & nn.250-253; SCO-00310619 (…); SCO-00310626`
+ *   `40 See`
+ *
+ * Left alone, the upper line is the last line of the body and the note loses
+ * its opening (Jack Smith, PDF pp.20, 33, 47, 65: reportsthatmatter-g1f).
+ *
+ * The shape is exact enough to trust: the note's own line is short (a lone
+ * number, or a number and a word), the displaced line sits directly on it,
+ * and the displaced line is indented by about the width of what was lifted
+ * out of it. A body line directly above a note starts at the same margin as
+ * the note, so it fails the indent test.
+ */
+function isDisplacedFirstLine(lines, at) {
+    if (at < 1)
+        return false;
+    const opening = lines[at];
+    const above = lines[at - 1];
+    if (!above.trim())
+        return false;
+    const head = opening.trim();
+    if (head.length > DISPLACED_OPENING_MAX)
+        return false;
+    const inset = indentOf(above) - indentOf(opening);
+    if (inset < 1 || inset > head.length + 1)
+        return false;
+    // What the note's text continues with, below its number, sits back at the
+    // note margin. Text indented beneath a lone number is the ordinary stacked
+    // layout (PSI, Litvinenko), whose line above is the previous note's.
+    const below = lines.slice(at + 1).find((line) => line.trim());
+    return below === undefined || indentOf(below) <= indentOf(opening);
+}
+/** "40 See", "104": longer than this and the note's line carried its own text. */
+const DISPLACED_OPENING_MAX = 8;
+/**
+ * Where a footnote block really starts, when it opens with the tail of the
+ * previous page's last note.
+ *
+ * A note that runs over a page break continues at the top of the next
+ * page's block, *above* the first note that starts there, and carries no
+ * number of its own. Anchoring the block on that first number left the
+ * run-over in the body, where it read as a paragraph of raw citations and
+ * split the sentence it landed inside (Jack Smith, reportsthatmatter-g1f).
+ *
+ * The run-over is the unbroken run of lines sitting directly on the first
+ * note, with the gap between body and notes (two or more blank lines) above
+ * it, on a page whose body is double-spaced. Its lines following one another
+ * with no blank between is what tells it apart from that body, whose lines
+ * are each followed by one. A single-spaced page has no such contrast, so it
+ * is left exactly as it was.
+ */
+function runOverStart(lines, at) {
+    let top = at;
+    while (top > 0 && lines[top - 1].trim())
+        top -= 1;
+    if (top === at)
+        return at;
+    let gap = 0;
+    while (top - gap - 1 >= 0 && !lines[top - gap - 1].trim())
+        gap += 1;
+    // Nothing above the run at all: the whole page is the block's, and there
+    // is no body line to tell the run from.
+    if (top - gap === 0)
+        return at;
+    if (gap < RUN_OVER_MIN_GAP)
+        return at;
+    // Only a double-spaced body makes an unbroken run stand out. On a
+    // single-spaced page the body's own last paragraph is exactly such a run
+    // (Litvinenko sets its paragraphs straight onto their notes), and taking it
+    // would move prose, headings and all, into a footnote.
+    return isDoubleSpaced(lines.slice(0, top - gap)) ? top : at;
+}
+const RUN_OVER_MIN_GAP = 2;
+/** Most of the text lines are followed by a blank: the page is set double-spaced. */
+function isDoubleSpaced(lines) {
+    const text = lines.filter((line) => line.trim()).length;
+    if (text < DOUBLE_SPACED_MIN_LINES)
+        return false;
+    let followed = 0;
+    for (let i = 0; i < lines.length - 1; i++) {
+        if (lines[i].trim() && !lines[i + 1].trim())
+            followed += 1;
+    }
+    return followed / text >= 0.6;
+}
+/** Fewer text lines than this and a page's spacing cannot be told. */
+const DOUBLE_SPACED_MIN_LINES = 4;
 /** Where a page came from, carried through so a review note can cite it. */
 function provenance(page) {
     return { index: page.index, volume: page.volume, pdfIndex: page.pdfIndex };
@@ -112,8 +216,8 @@ function provenance(page) {
  */
 export function splitPage(page, expectedNote) {
     const { printed, lines } = takePrintedNumber(page.lines);
-    const { body, footnotes } = splitFootnoteBlock(lines, expectedNote);
-    return { ...provenance(page), printed, body, footnotes };
+    const { body, footnotes, runOver } = splitFootnoteBlock(lines, expectedNote);
+    return { ...provenance(page), printed, body, footnotes, ...(runOver.length ? { runOver } : {}) };
 }
 /**
  * Removes running headers and footers that recur at a page edge. PDF text

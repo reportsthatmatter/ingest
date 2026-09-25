@@ -1,4 +1,4 @@
-import { extractPages, type Page } from "./extract";
+import { extractPages, normaliseWhitespace, type Page } from "./extract";
 import { splitPage, takePrintedNumber, collapseDoubleSpacing, type SplitPage } from "./clean";
 import { extractParagraphNotes } from "./paragraph-notes";
 import type { ResolvedPasses } from "./define";
@@ -93,6 +93,15 @@ export function ingestPageGroups(
         ? splitPageNumberOnly(page)
         : splitPage(page, expectedNote);
 
+      // A note that ran over the page break: its tail opens this page's
+      // block, and belongs to the last note read before it.
+      const previous = footnotes[footnotes.length - 1];
+      if (split.runOver && previous) {
+        previous.text = normaliseWhitespace(`${previous.text} ${split.runOver.join(" ")}`);
+      } else if (split.runOver) {
+        // Nothing to give it back to: leave it where it was read.
+        split.body = [...split.body, ...split.runOver];
+      }
       if (split.footnotes.length) {
         const parsed = parseFootnotes(split.footnotes, split.index).map((note) => ({
           ...note,
