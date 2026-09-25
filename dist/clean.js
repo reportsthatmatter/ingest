@@ -163,7 +163,7 @@ const DISPLACED_OPENING_MAX = 8;
  *
  * The run-over is the unbroken run of lines sitting directly on the first
  * note, with the gap between body and notes (two or more blank lines) above
- * it, on a page whose body is double-spaced. Its lines following one another
+ * it, or two lines or more of it, on a page whose body is double-spaced. Its lines following one another
  * with no blank between is what tells it apart from that body, whose lines
  * are each followed by one. A single-spaced page has no such contrast, so it
  * is left exactly as it was.
@@ -181,7 +181,9 @@ function runOverStart(lines, at) {
     // is no body line to tell the run from.
     if (top - gap === 0)
         return at;
-    if (gap < RUN_OVER_MIN_GAP)
+    // One line under a single blank is spaced exactly like a line of the body
+    // above it; a wider gap, or a second line with no blank before it, is not.
+    if (gap < RUN_OVER_MIN_GAP && at - top < 2)
         return at;
     // Only a double-spaced body makes an unbroken run stand out. On a
     // single-spaced page the body's own last paragraph is exactly such a run
@@ -202,8 +204,12 @@ function isDoubleSpaced(lines) {
     }
     return followed / text >= 0.6;
 }
-/** Fewer text lines than this and a page's spacing cannot be told. */
-const DOUBLE_SPACED_MIN_LINES = 4;
+/**
+ * Fewer text lines than this and a page's spacing cannot be told. Three is
+ * enough when every one of them is followed by a blank (Jack Smith PDF p.14);
+ * a lone running header above the gap, as on Litvinenko's pages, is not.
+ */
+const DOUBLE_SPACED_MIN_LINES = 3;
 /** Where a page came from, carried through so a review note can cite it. */
 function provenance(page) {
     return { index: page.index, volume: page.volume, pdfIndex: page.pdfIndex };

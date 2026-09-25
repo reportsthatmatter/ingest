@@ -42,6 +42,25 @@ describe("a note running over from the previous page (Jack Smith PDF p.21)", () 
   });
 });
 
+describe("run-overs at the edges of the rule (Jack Smith PDF p.14, p.66)", () => {
+  it("a page with only three body lines above the notes (p.14)", () => {
+    const split = splitPage(page(fixture("jack-smith-note-p14"), 14), 13);
+    expect(citations(split.body)).toEqual([]);
+    expect(split.runOver?.[0]).toMatch(/^Georgia election\); SCO-12998394/);
+    expect(split.body.filter((line) => line.trim()).pop()).toContain("Trump and co-conspirators could not have believed");
+  });
+
+  it("a run-over only one blank line below the body, but two lines long (p.66)", () => {
+    const split = splitPage(page(fixture("jack-smith-note-p66"), 66), 188);
+    expect(citations(split.body)).toEqual([]);
+    expect(split.runOver).toEqual([
+      "12/29/2020); SCO-00039087 (Text messages among Co-Conspirator 2, Co-Conspirator 5, and Co-Conspirator 6",
+      "12/28/2020).",
+    ]);
+    expect(split.body.filter((line) => line.trim()).pop()).toContain("was not supported by the Constitution or federal");
+  });
+});
+
 describe("a note's first line set above its own number (Jack Smith PDF p.20, p.33)", () => {
   it("inline: `40 See` below the line that carries the rest of its text", () => {
     const split = splitPage(page(fixture("jack-smith-note-p20"), 20), 40);
