@@ -65,6 +65,20 @@ export declare const DEFAULT_QUOTE_INSET = 5;
 export declare function isContentsPage(lines: string[]): boolean;
 export declare function parseContentsPage(lines: string[]): Block[];
 /**
+ * The titles a contents page lists, one per line that carries leaders to a
+ * page number; nothing from a page with fewer than three such lines. A title
+ * that wraps is read from its last line only ("III. HIGH RISK LENDING:" /
+ * "CASE STUDY OF WASHINGTON MUTUAL BANK. . . 48"), which is also the line
+ * the body sets as its heading.
+ */
+export declare function contentsTitles(lines: string[]): string[];
+/**
+ * What a heading and its contents entry have in common: the title without its
+ * marker (a heading is emitted without one), trailing dots, typographic quotes
+ * or case.
+ */
+export declare function headingKey(text: string): string;
+/**
  * The most common indent among content lines — the left margin of running text.
  * Paragraph-initial lines sit measurably to the right of it.
  */
@@ -113,7 +127,7 @@ export declare function contentsHeadings(blocks: Block[]): Block[];
  * a new paragraph. Blank lines are a secondary signal, and block quotes (set
  * far to the right) are kept as quotes.
  */
-export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean): Block[];
+export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>): Block[];
 export declare function endsSentence(text: string): boolean;
 export declare function mergeAcrossPages(blocks: Block[]): Block[];
 export declare function blocksToMarkdown(blocks: Block[]): string;
