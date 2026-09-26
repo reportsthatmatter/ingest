@@ -79,8 +79,16 @@ function classify(line: string): Token {
  * real note under someone else's number, which is worse than an honest
  * merge (reportsthatmatter-lie).
  */
+/**
+ * How far one note's number may run ahead of the note before it in the same
+ * block. Notes the reader failed to collect leave small gaps; the block start
+ * tolerates the same (`chooseBlockStart`).
+ */
+const MAX_NOTE_STEP = 6;
+
 export function parseFootnotes(lines: string[], page: number): Footnote[] {
-  const tokens = lines.filter((line) => line.trim()).map(classify);
+  const raw = lines.filter((line) => line.trim());
+  const tokens = raw.map(classify);
   const notes: Footnote[] = [];
 
   const append = (text: string) => {
@@ -92,6 +100,43 @@ export function parseFootnotes(lines: string[], page: number): Footnote[] {
   let i = 0;
   while (i < tokens.length) {
     const token = tokens[i];
+
+    // A page's notes run in sequence, so once one is read, a number that does
+    // not follow it closely is the start of a continuation line: the note's
+    // own text opening on a year ("2009 OTS Annual Report…" beneath a stacked
+    // "600"), or a citation wrapping onto "75 Fed. Reg. 185". Read as notes,
+    // they put duplicate definitions in the document and threw the running
+    // note counter thousands ahead, so later pages found no block near the
+    // note expected and printed their notes in the body (reportsthatmatter-je7).
+    // The line beneath a stacked number still waiting for its text is that
+    // text, whatever number it opens on: "3" over "5 U.S.C. App…" (Columbia)
+    // is note 3 citing title 5, not a note 5 — unless it is the very next
+    // number, which reads as the next note as before. A lone number is only text of a
+    // note that already has some; under an empty one it says nothing either way.
+    const previous = notes[notes.length - 1];
+    const awaitingText = previous !== undefined && !previous.text;
+    // Numbering that restarts (Deepwater Horizon's endnotes, chapter by
+    // chapter, sometimes mid-page) is corroborated by its own next number
+    // coming next; a year or a wrapped citation never is.
+    const nextNumbered = tokens
+      .slice(i + 1)
+      .find((t): t is Extract<Token, { number: number }> => t.kind === "inline" || t.kind === "stacked");
+    const outOfSequence =
+      previous !== undefined &&
+      "number" in token &&
+      !(token.number > previous.number && token.number <= previous.number + MAX_NOTE_STEP) &&
+      nextNumbered?.number !== token.number + 1;
+    if (
+      (token.kind === "inline" &&
+        (outOfSequence || (awaitingText && token.number !== previous.number + 1))) ||
+      (token.kind === "stacked" && !awaitingText && outOfSequence)
+    ) {
+      // A note's own number repeated at the top of its text says nothing more.
+      if (token.kind === "inline" && token.number === previous.number) append(token.text);
+      else if (!(token.kind === "stacked" && token.number === previous.number)) append(raw[i]);
+      i += 1;
+      continue;
+    }
 
     if (token.kind === "inline") {
       notes.push({ number: token.number, text: token.text, page });
@@ -204,6 +249,16 @@ const PHONE_NUMBER_SOON_AFTER = /^\s+\d{4}\s+\d{4}\b/;
  */
 const COUNT_SOON_AFTER = /^\s+out\s+of\b/i;
 
+/** "Moreover, 53 of the peer reviewers": no note is followed by a lower-case "of". */
+const OF_AFTER = /^\s+of\s/;
+
+/** "August 31, 2007": a year after a date, in a report whose notes run past 2000. */
+const DATE_BEFORE =
+  /\b(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan\.|Feb\.|Mar\.|Apr\.|Jun\.|Jul\.|Aug\.|Sept?\.|Oct\.|Nov\.|Dec\.)\s\d{1,2},$/;
+
+/** "Sept. 11", "Nov. 11 and 13": an abbreviated month before the number. */
+const MONTH_ABBREVIATION_BEFORE = /\b(?:Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept?|Oct|Nov|Dec)\.$/;
+
 /**
  * A contents page's dot leader: "A. Subcommittee Investigation . . . . 1".
  * The number is a page, and linking it took the definition of note 1 away
@@ -213,17 +268,47 @@ const COUNT_SOON_AFTER = /^\s+out\s+of\b/i;
  */
 const DOT_LEADER_BEFORE = /(?:\.\s?){5,}$/;
 
+/**
+ * A reporter's volume, not a note: "Co., 47 F.T.C. 1393", "52 Fed. Reg.
+ * 11263", "(1992) 38 FCR 1". A citation's volume number is followed by the
+ * reporter's abbreviation and then the page; a note marker is followed by
+ * the next sentence (US v. Philip Morris; reportsthatmatter-je7) — which may
+ * be "Ibid. 113", the next note's whole text (Deepwater Horizon).
+ */
+const REPORTER_AFTER = /^\s+(?!(?:Ibid|Id)\.)(?:(?:[A-Z][A-Za-z]{0,5}\.\s?){1,4}\s*\d|[A-Z]{2,6}\s\d{1,4}(?![\d-]))/;
+
+/**
+ * One of a list of numbers — pages, paragraphs, Bates numbers: "RFA Resp. 5,
+ * 49-50, 54 (4/12/02)", "paragraphs 17, 19, 20 and 21". A number and a comma
+ * before it alone is not enough ("by 2009,3 while", where 3 is a note): the
+ * list has to show on both sides, or run to two numbers before it.
+ */
+const NUMBER_LIST_BEFORE = /\d,$/;
+const LONG_LIST_BEFORE = /\d[\d-]*,\s?\d[\d-]*,$/;
+const LIST_GOES_ON = /^\s*(?:(?:and|or|to)\s+\d|[-–]\s*\d|\()/;
+
+/** "2008, 119 years", "At 37 seconds, 45 seconds": a count in a list, not a note. */
+const UNIT_AFTER =
+  /^\s+(?:years?|months?|weeks?|days?|hours?|minutes?|seconds?|percent|per\s?cent|times|million|billion|thousand|hundred)\b/;
+
 export function linkInlineMarkers(text: string, known: Set<number>): string {
   return text.replace(
     /([.,;:!?"'\)])\s+(\d{1,4})(?=\s|$)/g,
     (whole, punctuation: string, digits: string, offset: number) => {
       const value = Number.parseInt(digits, 10);
       if (!known.has(value)) return whole;
+      // "0050": a Bates or page number keeps its zeros; a note number has none.
+      if (digits.startsWith("0")) return whole;
 
       // Look at what sits immediately before the punctuation.
       const preceding = text.slice(Math.max(0, offset - 12), offset + 1);
       if (CITES_A_NUMBER.test(preceding)) return whole;
       if (DOT_LEADER_BEFORE.test(text.slice(Math.max(0, offset - 16), offset + 1))) return whole;
+      if (/^(?:1[89]|20)\d\d$/.test(digits) && DATE_BEFORE.test(text.slice(Math.max(0, offset - 16), offset + 1))) {
+        return whole;
+      }
+      if (MONTH_ABBREVIATION_BEFORE.test(text.slice(Math.max(0, offset - 6), offset + 1))) return whole;
+
 
       // Look at what follows the candidate.
       const followingStart = offset + whole.length;
@@ -231,6 +316,17 @@ export function linkInlineMarkers(text: string, known: Set<number>): string {
       if (MONTH_SOON_AFTER.test(following)) return whole;
       if (PHONE_NUMBER_SOON_AFTER.test(following)) return whole;
       if (COUNT_SOON_AFTER.test(following)) return whole;
+      if (REPORTER_AFTER.test(following)) return whole;
+      if (OF_AFTER.test(following)) return whole;
+      // Only after a comma: '250,000"; 152 days after that' is note 152.
+      if (punctuation === "," && UNIT_AFTER.test(following)) return whole;
+      const before = text.slice(Math.max(0, offset - 24), offset + 1);
+      if (
+        NUMBER_LIST_BEFORE.test(before) &&
+        (LONG_LIST_BEFORE.test(before) || LIST_GOES_ON.test(following))
+      ) {
+        return whole;
+      }
 
       return `${punctuation}[^${value}]`;
     }
