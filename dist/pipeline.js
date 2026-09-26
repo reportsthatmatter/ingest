@@ -3,7 +3,7 @@ import { splitPage, takePrintedNumber, collapseDoubleSpacing } from "./clean.js"
 import { extractParagraphNotes } from "./paragraph-notes.js";
 import { applyCorrections } from "./corrections.js";
 import { rejoinHyphenated, vocabulary } from "./hyphens.js";
-import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, mergeAcrossPages, contentsHeadings, bodyIndent, } from "./paragraphs.js";
+import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, mergeAcrossPages, contentsHeadings, contentsTitles, headingKey, bodyIndent, } from "./paragraphs.js";
 import { parseFootnotes, linkInlineMarkers, linkFlushMarkers, renderEndnotes, } from "./footnotes.js";
 import { autoFix, findSuspects, rankSuspects } from "./ocr.js";
 /**
@@ -94,15 +94,23 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     const margins = resolved.geometry === "per-volume"
         ? cleanedGroups.map((group) => bodyIndent(group.flatMap((page) => page.body)))
         : [bodyIndent(cleanedGroups.flat().flatMap((page) => page.body))];
+    // `listedHeadings`: the titles the report's contents names, learnt as its
+    // contents pages go by. The contents pages themselves are not gated, nor is
+    // anything before them — the contents lists what follows it.
+    const listed = new Set();
     for (const [groupIndex, group] of cleanedGroups.entries()) {
         for (const split of group) {
             const pageLines = collapseDoubleSpacing(split.body);
+            const titles = resolved.listedHeadings ? contentsTitles(pageLines) : [];
+            for (const title of titles)
+                listed.add(headingKey(title));
+            const gate = resolved.listedHeadings && !titles.length && listed.size ? listed : undefined;
             const at = { volume: split.volume, pdfIndex: split.pdfIndex, printed: split.printed };
             const blocks = (isContentsPage(pageLines)
                 ? parseContentsPage(pageLines)
                 : toBlocks(pageLines, resolved.geometry === "per-page"
                     ? pageMargin(split.body, margins[0])
-                    : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true)).map((block) => ({ ...block, at }));
+                    : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate)).map((block) => ({ ...block, at }));
             // Record where each printed page begins. These documents are cited by page
             // ("Report at 62"), so the printed number is the citation unit readers
             // already use — and it can be checked against the original PDF.

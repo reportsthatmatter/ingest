@@ -103,6 +103,44 @@ export function parseContentsPage(lines: string[]): Block[] {
   return blocks;
 }
 
+/**
+ * A contents entry's leaders, tight ("……… 12") or spaced (". . . . 12"), and
+ * the title before them. The PSI report spaces its dots, which `LEADERS` does
+ * not read; this is only used to learn the titles (`listedHeadings`), not to
+ * lay the page out.
+ */
+const SPACED_LEADERS = /^(.*?\S)\s*(?:[.·]\s?){4,}\s*\d{1,4}\s*$/;
+
+/**
+ * The titles a contents page lists, one per line that carries leaders to a
+ * page number; nothing from a page with fewer than three such lines. A title
+ * that wraps is read from its last line only ("III. HIGH RISK LENDING:" /
+ * "CASE STUDY OF WASHINGTON MUTUAL BANK. . . 48"), which is also the line
+ * the body sets as its heading.
+ */
+export function contentsTitles(lines: string[]): string[] {
+  const titles = lines
+    .map((line) => line.match(SPACED_LEADERS)?.[1].replace(/\s+/g, " ").trim())
+    .filter((title): title is string => Boolean(title));
+  return titles.length >= 3 ? titles : [];
+}
+
+/** A heading's number or letter: "I.", "A.", "CC.", "4.", "(3)", "(a)", "(iii)". */
+const HEADING_MARKER =
+  /^(?:\((?:\d{1,2}|[a-z]|[ivxlc]{1,6})\)|(?:[IVXLC]{1,6}|[A-Z]{1,2}|\d{1,2})\.)\s+/;
+
+/**
+ * What a heading and its contents entry have in common: the title without its
+ * marker (a heading is emitted without one), trailing dots, typographic quotes
+ * or case.
+ */
+export function headingKey(text: string): string {
+  return normaliseWhitespace(text)
+    .replace(HEADING_MARKER, "")
+    .replace(/[.\s]+$/, "")
+    .toLowerCase();
+}
+
 /** Leading-space count, which `pdftotext -layout` preserves from the page. */
 function indentOf(line: string): number {
   return line.length - line.trimStart().length;
@@ -151,7 +189,7 @@ const STOPWORD =
 /**
  * An inquiry report's top-level divisions carry their own number in the label
  * — "Part 4:", "Chapter 1:", "Appendix 3:" — which the single-letter marker
- * regex in `isHeading` does not cover. `Part`, `Appendix`, `Annex` and `Volume`
+ * regex in `isHeadingLine` does not cover. `Part`, `Appendix`, `Annex` and `Volume`
  * are top level (h2); `Chapter` and `Section` nest under them (h3).
  */
 const DIVISION_LABEL = /^(Part|Chapter|Appendix|Annex|Volume|Section)\s+(\d{1,3}|[IVXLC]{1,7})\b/;
@@ -277,7 +315,7 @@ export function tabularContext(lines: string[]): boolean[] {
   });
 }
 
-function isHeading(
+function isHeadingLine(
   text: string,
   allowDivisions = true,
   allowAllCaps = true,
@@ -523,9 +561,17 @@ export function toBlocks(
   numberedParagraphs = false,
   allCapsHeadings = true,
   paragraphContents = false,
-  numberedHeadings = true
+  numberedHeadings = true,
+  listed?: Set<string>
 ): Block[] {
   if (paragraphContents) lines = joinParagraphContents(lines);
+  // With `listedHeadings`, a would-be heading the contents does not name is
+  // text: judged before anything else looks at the line, so a quoted cue line
+  // counts as part of its quotation rather than as structure beside it.
+  const isHeading = (text: string, allowDivisions: boolean) => {
+    const heading = isHeadingLine(text, allowDivisions, allCapsHeadings, numberedHeadings);
+    return heading && listed && !listed.has(headingKey(heading.text)) ? null : heading;
+  };
   // The left margin is a property of the document's layout, not of one page. A
   // short page — the last of a section, say — can have too few lines to infer
   // it from, and getting it wrong turns an ordinary paragraph into a quote.
@@ -554,7 +600,7 @@ export function toBlocks(
     // normaliseWhitespace below would collapse away before it gets a look.
     return (
       TOC_ENTRY.test(line) ||
-      isHeading(normaliseWhitespace(line), !inTable[i], allCapsHeadings, numberedHeadings) !== null
+      isHeading(normaliseWhitespace(line), !inTable[i]) !== null
     );
   });
 
@@ -618,7 +664,7 @@ export function toBlocks(
       blocks.push({ kind: "quote", text });
       return;
     }
-    const heading = isHeading(text, !inTable[currentStart], allCapsHeadings, numberedHeadings);
+    const heading = isHeading(text, !inTable[currentStart]);
     if (heading) blocks.push({ kind: "heading", ...heading });
     else blocks.push({ kind: "paragraph", text });
   };
@@ -723,7 +769,7 @@ export function toBlocks(
     }
     openDivisionIndent = -1;
 
-    const standalone = isHeading(single, !inTable[i], allCapsHeadings, numberedHeadings);
+    const standalone = isHeading(single, !inTable[i]);
     if (standalone) {
       flush();
       if (isDivisionHeading(standalone.text)) {

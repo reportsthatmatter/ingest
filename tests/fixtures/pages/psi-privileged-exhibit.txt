@@ -1,0 +1,50 @@
+                                                     302
+
+        In May 2006, S&P circulated a draft policy setting up what seemed to be an informal
+screening process “prior to transition date” to see how existing CDOs would be affected by the
+revised CDO model. The draft offered a convoluted approach in an apparent attempt to avoid
+retesting all existing CDOs, which included allowing the use of the prior “E2” model and review
+“by a special E3 committee.” The draft policy read in part as follows:
+
+        “***PRIVILEGED AND CONFIDENTIAL - S&P DISCUSSION PURPOSES ONLY***
+        Prior to Transition Date (in preparation for final implementation of E3 for cash
+        CDOs):
+            • A large majority of the pre- E3 cash flow CDOs will be run through E3 in batch
+               processes to see how the ratings look within the new model …
+
+            •     Ratings falling more than 3 notches +/- from the current tranche rating in the
+                 batch process will be reviewed in detail for any modeling, data, performance or
+                 other issues
+
+            •     If any transactions are found to be passing/failing E3 by more than 3 notches due
+                 to performance reasons they will be handled through the regular surveillance
+                 process to see if the ratings are stable under current criteria (i.e., if they pass
+                 E2.4.3 using current cash flow assumptions the ratings will remain unchanged)
+
+            •     If any transactions are found to be passing/failing E3 by more than 3 notches due
+                 to a model gap between E2.4.3 and E3, they will be reviewed by a special E3
+                 committee ....” 1171
+It is unclear whether this screening actually took place.
+
+       Questions continued to be raised internally at S&P about the retesting issue. In March
+2007, almost a year after the change was made in the CDO model, an S&P senior executive
+wrote to the Chief Criteria Officer in the structured finance department:
+
+        “Why did the criteria change made in mid 2006 not impact any outstanding transactions
+        at the time we changed it, especially given the magnitude of the change we are
+        highlighting in the article? Should we apply the new criteria now, given what we now
+        know? If we did, what would be the impact?” 1172
+
+In July 2007, the same senior executive raised the issue again in an email asking the S&P
+Analytic Policy Board to address the alignment of surveillance methodology and new model
+changes at a “special meeting.” 1173 But by then, residential mortgages were already defaulting in
+record numbers, and the mass downgrades of RMBS and CDO ratings had begun.
+
+
+1171
+     5/19/2006 email from Stephen Anderberg to Pat Jordan, David Tesher, and others, PSI-S&P-RFN-000021
+[emphasis in original].
+1172
+     3/12/2007 email from Cliff Griep to Tom Gillis, and others, PSI-S&P-RFN-000015.
+1173
+     7/15/2007 email from Tom Gillis to Valencia Daniels, “Special APB meeting,” Hearing Exhibit 4/23-74.

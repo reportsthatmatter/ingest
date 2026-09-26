@@ -139,6 +139,30 @@ export const chapterContents = (): PagePass => ({
 });
 
 /**
+ * Only a heading the report's own contents lists is read as one
+ * (reportsthatmatter-h0l).
+ *
+ * The PSI report quotes its evidence at length — an awards-night script, a
+ * performance review's numbered goals, a draft policy's capitals banner — and
+ * those lines pass for headings one by one: set on their own, in caps or
+ * numbered title case. So do its numbered findings, which open on a run-in
+ * title ("4. Conflict Between Client Interests and Proprietary Trading. In
+ * 2007, Goldman…"). In the text layer nothing tells them from the report's
+ * own sections, but the report says what its sections are: a full contents
+ * list, every section and subsection to a page number. With this pass a
+ * would-be heading after the contents stands only if an entry names it;
+ * anything else stays text where it was printed, quotation and all.
+ *
+ * It only ever takes headings away, never adds one. Opt-in: most reports'
+ * contents name their chapters and not their subsections, and gating on those
+ * would strip real structure. See `contentsTitles` and `headingKey`.
+ */
+export const listedHeadings = (): PagePass => ({
+  name: "listedHeadings",
+  stage: "page",
+});
+
+/**
  * Whether a numbered or lettered line ("1. Withdrawing the Army", "C. The
  * Scarman Inquiry") may be read as a heading. On by default — Jack Smith's
  * report is structured that way. A report whose structure comes from its

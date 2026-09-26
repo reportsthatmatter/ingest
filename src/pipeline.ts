@@ -11,6 +11,8 @@ import {
   parseContentsPage,
   mergeAcrossPages,
   contentsHeadings,
+  contentsTitles,
+  headingKey,
   bodyIndent,
   type Block,
 } from "./paragraphs";
@@ -149,9 +151,17 @@ export function ingestPageGroups(
       ? cleanedGroups.map((group) => bodyIndent(group.flatMap((page) => page.body)))
       : [bodyIndent(cleanedGroups.flat().flatMap((page) => page.body))];
 
+  // `listedHeadings`: the titles the report's contents names, learnt as its
+  // contents pages go by. The contents pages themselves are not gated, nor is
+  // anything before them — the contents lists what follows it.
+  const listed = new Set<string>();
+
   for (const [groupIndex, group] of cleanedGroups.entries()) {
     for (const split of group) {
       const pageLines = collapseDoubleSpacing(split.body);
+      const titles = resolved.listedHeadings ? contentsTitles(pageLines) : [];
+      for (const title of titles) listed.add(headingKey(title));
+      const gate = resolved.listedHeadings && !titles.length && listed.size ? listed : undefined;
       const at = { volume: split.volume, pdfIndex: split.pdfIndex, printed: split.printed };
       const blocks = (
         isContentsPage(pageLines)
@@ -165,7 +175,8 @@ export function ingestPageGroups(
               resolved.numberedParagraphs,
               resolved.allCapsHeadings,
               resolved.chapterContents,
-              resolved.numberedHeadings ?? true
+              resolved.numberedHeadings ?? true,
+              gate
             )
       ).map((block) => ({ ...block, at }));
 

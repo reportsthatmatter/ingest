@@ -20,6 +20,7 @@ export {
   numberedParagraphs,
   paragraphNotes,
   chapterContents,
+  listedHeadings,
   runningFurniture,
   geometry,
   columns,

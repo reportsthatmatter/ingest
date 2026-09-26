@@ -1,0 +1,43 @@
+                                                377
+
+        In connection with the hearing, the Subcommittee released a joint memorandum from
+Chairman Levin and Ranking Member Coburn summarizing the investigation to date into the
+role of the investment banks in the financial crisis. The memorandum contained the following
+findings of fact, which this Report reaffirms, regarding the Goldman Sachs case study.
+
+       1. Securitizing High Risk Mortgages. From 2004 to 2007, in exchange for lucrative
+          fees, Goldman Sachs helped lenders like Long Beach, Fremont, and New Century,
+          securitize high risk, poor quality loans, obtain favorable credit ratings for the resulting
+          residential mortgage backed securities (RMBS), and sell the RMBS securities to
+          investors, pushing billions of dollars of risky mortgages into the financial system.
+
+       2. Magnifying Risk. Goldman Sachs magnified the impact of toxic mortgages on
+          financial markets by re-securitizing RMBS securities in collateralized debt obligations
+          (CDOs), referencing them in synthetic CDOs, selling the CDO securities to investors,
+          and using credit default swaps and index trading to profit from the failure of the same
+          RMBS and CDO securities it sold.
+
+       3. Shorting the Mortgage Market. As high risk mortgage delinquencies increased, and
+          RMBS and CDO securities began to lose value, Goldman Sachs took a net short
+          position on the mortgage market, remaining net short throughout 2007, and cashed in
+          very large short positions, generating billions of dollars in gain.
+
+       4. Conflict Between Client Interests and Proprietary Trading. In 2007, Goldman
+          Sachs went beyond its role as market maker for clients seeking to buy or sell
+          mortgage related securities, traded billions of dollars in mortgage related assets for the
+          benefit of the firm without disclosing its proprietary positions to clients, and
+          instructed its sales force to sell mortgage related assets, including high risk RMBS
+          and CDO securities that Goldman Sachs wanted to get off its books, and utilizing key
+          roles in CDO transactions to promote its own interests at the expense of investors,
+          creating a conflict between the firm’s proprietary interests and the interests of its
+          clients.
+
+       5. Abacus Transaction. Goldman Sachs structured, underwrote, and sold a synthetic
+          CDO called Abacus 2007-AC1, did not disclose to the Moody’s analyst overseeing
+          the rating of the CDO that a hedge fund client taking a short position in the CDO had
+          helped to select the referenced assets, and also did not disclose that fact to other
+          investors.
+
+       6. Using Naked Credit Default Swaps. Goldman Sachs used credit default swaps
+          (CDS) on assets it did not own to bet against the mortgage market through single
+          name and index CDS transactions, generating substantial revenues in the process.

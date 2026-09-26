@@ -26,6 +26,12 @@ Leveson defect shipped (#118 §1.5); these exist so a heuristic meets real input
 | `litvinenko-notes-under-body.txt` | `uk-litvinenko-inquiry/archive/The-Litvinenko-Inquiry-H-C-695-web.pdf` | 27 | A single-spaced page set straight onto its notes: the run-over's shape, but every line of it is body (reportsthatmatter-g1f) |
 | `psi-contents.txt` | `us-psi-financial-crisis/archive/PSI REPORT …pdf` | 3 | Contents page: a page number after a dot leader is not a footnote marker |
 | `psi-out-of.txt` | `us-psi-financial-crisis/archive/PSI REPORT …pdf` | 13 | "Long Beach, 75 out of 75": a count after a comma, not note 75 |
+| `psi-contents-p4.txt` | `us-psi-financial-crisis/archive/PSI REPORT …pdf` | 4 | The contents' second page, spaced dot leaders (`. . . .`), whose entries name every section (`listedHeadings`, reportsthatmatter-h0l) |
+| `psi-employee-goals.txt` | `us-psi-financial-crisis/archive/PSI REPORT …pdf` | 119 | A quoted performance review's numbered goals ("1. Achieve Net Income - $340 MM for 2007"), each line shaped like a numbered heading (reportsthatmatter-h0l) |
+| `psi-section-heading.txt` | `us-psi-financial-crisis/archive/PSI REPORT …pdf` | 150 | A real section heading ("F. Destructive Compensation Practices") that the contents lists and `listedHeadings` must keep (reportsthatmatter-h0l) |
+| `psi-walk-up-music.txt` | `us-psi-financial-crisis/archive/PSI REPORT …pdf` | 153 | A quoted awards-night script whose cue lines ("WALK-UP MUSIC", "DAVID SCHNEIDER") pass the all-caps heading test (reportsthatmatter-h0l) |
+| `psi-privileged-exhibit.txt` | `us-psi-financial-crisis/archive/PSI REPORT …pdf` | 309 | A quoted S&P draft opening on a caps banner, "***PRIVILEGED AND CONFIDENTIAL…***" (reportsthatmatter-h0l) |
+| `psi-run-in-title.txt` | `us-psi-financial-crisis/archive/PSI REPORT …pdf` | 384 | A numbered finding with a run-in title ("4. Conflict Between … Trading. In 2007, Goldman"), which reads as a numbered heading (reportsthatmatter-h0l) |
 
 To add one: pick the page, extract it, and record it here with what it is for.
 A fixture that does not contain its hard case is worse than none, because it
