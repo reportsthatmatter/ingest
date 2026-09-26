@@ -185,3 +185,125 @@ describe("numbers that are not footnote markers (PSI)", () => {
     expect(linkInlineMarkers('he said it "would . . . . 7 In fact,', new Set([7]))).toContain("[^7]");
   });
 });
+
+/**
+ * A note whose text opens on a number (reportsthatmatter-je7).
+ *
+ * PSI sets its notes stacked: the number alone, the text beneath. Text that
+ * begins "2009 OTS Annual Report…" is shaped exactly like an inline note
+ * "2009", and read that way the running note counter jumped to 2010, so the
+ * next three pages found no note near the one expected and printed their
+ * notes (604-609) in the body.
+ */
+describe("a note's text opening on a year (PSI PDF pp.173-175)", () => {
+  it("reads the year as the note's text, not as note 2009", () => {
+    const split = splitPage(page(fixture("psi-note-p173"), 173), 600);
+    const notes = parseFootnotes(split.footnotes, 173);
+    expect(notes.map((n) => n.number)).toEqual([600, 601, 602, 603]);
+    expect(notes[0].text).toMatch(/^2009 OTS Annual Report, "Agency Profile,"/);
+  });
+
+  it("does not take a number out of sequence for a new note", () => {
+    const notes = parseFootnotes(["283", "    First note text.", "284", "    Text that wraps onto a", "192 Fed. Reg. 12 page reference."], 1);
+    expect(notes.map((n) => n.number)).toEqual([283, 284]);
+    expect(notes[1].text).toBe("Text that wraps onto a 192 Fed. Reg. 12 page reference.");
+  });
+
+  // The pipeline's own loop: the counter arrives at 600 from earlier pages,
+  // and each page's notes set the number the next page expects.
+  let expected = 600;
+  const splits = [173, 174, 175].map((n) => {
+    const split = splitPage(page(fixture(`psi-note-p${n}`), n), expected);
+    const read = parseFootnotes(split.footnotes, n);
+    if (read.length) expected = Math.max(...read.map((note) => note.number)) + 1;
+    return { split, read };
+  });
+  const numbers = splits.flatMap(({ read }) => read.map((note) => note.number));
+  const body = splits.flatMap(({ split }) => split.body).join("\n");
+
+  it("finds the notes on the pages after it", () => {
+    expect(numbers).toEqual([600, 601, 602, 603, 604, 605, 606, 607]);
+  });
+
+  it("leaves none of their text in the body", () => {
+    expect(body).not.toContain("2004 OTS Examination Handbook, Section 010.2");
+    expect(body).not.toContain("Descriptions of these terms appeared in OTS findings memoranda");
+  });
+});
+
+/**
+ * Numbers inside citations (US v. Philip Morris), which the linker met once
+ * the notes 35-58 the counter had lost were read again (reportsthatmatter-je7).
+ */
+describe("numbers in a citation are not footnote markers (Philip Morris)", () => {
+  const known = new Set([11, 38, 46, 47, 50, 52, 53, 54, 2006, 2007]);
+  const unchanged = [
+    "See In the Matter of American Tobacco Co., 47 F.T.C. 1393 (F.T.C. 1951); R.J. Reynolds Tobacco Co., 46 F.T.C. 706 (F.T.C. 1950).",
+    "41 C.F.R. §101-20.105-3, 52 Fed. Reg. 11263 at 11269 (April 8, 1987).",
+    "See 14 C.F.R. §121.317, 52 F.R. 12358 (April 13, 1988)",
+    "upheld on appeal Tobacco Institute (Aust) v. AFCO (1992) 38 FCR 1;",
+    "LB0170038-0053 at 0038, 0042, 0044, 0050 (US 25906).",
+    "RFA Resp. 5, 49-50, 54 (4/12/02) (The",
+    "Berg TT, 11/15/04, 5663:14-18. Moreover, 53 of the peer reviewers were found",
+    // US 9/11 Commission notes: an abbreviated month is a date.
+    "identification of photos of two Sept. 11 hijackers,Aug. 9, 2002.",
+    "FBI notes, notes of Nov. 11 and 13 executive conference call",
+    // PSI runs to 2,849 notes, so a year after a date names a real one.
+    "Investments in Subprime Mortgage Backed Securities November 24, 2006 vs. August 31, 2007 - in $ Billions",
+  ];
+  for (const text of unchanged) {
+    it(text.slice(0, 50), () => expect(linkInlineMarkers(text, known)).toBe(text));
+  }
+
+  it("still links a marker after a year and a comma, or before an acronym (PSI)", () => {
+    const psi = new Set([3, 481]);
+    expect(
+      linkInlineMarkers("from just over 15,000 to approximately 8,000 by 2009, 3 while at the same time", psi)
+    ).toBe("from just over 15,000 to approximately 8,000 by 2009,[^3] while at the same time");
+    expect(
+      linkInlineMarkers("in the WMALT 2007-OA3 securitization in March 2007. 481 WMALT 2007-OA3 securities", psi)
+    ).toBe("in the WMALT 2007-OA3 securitization in March 2007.[^481] WMALT 2007-OA3 securities");
+  });
+
+  it("does not link a quantity: `2008, 119 years`, `14, 16 years later`, `50, 60, 70 officers`", () => {
+    const counts = new Set([16, 70, 119]);
+    for (const text of [
+      "On September 25, 2008, 119 years to the day of its founding",
+      "something is still going I think 14, 16 years later.",
+      "Would you like to devote 50, 60, 70 officers for a protracted period",
+    ]) {
+      expect(linkInlineMarkers(text, counts)).toBe(text);
+    }
+  });
+
+  it("still links a marker after a sentence", () => {
+    expect(linkInlineMarkers("the proceeds of a fraud. 47 The Court holds", known)).toBe(
+      "the proceeds of a fraud.[^47] The Court holds"
+    );
+  });
+});
+
+describe("a quantity word after a marker that closes a quotation (Jack Smith)", () => {
+  it("links a note between its neighbours even when a unit word follows", () => {
+    const text = 'The reality is about 250,000"; 152 days after that, the assertion was 32,000;';
+    expect(linkInlineMarkers(text, new Set([152]))).toBe(
+      'The reality is about 250,000";[^152] days after that, the assertion was 32,000;'
+    );
+  });
+});
+
+describe("a note number repeated at the top of its own text (Jack Smith note 81)", () => {
+  it("drops the repeated number rather than printing it in the note", () => {
+    const notes = parseFootnotes(["80 First note.", "81 See ECF No. 252 at 65.", "81 See, e.g., ECF No. 1 at 90."], 1);
+    expect(notes.map((n) => n.number)).toEqual([80, 81]);
+    expect(notes[1].text).toBe("See ECF No. 252 at 65. See, e.g., ECF No. 1 at 90.");
+  });
+});
+
+describe("an Ibid. note after a marker (Deepwater Horizon endnotes)", () => {
+  it("links the marker before Ibid. and a number", () => {
+    expect(linkInlineMarkers('(OTC Paper 20395, May 2010). 112 Ibid. 113 Laurel Calkins', new Set([112, 113]))).toBe(
+      "(OTC Paper 20395, May 2010).[^112] Ibid.[^113] Laurel Calkins"
+    );
+  });
+});

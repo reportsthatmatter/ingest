@@ -875,7 +875,10 @@ describe("footnote block anchoring", () => {
       140
     );
     const notes = parseFootnotes(result.footnotes, 44);
-    expect(notes.map((n) => n.number)).toEqual([140, 141, 142, 20]);
+    // And the wrapped "20 U.S.C." line is the rest of note 142, not a note 20
+    // (reportsthatmatter-je7).
+    expect(notes.map((n) => n.number)).toEqual([140, 141, 142]);
+    expect(notes[2].text).toBe("SCO-00455873 at 3. 20 U.S.C. 1234 and following.");
   });
 
   it("anchors on the expected number even when earlier candidates are noise", () => {
