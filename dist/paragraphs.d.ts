@@ -79,6 +79,24 @@ export declare function contentsTitles(lines: string[]): string[];
  */
 export declare function headingKey(text: string): string;
 /**
+ * What the contents lists for a report numbered by chapter and section
+ * (`numberedSections`): each "8.1" section's title as the contents spells it,
+ * and each chapter's title, so a chapter banner set over two lines can be
+ * read as one.
+ */
+export type NumberedContents = {
+    sections: Map<string, string>;
+    chapters: Set<string>;
+};
+/**
+ * The numbered sections and chapters a contents page lists, entries set
+ * "8.1   The Summer of Threat 254" with a plain space before the page number.
+ * An entry that wraps runs on until a line ends in its page number. Nothing
+ * from a page with fewer than three section entries: this is a contents page,
+ * not a page that happens to hold a numbered line.
+ */
+export declare function numberedContents(lines: string[]): NumberedContents;
+/**
  * The most common indent among content lines — the left margin of running text.
  * Paragraph-initial lines sit measurably to the right of it.
  */
@@ -127,7 +145,7 @@ export declare function contentsHeadings(blocks: Block[]): Block[];
  * a new paragraph. Blank lines are a secondary signal, and block quotes (set
  * far to the right) are kept as quotes.
  */
-export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>): Block[];
+export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>, numbered?: NumberedContents): Block[];
 export declare function endsSentence(text: string): boolean;
 export declare function mergeAcrossPages(blocks: Block[]): Block[];
 export declare function blocksToMarkdown(blocks: Block[]): string;

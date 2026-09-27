@@ -141,6 +141,90 @@ export function headingKey(text: string): string {
     .toLowerCase();
 }
 
+/**
+ * What the contents lists for a report numbered by chapter and section
+ * (`numberedSections`): each "8.1" section's title as the contents spells it,
+ * and each chapter's title, so a chapter banner set over two lines can be
+ * read as one.
+ */
+export type NumberedContents = {
+  sections: Map<string, string>;
+  chapters: Set<string>;
+};
+
+const SECTION_ENTRY = /^\s*(\d{1,2}\.\d{1,2})\s+(\S.*)$/;
+const CHAPTER_ENTRY = /^\s*(\d{1,2})\.\s+(\S.*)$/;
+/** The page number a contents entry ends on, after a space rather than leaders. */
+const ENTRY_PAGE = /\s+(?:\d{1,4}|[ivxlc]{1,7})\s*$/;
+
+/**
+ * The letters and digits of a title, lower-cased. What a heading set in
+ * capitals ("3.3 . . .AND IN THE FEDERAL AVIATION") and its contents entry
+ * (". . . and in the Federal Aviation Administration") share, whatever the
+ * typesetter did with the case, the spacing, the dashes and the dots.
+ */
+function titleLetters(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/**
+ * The numbered sections and chapters a contents page lists, entries set
+ * "8.1   The Summer of Threat 254" with a plain space before the page number.
+ * An entry that wraps runs on until a line ends in its page number. Nothing
+ * from a page with fewer than three section entries: this is a contents page,
+ * not a page that happens to hold a numbered line.
+ */
+export function numberedContents(lines: string[]): NumberedContents {
+  const sections = new Map<string, string>();
+  const chapters = new Set<string>();
+  for (let i = 0; i < lines.length; i++) {
+    const section = lines[i].match(SECTION_ENTRY);
+    const chapter = section ? null : lines[i].match(CHAPTER_ENTRY);
+    const entry = section ?? chapter;
+    if (!entry) continue;
+    let text = entry[2];
+    let j = i;
+    while (!ENTRY_PAGE.test(text)) {
+      const next = lines[j + 1];
+      if (next === undefined || !next.trim() || SECTION_ENTRY.test(next) || CHAPTER_ENTRY.test(next)) {
+        break;
+      }
+      text = `${text} ${next.trim()}`;
+      j++;
+    }
+    if (!ENTRY_PAGE.test(text)) continue;
+    i = j;
+    const title = normaliseWhitespace(text.replace(ENTRY_PAGE, ""));
+    if (section) sections.set(section[1], title);
+    else chapters.add(titleLetters(title));
+  }
+  return sections.size >= 3 ? { sections, chapters } : { sections: new Map(), chapters: new Set() };
+}
+
+/**
+ * A body line that opens a section the contents lists: its number, then its
+ * title however the body sets it — in capitals, wrapped over lines, spaced
+ * differently. The heading is the contents' own text, "8.1 The Summer of
+ * Threat", and `end` the last line it took.
+ */
+function numberedSectionAt(
+  lines: string[],
+  i: number,
+  sections: Map<string, string>
+): { text: string; end: number } | null {
+  const opener = lines[i].match(SECTION_ENTRY);
+  const title = opener ? sections.get(opener[1]) : undefined;
+  if (!opener || !title) return null;
+  const target = titleLetters(title);
+  let read = titleLetters(opener[2]);
+  let end = i;
+  while (read !== target && target.startsWith(read) && lines[end + 1]?.trim()) {
+    end++;
+    read += titleLetters(lines[end]);
+  }
+  return read === target ? { text: `${opener[1]} ${title}`, end } : null;
+}
+
 /** Leading-space count, which `pdftotext -layout` preserves from the page. */
 function indentOf(line: string): number {
   return line.length - line.trimStart().length;
@@ -562,7 +646,8 @@ export function toBlocks(
   allCapsHeadings = true,
   paragraphContents = false,
   numberedHeadings = true,
-  listed?: Set<string>
+  listed?: Set<string>,
+  numbered?: NumberedContents
 ): Block[] {
   if (paragraphContents) lines = joinParagraphContents(lines);
   // With `listedHeadings`, a would-be heading the contents does not name is
@@ -651,6 +736,12 @@ export function toBlocks(
     start = end;
   }
 
+  // Headings read from the contents (`numberedSections`) are complete as
+  // they stand: nothing below them is folded in as a wrapped title.
+  const complete = new Set<Block>();
+  // The last line a numbered section's heading took.
+  let taken = -1;
+
   const flush = () => {
     if (!current.length) return;
     const text = normaliseWhitespace(current.join(" "));
@@ -670,6 +761,7 @@ export function toBlocks(
   };
 
   for (const [i, line] of lines.entries()) {
+    if (i <= taken) continue;
     if (line === COLUMN_BREAK) {
       flush();
       list = null;
@@ -715,6 +807,23 @@ export function toBlocks(
       list = null;
     }
 
+    // A section the contents lists, by its number: read before anything else
+    // judges the line, because the body sets these titles in capitals that
+    // may carry a date ("9.2 SEPTEMBER 11, 2001") or wrap, and as ordinary
+    // caps headings they were lost into the paragraph below or fused onto
+    // the chapter banner above.
+    const section = numbered ? numberedSectionAt(lines, i, numbered.sections) : null;
+    if (section) {
+      flush();
+      list = null;
+      openDivisionIndent = -1;
+      const heading: Block = { kind: "heading", level: 2, text: section.text };
+      complete.add(heading);
+      blocks.push(heading);
+      taken = section.end;
+      continue;
+    }
+
     // Headings and contents entries are recognisable on their own, and on
     // structured pages the indentation alone will not separate them — the
     // table of contents is set at a single indent throughout.
@@ -744,6 +853,7 @@ export function toBlocks(
     if (
       !current.length &&
       openHeading?.kind === "heading" &&
+      !complete.has(openHeading) &&
       danglesMidPhrase(openHeading.text) &&
       /^[a-z]/.test(single)
     ) {
@@ -781,6 +891,7 @@ export function toBlocks(
       // that stops mid-phrase.
       if (
         previous?.kind === "heading" &&
+        !complete.has(previous) &&
         previous.level === standalone.level &&
         !/[.?!:]$/.test(previous.text) &&
         // A line that opens its own numbering starts a new heading, not a
@@ -828,7 +939,24 @@ export function toBlocks(
   }
 
   flush();
+  if (numbered?.chapters.size) joinChapterBanners(blocks, numbered.chapters);
   return blocks;
+}
+
+/**
+ * A chapter banner set over two lines that each end like a title ("WHAT TO
+ * DO?" / "A GLOBAL STRATEGY") is read as two headings; where together they
+ * are a chapter the contents lists, they are one.
+ */
+function joinChapterBanners(blocks: Block[], chapters: Set<string>): void {
+  for (let k = 0; k + 1 < blocks.length; k++) {
+    const a = blocks[k];
+    const b = blocks[k + 1];
+    if (a.kind !== "heading" || b.kind !== "heading" || a.level !== b.level) continue;
+    if (chapters.has(titleLetters(a.text)) || !chapters.has(titleLetters(a.text + b.text))) continue;
+    a.text = `${a.text} ${b.text}`;
+    blocks.splice(k + 1, 1);
+  }
 }
 
 /**

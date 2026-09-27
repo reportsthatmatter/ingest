@@ -89,6 +89,42 @@ export const listedHeadings = () => ({
     stage: "page",
 });
 /**
+ * This report's notes are endnotes: printed together at the back, never at a
+ * page foot, so no page is searched for a footnote block (reportsthatmatter-vpx).
+ *
+ * The 9/11 Commission Report numbers its notes afresh in each chapter and
+ * prints them in a notes section, under running heads such as "11
+ * Foresight—and Hindsight". Read as page-foot blocks, those pages yielded
+ * notes that nothing in the text refers to: the chapter head taken for note
+ * 11, with chapter 11's first thirteen notes folded into it. Opt-in: most of
+ * the corpus does set its notes at the page foot, and nothing on a notes page
+ * says which kind it is.
+ */
+export const endnotes = () => ({ name: "endnotes", stage: "page" });
+/**
+ * Reads the report's chapter-and-section numbering from its contents
+ * ("8.1   The Summer of Threat 254") and takes each numbered section's heading
+ * from there (reportsthatmatter-w8g).
+ *
+ * The 9/11 Commission Report sets its sections in capitals beneath each
+ * chapter's banner ("THE SYSTEM WAS / BLINKING RED" then "8.1 THE SUMMER OF
+ * THREAT"). As caps lines they were fused onto the banner, lost into the
+ * paragraph below when the title carried a date ("9.2 SEPTEMBER 11, 2001"),
+ * or cut at a wrap. A body line opening on a listed number whose title
+ * matches the entry, letter for letter across its wrapped lines, is that
+ * section, spelt as the contents spells it — the report's own case, not a
+ * guess at one. A chapter banner the parser read as two headings is joined
+ * where the contents lists them as one chapter.
+ *
+ * Opt-in: in a report numbered by paragraph ("7.1", "10.14") the same shape
+ * opens ordinary paragraphs, and only a contents that lists sections this
+ * way says what they are.
+ */
+export const numberedSections = () => ({
+    name: "numberedSections",
+    stage: "page",
+});
+/**
  * Whether a numbered or lettered line ("1. Withdrawing the Army", "C. The
  * Scarman Inquiry") may be read as a heading. On by default — Jack Smith's
  * report is structured that way. A report whose structure comes from its
