@@ -852,15 +852,42 @@ export function endsSentence(text) {
         return false;
     return true;
 }
-export function mergeAcrossPages(blocks) {
+/** Lower case, or punctuation no sentence opens on. */
+const CONTINUATION = /^[a-z,;]/;
+/**
+ * A quotation opening a page that is really the rest of the sentence above:
+ * a skewed scan insets a page's first lines, so they read as a quotation.
+ *
+ * A genuine quotation is introduced (the paragraph above ends a sentence, on
+ * "as follows:" say) or opens on a quotation mark or bracket, so neither is
+ * taken. Otherwise it continues the sentence if it opens in lower case, or if
+ * it stops mid-sentence itself and the page's next block carries on in lower
+ * case — the sentence running in through the inset lines and out again.
+ */
+function continuesSentence(quote, next) {
+    if (/^["\u201c\u2018'[(]/.test(quote))
+        return false;
+    if (CONTINUATION.test(quote))
+        return true;
+    return (!endsSentence(quote) &&
+        next?.kind === "paragraph" &&
+        CONTINUATION.test(next.text));
+}
+export function mergeAcrossPages(blocks, options = {}) {
     const merged = [];
-    for (const block of blocks) {
+    for (const [index, block] of blocks.entries()) {
         // A page marker sits exactly where a sentence is most likely to be split,
         // so look past it — then leave it after the joined paragraph, since the
-        // sentence belongs to the page it started on.
-        const markerIndex = merged.length && merged[merged.length - 1].kind === "page"
+        // sentence belongs to the page it started on. A paragraph that fills a
+        // whole page leaves that page's marker behind it too, so with
+        // `continuations` look past every marker in the run.
+        let markerIndex = merged.length && merged[merged.length - 1].kind === "page"
             ? merged.length - 1
             : -1;
+        if (options.continuations) {
+            while (markerIndex > 0 && merged[markerIndex - 1].kind === "page")
+                markerIndex -= 1;
+        }
         const previous = merged[markerIndex === -1 ? merged.length - 1 : markerIndex - 1];
         // A word broken by the page break. Whether the hyphen belongs to the word
         // or to the typesetter cannot be known for certain, but the case of what
@@ -907,6 +934,15 @@ export function mergeAcrossPages(blocks) {
             /^[a-z,;]/.test(block.text)) {
             const last = previous.items.length - 1;
             previous.items[last] = `${previous.items[last]} ${block.text}`;
+            continue;
+        }
+        if (options.continuations &&
+            block.kind === "quote" &&
+            previous?.kind === "paragraph" &&
+            acrossPages &&
+            !endsSentence(previous.text) &&
+            continuesSentence(block.text, blocks[index + 1])) {
+            previous.text = `${previous.text} ${block.text}`;
             continue;
         }
         if (block.kind === "paragraph" &&

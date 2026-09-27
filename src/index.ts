@@ -23,6 +23,7 @@ export {
   listedHeadings,
   endnotes,
   numberedSections,
+  pageBreakContinuations,
   runningFurniture,
   geometry,
   columns,
@@ -57,9 +58,10 @@ export {
   losslessCheck,
   retentionCheck,
   severedSentenceCheck,
+  pageBreakSplits,
   digitDensityCheck,
 } from "./fidelity";
-export type { Check } from "./fidelity";
+export type { Check, PageBreakSplit } from "./fidelity";
 export { computeBaseline, diffBaselines } from "./baseline";
 export type { Baseline } from "./baseline";
 export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler";

@@ -147,5 +147,13 @@ export declare function contentsHeadings(blocks: Block[]): Block[];
  */
 export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>, numbered?: NumberedContents): Block[];
 export declare function endsSentence(text: string): boolean;
-export declare function mergeAcrossPages(blocks: Block[]): Block[];
+export type MergeOptions = {
+    /**
+     * The `pageBreakContinuations` pass (reportsthatmatter-ca3, -kb4): look past
+     * every page marker, not just one, and read a page-opening quotation that
+     * carries on a sentence as the rest of that sentence. See the pass.
+     */
+    continuations?: boolean;
+};
+export declare function mergeAcrossPages(blocks: Block[], options?: MergeOptions): Block[];
 export declare function blocksToMarkdown(blocks: Block[]): string;

@@ -8,6 +8,7 @@
  */
 
 import { autoFix } from "./ocr";
+import { endsSentence } from "./paragraphs";
 
 export type Check = { name: string; ok: boolean; detail: string };
 
@@ -232,6 +233,85 @@ export function severedSentenceCheck(markdown: string): Check {
       ? `${severed}/${paragraphs} paragraphs run straight into a quote (${(rate * 100).toFixed(1)}%)`
       : "none",
   };
+}
+
+/**
+ * One sentence broken across a page break (reportsthatmatter-ca3, -kb4).
+ *
+ * - `paragraph`: the continuation opens a new paragraph in lower case.
+ * - `quote`: the continuation was set as a block quotation opening in lower
+ *   case — a skewed scan insets a page's first lines.
+ * - `skewQuote`: a page-opening quotation that does not finish its sentence
+ *   and runs straight into a lower-case paragraph: the sentence above,
+ *   carried on through the inset lines and out the other side.
+ * - `capitalised`: the continuation opens on a capital. Often a name ("Mr." /
+ *   "Trump") or a proper noun, but just as often a new paragraph after a
+ *   heading-less break, so it is counted, never joined (reportsthatmatter-q0m).
+ */
+export type PageBreakSplit = {
+  kind: "paragraph" | "quote" | "skewQuote" | "capitalised";
+  before: string;
+  after: string;
+};
+
+const PROSE = (block: string) => !/^(#|>|-|%%|\[\^|\|)/.test(block);
+const PAGE_MARKER = /^%%page [^%]+%%$/;
+/** Lower case, or punctuation no sentence opens on. */
+const CONTINUES = /^[a-zà-ÿ,;]/;
+
+/** Without the footnote markers a sentence's full stop sits in front of. */
+function proseEnd(block: string): string {
+  return block.replace(/(?:\[\^\d+(?:-\d+)?\])+\s*$/, "");
+}
+
+/**
+ * Every place a paragraph stops mid-sentence at the foot of a page and the
+ * next page carries the rest of the sentence as a separate block.
+ *
+ * `severedSentenceCheck` looks only at the block immediately after a
+ * paragraph, so a page marker between the halves hides the split from it, and
+ * it counts quotations only. This is the measure the `pageBreakContinuations`
+ * pass is judged by: the count across a report before and after.
+ */
+export function pageBreakSplits(markdown: string): PageBreakSplit[] {
+  const blocks = stripFrontMatter(markdown)
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  const found: PageBreakSplit[] = [];
+  for (const [i, block] of blocks.entries()) {
+    if (!PROSE(block) || endsSentence(proseEnd(block))) continue;
+    let j = i + 1;
+    while (j < blocks.length && PAGE_MARKER.test(blocks[j])) j += 1;
+    if (j === i + 1 || j >= blocks.length) continue; // not across a page break
+    const next = blocks[j];
+
+    if (PROSE(next)) {
+      found.push({
+        kind: CONTINUES.test(next) ? "paragraph" : "capitalised",
+        before: block,
+        after: next,
+      });
+    } else if (/^> /.test(next) && !/^> -/.test(next)) {
+      const text = next.slice(2);
+      if (/^["“‘'[(]/.test(text)) continue; // a quotation opening properly
+      if (CONTINUES.test(text)) {
+        found.push({ kind: "quote", before: block, after: next });
+        continue;
+      }
+      const following = blocks[j + 1];
+      if (
+        !endsSentence(proseEnd(text)) &&
+        following !== undefined &&
+        PROSE(following) &&
+        CONTINUES.test(following)
+      ) {
+        found.push({ kind: "skewQuote", before: block, after: next });
+      }
+    }
+  }
+  return found;
 }
 
 export function runChecks(
