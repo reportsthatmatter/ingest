@@ -21,6 +21,8 @@ export {
   paragraphNotes,
   chapterContents,
   listedHeadings,
+  endnotes,
+  numberedSections,
   runningFurniture,
   geometry,
   columns,

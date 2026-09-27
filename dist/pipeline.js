@@ -3,7 +3,7 @@ import { splitPage, takePrintedNumber, collapseDoubleSpacing } from "./clean.js"
 import { extractParagraphNotes } from "./paragraph-notes.js";
 import { applyCorrections } from "./corrections.js";
 import { rejoinHyphenated, vocabulary } from "./hyphens.js";
-import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, mergeAcrossPages, contentsHeadings, contentsTitles, headingKey, bodyIndent, } from "./paragraphs.js";
+import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, mergeAcrossPages, contentsHeadings, contentsTitles, headingKey, numberedContents, bodyIndent, } from "./paragraphs.js";
 import { parseFootnotes, linkInlineMarkers, linkFlushMarkers, renderEndnotes, } from "./footnotes.js";
 import { autoFix, findSuspects, rankSuspects } from "./ocr.js";
 /**
@@ -42,8 +42,8 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     const splitGroups = pageGroups.map((group) => group.map(() => {
         const page = pages[pageOffset++];
         // Notes under each paragraph are read across the volume below, not
-        // as a block at the page foot.
-        const split = resolved.paragraphNotes
+        // as a block at the page foot; endnotes are not read as notes at all.
+        const split = resolved.paragraphNotes || resolved.endnotes
             ? splitPageNumberOnly(page)
             : splitPage(page, expectedNote);
         // A note that ran over the page break: its tail opens this page's
@@ -98,6 +98,8 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     // contents pages go by. The contents pages themselves are not gated, nor is
     // anything before them — the contents lists what follows it.
     const listed = new Set();
+    // `numberedSections`: the sections and chapters the contents numbers.
+    const numbered = { sections: new Map(), chapters: new Set() };
     for (const [groupIndex, group] of cleanedGroups.entries()) {
         for (const split of group) {
             const pageLines = collapseDoubleSpacing(split.body);
@@ -105,12 +107,21 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
             for (const title of titles)
                 listed.add(headingKey(title));
             const gate = resolved.listedHeadings && !titles.length && listed.size ? listed : undefined;
+            // The contents pages themselves are laid out as they were before.
+            const entries = resolved.numberedSections ? numberedContents(pageLines) : undefined;
+            for (const [number, title] of entries?.sections ?? [])
+                numbered.sections.set(number, title);
+            for (const chapter of entries?.chapters ?? [])
+                numbered.chapters.add(chapter);
+            const sections = resolved.numberedSections && !entries?.sections.size && numbered.sections.size
+                ? numbered
+                : undefined;
             const at = { volume: split.volume, pdfIndex: split.pdfIndex, printed: split.printed };
             const blocks = (isContentsPage(pageLines)
                 ? parseContentsPage(pageLines)
                 : toBlocks(pageLines, resolved.geometry === "per-page"
                     ? pageMargin(split.body, margins[0])
-                    : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate)).map((block) => ({ ...block, at }));
+                    : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections)).map((block) => ({ ...block, at }));
             // Record where each printed page begins. These documents are cited by page
             // ("Report at 62"), so the printed number is the citation unit readers
             // already use — and it can be checked against the original PDF.

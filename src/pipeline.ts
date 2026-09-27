@@ -13,6 +13,8 @@ import {
   contentsHeadings,
   contentsTitles,
   headingKey,
+  numberedContents,
+  type NumberedContents,
   bodyIndent,
   type Block,
 } from "./paragraphs";
@@ -90,8 +92,8 @@ export function ingestPageGroups(
     group.map(() => {
       const page = pages[pageOffset++];
       // Notes under each paragraph are read across the volume below, not
-      // as a block at the page foot.
-      const split = resolved.paragraphNotes
+      // as a block at the page foot; endnotes are not read as notes at all.
+      const split = resolved.paragraphNotes || resolved.endnotes
         ? splitPageNumberOnly(page)
         : splitPage(page, expectedNote);
 
@@ -155,6 +157,8 @@ export function ingestPageGroups(
   // contents pages go by. The contents pages themselves are not gated, nor is
   // anything before them — the contents lists what follows it.
   const listed = new Set<string>();
+  // `numberedSections`: the sections and chapters the contents numbers.
+  const numbered: NumberedContents = { sections: new Map(), chapters: new Set() };
 
   for (const [groupIndex, group] of cleanedGroups.entries()) {
     for (const split of group) {
@@ -162,6 +166,14 @@ export function ingestPageGroups(
       const titles = resolved.listedHeadings ? contentsTitles(pageLines) : [];
       for (const title of titles) listed.add(headingKey(title));
       const gate = resolved.listedHeadings && !titles.length && listed.size ? listed : undefined;
+      // The contents pages themselves are laid out as they were before.
+      const entries = resolved.numberedSections ? numberedContents(pageLines) : undefined;
+      for (const [number, title] of entries?.sections ?? []) numbered.sections.set(number, title);
+      for (const chapter of entries?.chapters ?? []) numbered.chapters.add(chapter);
+      const sections =
+        resolved.numberedSections && !entries?.sections.size && numbered.sections.size
+          ? numbered
+          : undefined;
       const at = { volume: split.volume, pdfIndex: split.pdfIndex, printed: split.printed };
       const blocks = (
         isContentsPage(pageLines)
@@ -176,7 +188,8 @@ export function ingestPageGroups(
               resolved.allCapsHeadings,
               resolved.chapterContents,
               resolved.numberedHeadings ?? true,
-              gate
+              gate,
+              sections
             )
       ).map((block) => ({ ...block, at }));
 

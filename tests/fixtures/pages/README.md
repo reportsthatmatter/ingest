@@ -32,6 +32,11 @@ Leveson defect shipped (#118 §1.5); these exist so a heuristic meets real input
 | `psi-walk-up-music.txt` | `us-psi-financial-crisis/archive/PSI REPORT …pdf` | 153 | A quoted awards-night script whose cue lines ("WALK-UP MUSIC", "DAVID SCHNEIDER") pass the all-caps heading test (reportsthatmatter-h0l) |
 | `psi-privileged-exhibit.txt` | `us-psi-financial-crisis/archive/PSI REPORT …pdf` | 309 | A quoted S&P draft opening on a caps banner, "***PRIVILEGED AND CONFIDENTIAL…***" (reportsthatmatter-h0l) |
 | `psi-run-in-title.txt` | `us-psi-financial-crisis/archive/PSI REPORT …pdf` | 384 | A numbered finding with a run-in title ("4. Conflict Between … Trading. In 2007, Goldman"), which reads as a numbered heading (reportsthatmatter-h0l) |
+| `911-contents-p5.txt`, `911-contents-p6.txt`, `911-contents-p7.txt` | `us-911-commission/archive/911Report.pdf` | 2, 3, 4 | The contents: chapters and "8.1"-numbered sections in title case, a plain space before each page number, some entries wrapped (`numberedSections`, reportsthatmatter-w8g) |
+| `911-rise-of-bin-ladin.txt` | `us-911-commission/archive/911Report.pdf` | 72 | "2.3 THE RISE OF BIN LADIN AND AL QAEDA (1988–1992)": a section head in caps whose dates stop it reading as a caps heading, so it was lost into the paragraph below (reportsthatmatter-w8g) |
+| `911-adaptation.txt` | `us-911-commission/archive/911Report.pdf` | 90 | A section head wrapped over two lines, worded differently from its contents entry (reportsthatmatter-w8g) |
+| `911-chapter-4-opening.txt`, `911-chapter-8-opening.txt`, `911-chapter-12-opening.txt` | `us-911-commission/archive/911Report.pdf` | 125, 271, 378 | A chapter banner over two lines, then its first section: fused into one heading ("THE SYSTEM WAS BLINKING RED" 8.1 THE SUMMER OF THREAT), or split in two ("WHAT TO DO?" / "A GLOBAL STRATEGY") (reportsthatmatter-w8g) |
+| `911-notes-chapter-11.txt` | `us-911-commission/archive/911Report.pdf` | 577 | An endnotes page whose chapter head "11 Foresight—and Hindsight" reads as page-foot note 11 (`endnotes`, reportsthatmatter-vpx) |
 
 To add one: pick the page, extract it, and record it here with what it is for.
 A fixture that does not contain its hard case is worse than none, because it

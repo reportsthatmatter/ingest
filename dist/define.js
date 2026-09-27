@@ -40,6 +40,8 @@ export function resolvePasses(def) {
         paragraphNotes: passes.some((pass) => pass.name === "paragraphNotes"),
         chapterContents: passes.some((pass) => pass.name === "chapterContents"),
         listedHeadings: passes.some((pass) => pass.name === "listedHeadings"),
+        endnotes: passes.some((pass) => pass.name === "endnotes"),
+        numberedSections: passes.some((pass) => pass.name === "numberedSections"),
         quoteInset: passes.find((pass) => pass.stage === "quoteInset")?.columns,
         allCapsHeadings: passes.find((pass) => pass.stage === "allCapsHeadings")?.enabled ?? true,
         numberedHeadings: passes.find((pass) => pass.stage === "numberedHeadings")?.enabled ?? true,
