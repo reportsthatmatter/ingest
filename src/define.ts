@@ -40,6 +40,7 @@ export type ResolvedPasses = {
   geometry: "per-volume" | "per-page" | "document";
   flushFootnoteMarkers: boolean;
   numberedParagraphs: boolean;
+  escapeNumberedParagraphs?: boolean;
   paragraphNotes?: boolean;
   chapterContents?: boolean;
   listedHeadings?: boolean;
@@ -88,6 +89,13 @@ export function pipeline(def: PipelineDef): PipelineDef {
     throw new Error(`${def.id}: more than one allCapsHeadings pass declared`);
   }
 
+  const passNames = new Set((def.passes ?? []).map((pass) => pass.name));
+  if (passNames.has("escapeNumberedParagraphs") && !passNames.has("numberedParagraphs")) {
+    throw new Error(
+      `${def.id}: escapeNumberedParagraphs declared without numberedParagraphs — it only escapes the number numberedParagraphs already split on`
+    );
+  }
+
   return def;
 }
 
@@ -106,6 +114,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     geometry: geometry?.scope ?? "document",
     flushFootnoteMarkers: passes.some((pass) => pass.name === "flushFootnoteMarkers"),
     numberedParagraphs: passes.some((pass) => pass.name === "numberedParagraphs"),
+    escapeNumberedParagraphs: passes.some((pass) => pass.name === "escapeNumberedParagraphs"),
     paragraphNotes: passes.some((pass) => pass.name === "paragraphNotes"),
     chapterContents: passes.some((pass) => pass.name === "chapterContents"),
     listedHeadings: passes.some((pass) => pass.name === "listedHeadings"),

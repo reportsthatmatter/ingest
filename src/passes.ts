@@ -112,6 +112,35 @@ export const numberedParagraphs = (): PagePass => ({
 });
 
 /**
+ * Writes `numberedParagraphs`' own opening number so Markdown keeps it a
+ * paragraph rather than reading it as an ordered list (reportsthatmatter-4qw).
+ *
+ * The Iraq Inquiry's Executive Summary numbers "13.", "20." straight through,
+ * at the left margin — `numberedParagraphs` already reads that as a paragraph
+ * break, but a paragraph reaching the markdown as bare "20. …" is an ordered
+ * list to Markdown: every one of the report's 892 numbered paragraphs
+ * rendered as an `<li>` with no id, so only ~60 of ~950 paragraphs could be
+ * cited, quoted or linked. `numberedFindings` solves the same problem for a
+ * report whose numbers sit indented past the margin (Philip Morris), by
+ * escaping the finding's own leading number — "3437\. …" — once it has
+ * matched a finding to the sequence it expects. A margin-set numbering has no
+ * such sequence to confirm against; escaping is safe here because
+ * `numberedParagraphs` has already decided the line opens a paragraph, so
+ * whatever number happens to be there is the paragraph's own.
+ *
+ * Opt-in on top of `numberedParagraphs`, and only meaningful with it —
+ * declaring this without it is rejected by `pipeline()`. Not the default
+ * behaviour of `numberedParagraphs` itself: Litvinenko, Leveson, Hillsborough
+ * and Saville also number paragraphs "N." at the margin, and each is a
+ * separate report's own choice to adopt, not a change every one of them
+ * inherits unannounced.
+ */
+export const escapeNumberedParagraphs = (): PagePass => ({
+  name: "escapeNumberedParagraphs",
+  stage: "page",
+});
+
+/**
  * Reads notes set beneath the paragraph they belong to, numbered afresh for
  * each paragraph, in two columns read down each one (Saville,
  * reportsthatmatter-0rx). Replaces the page-foot footnote reading for the

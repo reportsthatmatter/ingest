@@ -18,6 +18,7 @@ export {
   footnoteBlock,
   flushFootnoteMarkers,
   numberedParagraphs,
+  escapeNumberedParagraphs,
   paragraphNotes,
   chapterContents,
   listedHeadings,
