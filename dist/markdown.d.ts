@@ -9,6 +9,16 @@ export declare function splitFrontMatter(source: string): {
     content: string;
 };
 /**
+ * The characters a `paragraphId()` can contain, as a regex source: any letter
+ * or number (so `boardʼs`, `frédéric`, `since¼` keep the report's own
+ * spelling) plus the hyphen. Anything that reads ids back out of rendered
+ * HTML must use this rather than `[a-z0-9-]`, or a paragraph whose opening
+ * words carry a non-ASCII letter silently drops out of the section index,
+ * search and the corpus baseline (reportsthatmatter-4k6). Use with the `u`
+ * flag.
+ */
+export declare const PARAGRAPH_ID_CHARS = "[\\p{L}\\p{N}-]+";
+/**
  * A durable id for a paragraph, derived from its own opening words.
  *
  * Positional ids (`p-1`, `p-2`, …) look stable and are not: re-ingesting a

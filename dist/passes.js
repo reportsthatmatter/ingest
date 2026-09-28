@@ -151,6 +151,32 @@ export const numberedFindings = () => ({
     stage: "page",
 });
 /**
+ * Reads the parts, chapters and appendices the report's contents lists, and
+ * takes each one's heading from the body lines that spell it
+ * (reportsthatmatter-a0z).
+ *
+ * Deep Water opens each chapter on a page of its own: "Chapter Three", then
+ * a title set a word or two to a line ("“It was like / pulling teeth.” /
+ * Oversight—and Oversights—in / …"), then the first paragraph with no blank
+ * line between. Nothing in that shape is a heading line by line, so every
+ * chapter's title was read into its first paragraph, and the report's
+ * sections were its figure captions instead. The contents names each
+ * division — "Chapter 3" over its title, "PART I: The Path to Tragedy",
+ * "Foreword", "Endnotes", "Appendix A: Commission Members" — and a body line
+ * that opens the same division, its number spelt out or not, and whose
+ * letters spell the listed title across however many lines the body wraps
+ * it over, is that division's heading. Parts and unlabelled entries are
+ * top level, chapters nest under them.
+ *
+ * It only adds headings. Opt-in: a contents entry set without dot leaders
+ * looks like any line with a number at its end, and only a report whose
+ * contents is laid out this way says which lines are entries.
+ */
+export const listedDivisions = () => ({
+    name: "listedDivisions",
+    stage: "page",
+});
+/**
  * Declares the body double-spaced on every page, so a single blank line is
  * line spacing and never a paragraph break.
  *
@@ -168,6 +194,22 @@ export const numberedFindings = () => ({
  */
 export const doubleSpaced = () => ({
     name: "doubleSpaced",
+    stage: "page",
+});
+/**
+ * A numbered or lettered heading whose title runs onto a short line of its
+ * own is one heading (reportsthatmatter-a0z): Deep Water's Chapter 9 sets
+ * "4. The Need for Increased Research and Development to Improve Spill" over
+ * "Response", then its paragraph with no blank line between, and the heading
+ * stopped at "Spill". The line below is folded in when it is at most six
+ * words, capitalised but for small words, and ends on no stop.
+ *
+ * Opt-in: elsewhere a short title-case line under a heading can be a byline,
+ * a dateline or a run-in label, and only a report that wraps its headings
+ * this way says which it is.
+ */
+export const wrappedHeadings = () => ({
+    name: "wrappedHeadings",
     stage: "page",
 });
 /**
@@ -194,6 +236,32 @@ export const doubleSpaced = () => ({
  */
 export const contentsOutline = () => ({
     name: "contentsOutline",
+    stage: "page",
+});
+/**
+ * Rejoins a sentence the page break left in pieces (reportsthatmatter-ca3,
+ * reportsthatmatter-kb4; jack-smith-report#1).
+ *
+ * Two shapes the default page-break merge misses. A paragraph that runs over
+ * a whole page leaves that page's marker behind it, so the continuation on
+ * the page after meets two markers and is not joined. And a skewed scan
+ * insets a page's first lines, so the rest of the sentence above arrives as a
+ * block quotation. With this pass the merge looks past every page marker, and
+ * a quotation opening a page after a paragraph that stops mid-sentence is
+ * read as that sentence's continuation when it opens in lower case, or when
+ * it stops mid-sentence too and runs straight into a lower-case paragraph.
+ * A quotation introduced by a finished sentence ("as follows:") or opening on
+ * a quotation mark is left alone, as is a capitalised paragraph opening the
+ * next page (reportsthatmatter-q0m).
+ *
+ * Opt-in: across the rest of the corpus most page-opening lower-case
+ * quotations are a real quotation whose first lines, on the page before, were
+ * read as prose (Leveson), or OCR noise (Challenger), and joining them would
+ * turn a quotation into the reporter's own words. `pageBreakSplits` in the
+ * fidelity checks counts what is left for a report to judge by.
+ */
+export const pageBreakContinuations = () => ({
+    name: "pageBreakContinuations",
     stage: "page",
 });
 /**

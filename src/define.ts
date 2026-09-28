@@ -48,6 +48,9 @@ export type ResolvedPasses = {
   numberedFindings?: boolean;
   doubleSpaced?: boolean;
   contentsOutline?: boolean;
+  listedDivisions?: boolean;
+  wrappedHeadings?: boolean;
+  pageBreakContinuations?: boolean;
   quoteInset?: number;
   allCapsHeadings: boolean;
   numberedHeadings?: boolean;
@@ -107,6 +110,9 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     numberedFindings: passes.some((pass) => pass.name === "numberedFindings"),
     doubleSpaced: passes.some((pass) => pass.name === "doubleSpaced"),
     contentsOutline: passes.some((pass) => pass.name === "contentsOutline"),
+    listedDivisions: passes.some((pass) => pass.name === "listedDivisions"),
+    wrappedHeadings: passes.some((pass) => pass.name === "wrappedHeadings"),
+    pageBreakContinuations: passes.some((pass) => pass.name === "pageBreakContinuations"),
     quoteInset: passes.find(
       (pass): pass is QuoteInsetPass => pass.stage === "quoteInset"
     )?.columns,

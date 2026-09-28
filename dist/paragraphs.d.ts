@@ -99,6 +99,34 @@ export type NumberedContents = {
  */
 export declare function numberedContents(lines: string[]): NumberedContents;
 /**
+ * The divisions a contents page lists (`listedDivisions`): its parts,
+ * chapters and appendices by label and number, and the unlabelled entries
+ * around them ("Foreword", "Endnotes", "Index"), each with its title as the
+ * contents spells it. `used` records which have been found in the body, so
+ * each opens once.
+ */
+export type ListedDivision = {
+    /** "chapter", "part", "appendix"…; absent for an unlabelled entry. */
+    kind?: string;
+    /** The division's number, canonical: "3" for "3", "III" or "Three"; "a" for "Appendix A". */
+    number?: string;
+    title: string;
+};
+export type ListedDivisions = {
+    entries: ListedDivision[];
+    used: Set<ListedDivision>;
+};
+/**
+ * What a contents page lists, when its entries are set as divisions with a
+ * page after a gap rather than dot leaders: "Chapter 3      55" over its
+ * title lines, "PART II: Explosion and Aftermath:" wrapping to its page on
+ * the next line, "Foreword      vi". A labelled entry whose own line carries
+ * the page takes the lines below it as its title, up to the next entry; one
+ * whose line has no page runs on until a line does. Nothing from a page with
+ * fewer than three labelled entries.
+ */
+export declare function divisionContents(lines: string[]): ListedDivision[];
+/**
  * The most common indent among content lines — the left margin of running text.
  * Paragraph-initial lines sit measurably to the right of it.
  */
@@ -188,7 +216,15 @@ export type FindingCounter = {
  * a new paragraph. Blank lines are a secondary signal, and block quotes (set
  * far to the right) are kept as quotes.
  */
-export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>, numbered?: NumberedContents, findings?: FindingCounter, outline?: Outline): Block[];
+export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>, numbered?: NumberedContents, findings?: FindingCounter, outline?: Outline, divisions?: ListedDivisions, wrappedHeadings?: boolean): Block[];
 export declare function endsSentence(text: string): boolean;
-export declare function mergeAcrossPages(blocks: Block[]): Block[];
+export type MergeOptions = {
+    /**
+     * The `pageBreakContinuations` pass (reportsthatmatter-ca3, -kb4): look past
+     * every page marker, not just one, and read a page-opening quotation that
+     * carries on a sentence as the rest of that sentence. See the pass.
+     */
+    continuations?: boolean;
+};
+export declare function mergeAcrossPages(blocks: Block[], options?: MergeOptions): Block[];
 export declare function blocksToMarkdown(blocks: Block[]): string;
