@@ -1,12 +1,19 @@
 import { execFileSync } from "node:child_process";
+/** The `pdftotext` arguments for one page range, with an optional crop. */
+export function pdftotextArgs(pdfPath, crop) {
+    const cropArgs = crop
+        ? ["-x", String(crop.x), "-y", String(crop.y), "-W", String(crop.width), "-H", String(crop.height)]
+        : [];
+    return [...cropArgs, "-layout", "-enc", "UTF-8", pdfPath, "-"];
+}
 /**
  * Extracts text with `pdftotext -layout`, which preserves leading whitespace.
  * The indentation is load-bearing: it is what tells us where paragraphs begin.
  */
-export function extractPages(pdfPath) {
+export function extractPages(pdfPath, crop) {
     let raw;
     try {
-        raw = execFileSync("pdftotext", ["-layout", "-enc", "UTF-8", pdfPath, "-"], {
+        raw = execFileSync("pdftotext", pdftotextArgs(pdfPath, crop), {
             encoding: "utf8",
             maxBuffer: 512 * 1024 * 1024,
             stdio: ["ignore", "pipe", "ignore"],

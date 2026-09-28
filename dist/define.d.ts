@@ -1,7 +1,9 @@
 import type { Pass, VolumePass, BodyPass } from "./passes.js";
+import type { Crop } from "./extract.js";
 export type Volume = {
     path: string;
     sha256?: string;
+    crop?: Crop;
 };
 /**
  * One report's build, as a program rather than as data the pipeline

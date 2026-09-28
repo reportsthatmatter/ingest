@@ -16,7 +16,7 @@ export type { Pass, PagePass, BodyPass, VolumePass, GeometryPass, QuoteInsetPass
 export { detectGutter, splitColumns } from "./columns.js";
 export type { Gutter } from "./columns.js";
 export { extractPages, normaliseWhitespace } from "./extract.js";
-export type { Page } from "./extract.js";
+export type { Page, Crop } from "./extract.js";
 export { ingest, ingestPages, ingestPageGroups } from "./pipeline.js";
 export type { IngestResult, Metadata } from "./pipeline.js";
 export { resolveVolume, checkVolume, fileChecksum } from "./volumes.js";

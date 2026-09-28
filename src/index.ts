@@ -53,7 +53,7 @@ export type { Gutter } from "./columns";
 
 // — Running a build —
 export { extractPages, normaliseWhitespace } from "./extract";
-export type { Page } from "./extract";
+export type { Page, Crop } from "./extract";
 export { ingest, ingestPages, ingestPageGroups } from "./pipeline";
 export type { IngestResult, Metadata } from "./pipeline";
 export { resolveVolume, checkVolume, fileChecksum } from "./volumes";
