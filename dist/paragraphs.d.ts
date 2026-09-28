@@ -87,6 +87,13 @@ export declare function headingKey(text: string): string;
 export type NumberedContents = {
     sections: Map<string, string>;
     chapters: Set<string>;
+    /**
+     * Divisions the contents names by word and label — "Chapter 1", "PART ONE",
+     * "Appendix A" — keyed by `divisionKey`, each with its title. Columbia sets
+     * its contents this way and opens each division on a page of its own under
+     * a banner ("CHAPTER 1") with the title set apart from it.
+     */
+    divisions: Map<string, string>;
 };
 /**
  * The numbered sections and chapters a contents page lists, entries set
@@ -145,7 +152,7 @@ export declare function contentsHeadings(blocks: Block[]): Block[];
  * a new paragraph. Blank lines are a secondary signal, and block quotes (set
  * far to the right) are kept as quotes.
  */
-export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>, numbered?: NumberedContents): Block[];
+export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>, numbered?: NumberedContents, hangingIndents?: boolean): Block[];
 export declare function endsSentence(text: string): boolean;
 export declare function mergeAcrossPages(blocks: Block[]): Block[];
 export declare function blocksToMarkdown(blocks: Block[]): string;

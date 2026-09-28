@@ -114,7 +114,14 @@ export function detectGutter(lines: string[]): Gutter | null {
   const lo = Math.floor(width * MIN_POSITION);
   const hi = Math.ceil(width * MAX_POSITION);
 
-  let best: Gutter | null = null;
+  // Every blank band wide enough, then the one the most lines straddle —
+  // not simply the widest. The band is searched relative to the page's
+  // longest line, and one chart row running out to column 204 (Columbia's
+  // p. 102) put the search window past the prose's right margin, where the
+  // blank space beyond the ends of the lines is wider than any gutter; the
+  // widest band there has nothing to its right, and the page was read line
+  // by line, section 5.3's heading welded into the column beside it.
+  const candidates: Gutter[] = [];
   let run = -1;
   for (let x = lo; x <= hi + 1; x++) {
     const blank =
@@ -126,25 +133,32 @@ export function detectGutter(lines: string[]): Gutter | null {
       continue;
     }
     if (run !== -1) {
-      const candidate = { start: run, end: x };
-      if (
-        candidate.end - candidate.start >= MIN_GUTTER_WIDTH &&
-        (!best || candidate.end - candidate.start > best.end - best.start)
-      ) {
-        best = candidate;
-      }
+      if (x - run >= MIN_GUTTER_WIDTH) candidates.push({ start: run, end: x });
       run = -1;
     }
   }
-  if (!best) return null;
 
   // A real second column has text on both sides of the gutter, on a good
   // share of lines. A ragged right margin does not.
-  const straddling = content.filter(
-    (line) =>
-      line.slice(0, best!.start).trim().length > 0 &&
-      line.slice(best!.end).trim().length > 0
-  ).length;
+  const straddlingOf = (gutter: Gutter) =>
+    content.filter(
+      (line) =>
+        line.slice(0, gutter.start).trim().length > 0 &&
+        line.slice(gutter.end).trim().length > 0
+    ).length;
+  let best: Gutter | null = null;
+  let straddling = -1;
+  for (const candidate of candidates) {
+    const count = straddlingOf(candidate);
+    if (
+      count > straddling ||
+      (count === straddling && candidate.end - candidate.start > best!.end - best!.start)
+    ) {
+      best = candidate;
+      straddling = count;
+    }
+  }
+  if (!best) return null;
   if (straddling < MIN_STRADDLING_LINES) return null;
   if (straddling / content.length < MIN_STRADDLING) return null;
 
@@ -170,8 +184,24 @@ export function splitColumns(lines: string[]): string[] {
    * or two into the band. Slicing at the page's gutter would cut that word in
    * half, so each line is split at its own run of whitespace nearest the
    * gutter. A line with no such run is genuinely full-width.
+   *
+   * "Nearest" is measured from the run to the gutter band, not from the run's
+   * start to the band's centre. A run that overlaps the band *is* the gutter
+   * on this line, however far left it begins. Measuring start-to-centre
+   * picked the wrong run wherever a column is itself set with a gap in it —
+   * a transcript's speaker labels ("Flight:      “Go ahead”"), whose
+   * label-to-speech gap starts a few characters past the gutter while the
+   * real gutter run begins far to the left, at the end of a short left-column
+   * line or at the margin of a line with nothing on the left. The left column
+   * then took the right column's speaker label, and the right column lost its
+   * first letter ("light:", "MACS:") — Columbia's Mission Control transcript,
+   * p. 42.
    */
   const centre = (gutter.start + gutter.end) / 2;
+  const distance = (run: { start: number; end: number }) =>
+    Math.max(0, run.start - gutter.end, gutter.start - run.end);
+  const overlap = (run: { start: number; end: number }) =>
+    Math.min(run.end, gutter.end) - Math.max(run.start, gutter.start);
   const localGap = (line: string): { start: number; end: number } | null => {
     const lo = Math.max(0, gutter.start - 6);
     const hi = Math.min(line.length, gutter.end + 6);
@@ -180,8 +210,16 @@ export function splitColumns(lines: string[]): string[] {
       const start = match.index ?? 0;
       const end = start + match[0].length;
       if (end < lo || start > hi) continue;
-      if (best === null || Math.abs(start - centre) < Math.abs(best.start - centre)) {
-        best = { start, end };
+      const run = { start, end };
+      const better =
+        best === null ||
+        distance(run) < distance(best) ||
+        (distance(run) === distance(best) &&
+          (distance(run) === 0
+            ? overlap(run) > overlap(best)
+            : Math.abs(start - centre) < Math.abs(best.start - centre)));
+      if (better) {
+        best = run;
       }
     }
     return best;
@@ -208,6 +246,7 @@ export function splitColumns(lines: string[]): string[] {
    * recovers the printed page number.
    */
   const EDGE_DEPTH = 3;
+  const middle = Math.floor(lines.length / 2);
   const FURNITURE_MAX = 0.5;
   const edges = new Set<number>();
   const nonBlank = lines
@@ -216,18 +255,37 @@ export function splitColumns(lines: string[]): string[] {
   for (const i of nonBlank.slice(0, EDGE_DEPTH)) edges.add(i);
   for (const i of nonBlank.slice(-EDGE_DEPTH)) edges.add(i);
 
+  // Not a line at the head of the page with text on both sides of its gap:
+  // that is the first line of each column ("Observations:" beside "10.9
+  // HOLD-DOWN POST CABLE ANOMALY", Columbia p. 222), and kept whole it welded
+  // the two together. A footer is exempt — it does straddle the gutter.
+  const straddles = (line: string) => {
+    const gap = localGap(line);
+    return gap !== null && line.slice(0, gap.start).trim() !== "" && line.slice(gap.end).trim() !== "";
+  };
   const isFurniture = (line: string, i: number) =>
     edges.has(i) &&
+    !(i < middle && straddles(line)) &&
     (fullWidth(line) || line.trim().replace(/\s+/g, " ").length < width * FURNITURE_MAX);
 
   const head: string[] = [];
   const tail: string[] = [];
-  const middle = Math.floor(lines.length / 2);
-  const inSpan = lines.map((line, i) => {
-    if (!line.trim() || !isFurniture(line, i)) return true;
+  // At the foot, a line run straight on from the column text above it — no
+  // blank line between — is more column text, however short: Columbia's p.
+  // 174 ends its two columns on "F6.4-2  If Program managers were able to
+  // unequivocally … undocking.", and kept whole as furniture the finding and
+  // the recommendation beside it were welded together. The footer stands
+  // apart, below a blank line.
+  const inSpan: boolean[] = [];
+  for (const [i, line] of lines.entries()) {
+    const runsOn = i >= middle && i > 0 && Boolean(lines[i - 1].trim()) && inSpan[i - 1];
+    if (!line.trim() || runsOn || !isFurniture(line, i)) {
+      inSpan.push(true);
+      continue;
+    }
     (i < middle ? head : tail).push(line);
-    return false;
-  });
+    inSpan.push(false);
+  }
 
   const column = (from: number, to?: number) => {
     const sliced = lines.map((line, i) => {

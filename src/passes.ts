@@ -1,4 +1,4 @@
-import { stripRepeatedPageFurniture, takePrintedNumber, splitFootnoteBlock, type SplitPage } from "./clean";
+import { stripRepeatedPageFurniture, takePrintedNumber, splitFootnoteBlock, type SplitPage, type FurnitureOptions } from "./clean";
 import { bodyIndent } from "./paragraphs";
 import { splitColumns } from "./columns";
 
@@ -163,6 +163,40 @@ export const listedHeadings = (): PagePass => ({
 });
 
 /**
+ * A heading the report's contents does not list is a minor heading — set
+ * apart, but not a section of its own (reportsthatmatter-tk8).
+ *
+ * Columbia boxes sidebars through its chapters — "MISSED OPPORTUNITY", "THE
+ * CREW", "ENGINEERING BY VIEWGRAPHS" — and its figures, emails and charts
+ * carry caps lines of their own ("ORB,FWD\"", "TEMPERATURE (F)"). Read as
+ * headings each opened a section, and the chapter's text that followed the
+ * box was filed under it: 6.3's own summary sat in "Missed Opportunities".
+ * With this pass a heading after the contents stays a section only if the
+ * contents lists it (as `listedHeadings` reads a contents), it is a section or
+ * division `numberedSections` took from the contents, it is numbered like
+ * one ("A.1 …"), or it names a division ("ENDNOTES FOR CHAPTER 6"); anything
+ * else becomes a level-4 heading where it was printed. Unlike
+ * `listedHeadings` it keeps the line a heading, because a sidebar's title is
+ * one. Opt-in, and meant alongside `numberedSections`: it is only as good as
+ * the contents it reads.
+ */
+export const unlistedHeadingsMinor = (): PagePass => ({
+  name: "unlistedHeadingsMinor",
+  stage: "page",
+});
+
+/**
+ * Reads an item set with a hanging indent under a short numbered label —
+ * Columbia's "F6.3-1", "R6.4-1", "O10.7-1" findings, recommendations and
+ * observations — as one paragraph, label and all (reportsthatmatter-tk8).
+ * Without it the wrapped lines, indented to the item's text, read as a
+ * quotation cut from its first line, and consecutive items ran together.
+ * Opt-in: a label-and-gap line followed by indented lines is also the shape
+ * of a table row. See `hangingItems`.
+ */
+export const hangingIndents = (): PagePass => ({ name: "hangingIndents", stage: "page" });
+
+/**
  * This report's notes are endnotes: printed together at the back, never at a
  * page foot, so no page is searched for a footnote block (reportsthatmatter-vpx).
  *
@@ -224,11 +258,21 @@ export const footnoteBlock = (): PagePass => ({ name: "footnoteBlock", stage: "p
  * bottom of three distinct pages. Opt in — a report whose furniture does not
  * repeat gets nothing from this, and a short report could lose a real
  * repeated line to it.
+ *
+ * `{ numbersTrackPages: true }`: a line that repeats only once its digits are
+ * blanked ("CHAPTER 1", "CHAPTER 2" …) is furniture only if its number
+ * advances with the page, as a page number does. Without it, Columbia's
+ * eleven chapter banners and its "ENDNOTES FOR CHAPTER n" heads were all
+ * stripped, and each chapter's number taken for its opening page's number.
+ * Opt-in for now only because it moves other reports that have not asked for
+ * it (Hillsborough and Leveson recover chapter banners; 9/11, Philip Morris
+ * and Hillsborough recover citation tails that had been dropped as a footer)
+ * — each needs its own reading before it adopts it.
  */
-export const runningFurniture = (): VolumePass => ({
+export const runningFurniture = (options: FurnitureOptions = {}): VolumePass => ({
   name: "runningFurniture",
   stage: "volume",
-  run: stripRepeatedPageFurniture,
+  run: (pages) => stripRepeatedPageFurniture(pages, options),
 });
 
 /**

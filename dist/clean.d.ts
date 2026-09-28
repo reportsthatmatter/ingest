@@ -74,7 +74,15 @@ export declare function splitFootnoteBlock(lines: string[], expectedNote: number
  * stacked note opening.
  */
 export declare function splitPage(page: Page, expectedNote: number): SplitPage;
-export declare function stripRepeatedPageFurniture(pages: SplitPage[]): SplitPage[];
+export type FurnitureOptions = {
+    /**
+     * Strip a line that repeats only once its digits are blanked only where its
+     * numbers advance with the page (`tracksPages`). Off by default, because it
+     * moves reports that have not asked for it — see `runningFurniture`.
+     */
+    numbersTrackPages?: boolean;
+};
+export declare function stripRepeatedPageFurniture(pages: SplitPage[], options?: FurnitureOptions): SplitPage[];
 /**
  * pdftotext preserves the original double-spacing on many pages, which would
  * otherwise read as a paragraph break on every single line.

@@ -263,22 +263,72 @@ function numberIn(text, near) {
     // A number nowhere near the page's own position is not its page number.
     return Math.abs(best - near) <= 50 ? best : null;
 }
-export function stripRepeatedPageFurniture(pages) {
+/**
+ * Whether the numbers a digit-bearing edge line carries move with the page.
+ *
+ * Blanking the digits (`furnitureKey`) is what lets a footer that carries its
+ * page number repeat. It also makes every "CHAPTER 1", "CHAPTER 2" … banner
+ * one repeated line, and every "ENDNOTES FOR CHAPTER 3" another: Columbia
+ * opens each of its eleven chapters on a banner at the head of the page, and
+ * all eleven were stripped as furniture — the chapter headings lost, and the
+ * chapter number taken for the page's printed number ("page 1" on page 21).
+ * A page number advances as the pages do; a chapter number does not. So
+ * where a line repeats only once its digits are blanked, it is furniture
+ * only if, between most pairs of consecutive pages it appears on, some
+ * number on it advances by as many pages as lie between them.
+ */
+function tracksPages(occurrences) {
+    const sorted = [...occurrences].sort((a, b) => a.index - b.index);
+    let pairs = 0;
+    let tracking = 0;
+    for (let k = 1; k < sorted.length; k++) {
+        const a = sorted[k - 1];
+        const b = sorted[k];
+        const step = b.index - a.index;
+        pairs += 1;
+        if (a.numbers.some((x) => b.numbers.some((y) => Math.abs(y - x - step) <= 1)))
+            tracking += 1;
+    }
+    return pairs > 0 && tracking / pairs >= 0.5;
+}
+const numbersOn = (text) => (normaliseWhitespace(text).match(/\d+/g) ?? []).map((n) => Number.parseInt(n, 10));
+export function stripRepeatedPageFurniture(pages, options = {}) {
     const counts = new Map();
+    const literal = new Map();
+    const occurrences = new Map();
     const edgeIndices = pages.map((page) => pageEdgeIndices(page.body));
     for (const [pageIndex, page] of pages.entries()) {
-        const seen = new Set();
+        const seen = new Map();
+        const seenLiteral = new Set();
         for (const lineIndex of edgeIndices[pageIndex]) {
-            const key = furnitureKey(page.body[lineIndex]);
-            if (key)
-                seen.add(key);
+            const line = page.body[lineIndex];
+            const key = furnitureKey(line);
+            if (!key)
+                continue;
+            seen.set(key, [...(seen.get(key) ?? []), ...numbersOn(line)]);
+            seenLiteral.add(normaliseWhitespace(line));
         }
-        for (const key of seen)
+        for (const [key, numbers] of seen) {
             counts.set(key, (counts.get(key) ?? 0) + 1);
+            if (!occurrences.has(key))
+                occurrences.set(key, []);
+            occurrences.get(key).push({ index: page.index, numbers });
+        }
+        for (const text of seenLiteral)
+            literal.set(text, (literal.get(text) ?? 0) + 1);
     }
+    const tracked = new Map();
     const isFurniture = (line) => {
         const key = furnitureKey(line);
-        return Boolean(key) && (counts.get(key) ?? 0) >= MIN_REPEATED_FURNITURE;
+        if (!key || (counts.get(key) ?? 0) < MIN_REPEATED_FURNITURE)
+            return false;
+        if (!options.numbersTrackPages || !/\d/.test(line))
+            return true;
+        if ((literal.get(normaliseWhitespace(line)) ?? 0) >= MIN_REPEATED_FURNITURE)
+            return true;
+        if (!tracked.has(key))
+            tracked.set(key, tracksPages(occurrences.get(key) ?? []));
+        return tracked.get(key);
     };
     return pages.map((page, pageIndex) => {
         // A page whose number sits inside its running footer has none of its own.

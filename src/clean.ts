@@ -302,22 +302,81 @@ function numberIn(text: string, near: number): number | null {
   return Math.abs(best - near) <= 50 ? best : null;
 }
 
-export function stripRepeatedPageFurniture(pages: SplitPage[]): SplitPage[] {
+/**
+ * Whether the numbers a digit-bearing edge line carries move with the page.
+ *
+ * Blanking the digits (`furnitureKey`) is what lets a footer that carries its
+ * page number repeat. It also makes every "CHAPTER 1", "CHAPTER 2" … banner
+ * one repeated line, and every "ENDNOTES FOR CHAPTER 3" another: Columbia
+ * opens each of its eleven chapters on a banner at the head of the page, and
+ * all eleven were stripped as furniture — the chapter headings lost, and the
+ * chapter number taken for the page's printed number ("page 1" on page 21).
+ * A page number advances as the pages do; a chapter number does not. So
+ * where a line repeats only once its digits are blanked, it is furniture
+ * only if, between most pairs of consecutive pages it appears on, some
+ * number on it advances by as many pages as lie between them.
+ */
+function tracksPages(occurrences: Array<{ index: number; numbers: number[] }>): boolean {
+  const sorted = [...occurrences].sort((a, b) => a.index - b.index);
+  let pairs = 0;
+  let tracking = 0;
+  for (let k = 1; k < sorted.length; k++) {
+    const a = sorted[k - 1];
+    const b = sorted[k];
+    const step = b.index - a.index;
+    pairs += 1;
+    if (a.numbers.some((x) => b.numbers.some((y) => Math.abs(y - x - step) <= 1))) tracking += 1;
+  }
+  return pairs > 0 && tracking / pairs >= 0.5;
+}
+
+const numbersOn = (text: string) =>
+  (normaliseWhitespace(text).match(/\d+/g) ?? []).map((n) => Number.parseInt(n, 10));
+
+export type FurnitureOptions = {
+  /**
+   * Strip a line that repeats only once its digits are blanked only where its
+   * numbers advance with the page (`tracksPages`). Off by default, because it
+   * moves reports that have not asked for it — see `runningFurniture`.
+   */
+  numbersTrackPages?: boolean;
+};
+
+export function stripRepeatedPageFurniture(
+  pages: SplitPage[],
+  options: FurnitureOptions = {}
+): SplitPage[] {
   const counts = new Map<string, number>();
+  const literal = new Map<string, number>();
+  const occurrences = new Map<string, Array<{ index: number; numbers: number[] }>>();
   const edgeIndices = pages.map((page) => pageEdgeIndices(page.body));
 
   for (const [pageIndex, page] of pages.entries()) {
-    const seen = new Set<string>();
+    const seen = new Map<string, number[]>();
+    const seenLiteral = new Set<string>();
     for (const lineIndex of edgeIndices[pageIndex]) {
-      const key = furnitureKey(page.body[lineIndex]);
-      if (key) seen.add(key);
+      const line = page.body[lineIndex];
+      const key = furnitureKey(line);
+      if (!key) continue;
+      seen.set(key, [...(seen.get(key) ?? []), ...numbersOn(line)]);
+      seenLiteral.add(normaliseWhitespace(line));
     }
-    for (const key of seen) counts.set(key, (counts.get(key) ?? 0) + 1);
+    for (const [key, numbers] of seen) {
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+      if (!occurrences.has(key)) occurrences.set(key, []);
+      occurrences.get(key)!.push({ index: page.index, numbers });
+    }
+    for (const text of seenLiteral) literal.set(text, (literal.get(text) ?? 0) + 1);
   }
 
+  const tracked = new Map<string, boolean>();
   const isFurniture = (line: string) => {
     const key = furnitureKey(line);
-    return Boolean(key) && (counts.get(key) ?? 0) >= MIN_REPEATED_FURNITURE;
+    if (!key || (counts.get(key) ?? 0) < MIN_REPEATED_FURNITURE) return false;
+    if (!options.numbersTrackPages || !/\d/.test(line)) return true;
+    if ((literal.get(normaliseWhitespace(line)) ?? 0) >= MIN_REPEATED_FURNITURE) return true;
+    if (!tracked.has(key)) tracked.set(key, tracksPages(occurrences.get(key) ?? []));
+    return tracked.get(key)!;
   };
 
   return pages.map((page, pageIndex) => {
