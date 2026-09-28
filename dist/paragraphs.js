@@ -881,7 +881,7 @@ function readFindings(lines, margin, counter, isHeading) {
  * a new paragraph. Blank lines are a secondary signal, and block quotes (set
  * far to the right) are kept as quotes.
  */
-export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false, allCapsHeadings = true, paragraphContents = false, numberedHeadings = true, listed, numbered, findings, outline, divisions, wrappedHeadings = false) {
+export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false, allCapsHeadings = true, paragraphContents = false, numberedHeadings = true, listed, numbered, findings, outline, divisions, wrappedHeadings = false, unmarkedHeadings = false) {
     if (paragraphContents)
         lines = joinParagraphContents(lines);
     // With `listedHeadings`, a would-be heading the contents does not name is
@@ -906,7 +906,14 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
         if (outlined && (at === undefined || !isCentred(lines[at], width) || runsOn(at)))
             return null;
         const heading = isHeadingLine(text, allowDivisions, allCapsHeadings, numberedHeadings);
-        return heading && listed && !listed.has(headingKey(heading.text)) ? null : heading;
+        if (heading)
+            return listed && !listed.has(headingKey(heading.text)) ? null : heading;
+        // `unmarkedHeadings`: the other half of `listedHeadings` — a line with no
+        // heading shape of its own (no caps, number or division label) is still
+        // the heading the contents names, when it matches one letter for letter.
+        if (unmarkedHeadings && listed?.has(headingKey(text)))
+            return { level: 3, text };
+        return null;
     };
     // The left margin is a property of the document's layout, not of one page. A
     // short page — the last of a section, say — can have too few lines to infer

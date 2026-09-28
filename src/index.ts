@@ -21,6 +21,7 @@ export {
   paragraphNotes,
   chapterContents,
   listedHeadings,
+  unmarkedHeadings,
   endnotes,
   numberedSections,
   numberedFindings,

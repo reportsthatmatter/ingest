@@ -1028,7 +1028,8 @@ export function toBlocks(
   findings?: FindingCounter,
   outline?: Outline,
   divisions?: ListedDivisions,
-  wrappedHeadings = false
+  wrappedHeadings = false,
+  unmarkedHeadings = false
 ): Block[] {
   if (paragraphContents) lines = joinParagraphContents(lines);
   // With `listedHeadings`, a would-be heading the contents does not name is
@@ -1051,7 +1052,12 @@ export function toBlocks(
   const isHeading = (text: string, allowDivisions: boolean, at?: number) => {
     if (outlined && (at === undefined || !isCentred(lines[at], width) || runsOn(at))) return null;
     const heading = isHeadingLine(text, allowDivisions, allCapsHeadings, numberedHeadings);
-    return heading && listed && !listed.has(headingKey(heading.text)) ? null : heading;
+    if (heading) return listed && !listed.has(headingKey(heading.text)) ? null : heading;
+    // `unmarkedHeadings`: the other half of `listedHeadings` — a line with no
+    // heading shape of its own (no caps, number or division label) is still
+    // the heading the contents names, when it matches one letter for letter.
+    if (unmarkedHeadings && listed?.has(headingKey(text))) return { level: 3, text };
+    return null;
   };
   // The left margin is a property of the document's layout, not of one page. A
   // short page — the last of a section, say — can have too few lines to infer

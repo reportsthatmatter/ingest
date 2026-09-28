@@ -222,7 +222,8 @@ export function ingestPageGroups(
               findings,
               outline,
               divisionGate,
-              resolved.wrappedHeadings
+              resolved.wrappedHeadings,
+              resolved.unmarkedHeadings
             )
       ).map((block) => ({ ...block, at }));
 
