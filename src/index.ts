@@ -23,6 +23,8 @@ export {
   listedHeadings,
   endnotes,
   numberedSections,
+  listedDivisions,
+  wrappedHeadings,
   pageBreakContinuations,
   runningFurniture,
   geometry,

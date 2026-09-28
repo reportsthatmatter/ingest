@@ -41,3 +41,8 @@ Leveson defect shipped (#118 §1.5); these exist so a heuristic meets real input
 To add one: pick the page, extract it, and record it here with what it is for.
 A fixture that does not contain its hard case is worse than none, because it
 passes for the wrong reason.
+| `deepwater-contents.txt` | `us-deepwater-horizon/archive/deep-water.pdf` | 7 | A contents set with a page after a gap, not dot leaders: "Chapter 3   55" over its title lines, "PART II: …:" wrapping to its page (`listedDivisions`, reportsthatmatter-a0z) |
+| `deepwater-foreword.txt`, `deepwater-chapter-1-opening.txt`, `deepwater-chapter-3-opening.txt`, `deepwater-chapter-9-opening.txt`, `deepwater-part-2.txt` | `us-deepwater-horizon/archive/deep-water.pdf` | 8, 17, 71, 265, 103 | Division openers: "Chapter One" over a title set a word or two to a line with no blank before the text (`listedDivisions`, reportsthatmatter-a0z) |
+| `deepwater-appendix-a.txt`, `deepwater-appendix-c.txt`, `deepwater-index.txt` | `us-deepwater-horizon/archive/deep-water.pdf` | 372, 375, 384 | "Appendix A", a blank, its title; a title the body sets longer than the contents; "INDEX" in capitals (`listedDivisions`, reportsthatmatter-a0z) |
+| `deepwater-wrapped-heading.txt`, `deepwater-wrapped-heading-c.txt` | `us-deepwater-horizon/archive/deep-water.pdf` | 285, 281 | Numbered headings whose last word wraps onto a line of its own ("…to Improve Spill" / "Response") (`wrappedHeadings`, reportsthatmatter-a0z) |
+| `deepwater-verso.txt` | `us-deepwater-horizon/archive/deep-water.pdf` | 26 | A left-hand page set five columns further in than the right-hand ones: against one document margin its prose is quoted (`geometry("per-page")`, reportsthatmatter-eyc) |
