@@ -13,27 +13,86 @@ export type Footnote = {
     /** The printed page number the note sits on — what a correction's `where` scopes against. */
     printed?: number | null;
 };
-export declare function parseFootnotes(lines: string[], page: number): Footnote[];
+type NoteStyle = "bare" | "period";
+export declare function parseFootnotes(lines: string[], page: number, style?: NoteStyle): Footnote[];
 export declare function linkInlineMarkers(text: string, known: Set<number>): string;
 /**
- * One definition per genuinely distinct note.
- *
- * A number can repeat for two different reasons, and they need opposite
- * handling. **Adjacent** entries sharing a number are the same note: either
- * an exact repeat (the note was collected twice, nothing new) or a tail that
- * ran over a page break and got re-parsed as a fresh note — concatenated
- * back onto the entry above it rather than dropped. **Non-adjacent** entries
- * sharing a number are different notes: a report whose numbering restarts
- * (Leveson: per chapter) reuses "20" for something else once the previous
- * chapter's own "20" is many notes behind it in this array — collapsing
- * those together, as a single global `Map` keyed by number used to, meant a
- * chapter's footnote reference could resolve to a different chapter's text
- * (reportsthatmatter-ooj). Those keep separate definitions under the same
- * `[^N]` label; `markdown.ts`'s `withSidenotes` resolves each reference
- * against them positionally, in the order both were written — sound because
- * both the references in the body and the definitions collected here follow
- * the same page-by-page reading order, and a note is normally cited once.
+ * Whether a line is one of the appendix's own chapter headings, confirmed
+ * against the chapters the contents lists (`numberedContents`) rather than
+ * trusted on shape alone — the same discipline `numberedSectionAt` applies
+ * to a numbered section, and for the same reason: a citation that happens to
+ * open "40 U.S.C. § 1401" is not spelt like any real chapter title, so it
+ * never matches the set it is checked against.
  */
+export declare function isNotesChapterHead(line: string, chapters: ReadonlySet<string>): boolean;
+/** One raw line from a printed "Notes" appendix, with where it came from. */
+export type NotesLine = {
+    volume: number;
+    pdfIndex: number;
+    printed: number | null;
+    line: string;
+};
+/**
+ * Reads a printed "Notes" appendix whose numbering restarts every chapter
+ * (reportsthatmatter-60p). Segmented on each confirmed chapter head, because
+ * `parseFootnotes`'s sequencing assumes a note's number only goes up: fed the
+ * whole appendix in one run, chapter 2's note 1 reads as a wildly
+ * out-of-sequence continuation of chapter 1's last note — several notes
+ * fused into one, or split apart at the wrong point — rather than a fresh
+ * note. Text before the first confirmed chapter head (a citation-conventions
+ * preamble, in this report) is not a note and is dropped.
+ *
+ * The chapter head itself is not kept as a heading. Like every other
+ * page-foot or paragraph note in this pipeline, these become sidenotes next
+ * to their markers (`withSidenotes` in `markdown.ts`); the printed appendix
+ * is never rendered as a page of its own — `stripNotesSection` and the
+ * collected `[^N]:` definitions replace it entirely, exactly as for the rest
+ * of the corpus. That is also what actually fixes the appendix reading as
+ * plain paragraphs and run-together block quotes: the raw text stops being
+ * body content at all once it is read as notes here.
+ */
+/** One appendix chapter's own note numbers, keyed by the confirmed title's letters. */
+export type NotesChapter = {
+    title: string;
+    numbers: Set<number>;
+};
+export type NotesAppendix = {
+    notes: Footnote[];
+    /**
+     * Each chapter's own note numbers, in the same order the chapters were
+     * read — what `linkFlushMarkersByChapter` scopes a body chapter's flush
+     * markers against, so chapter 3's glued "1" cannot resolve against chapter
+     * 11's note 1.
+     */
+    chapters: NotesChapter[];
+};
+export declare function parseNotesAppendix(lines: NotesLine[], chapters: ReadonlySet<string>): NotesAppendix;
+/**
+ * Links a flush-glued marker ("Airport.1", no space before the digit —
+ * `linkFlushMarkers`'s usual shape) within a report whose notes restart every
+ * chapter, scoped to each body chapter's own note numbers rather than the
+ * whole appendix's.
+ *
+ * `linkFlushMarkers` elsewhere in this pipeline confirms a candidate against
+ * the notes near its *page*, because page-foot notes sit close to what cites
+ * them. An endnotes appendix breaks that: chapter 1's notes sit hundreds of
+ * pages from chapter 1's own body, so nothing is ever "near". Chapter
+ * boundaries stand in for page locality instead: a glued "1" is only chapter
+ * 3's note 1 if 3 is the chapter it was found in.
+ *
+ * A report's own contents page can list the same chapter titles a second
+ * time as headings of its own — misread as body headings rather than a
+ * contents listing (reportsthatmatter-5fn, still open) — always earlier in
+ * the document than any real chapter, since the contents comes first. Rather
+ * than trust every text match as a real chapter boundary, this keeps only the
+ * *last* one candidate per confirmed chapter, in document order, and further
+ * only applies where that candidate's own title agrees with the appendix
+ * chapter it would be paired with — so a miscount never mismatches a
+ * chapter's markers against a different chapter's notes; it just leaves that
+ * chapter's flush markers unlinked instead (the honest "not linked" list
+ * still catches them).
+ */
+export declare function linkFlushMarkersByChapter(body: string, chapters: ReadonlySet<string>, notesChapters: NotesChapter[]): string;
 export declare function renderEndnotes(notes: Footnote[]): string;
 /**
  * Footnote markers that sit flush against the word before them.
@@ -56,3 +115,4 @@ export declare function renderEndnotes(notes: Footnote[]): string;
  * model number will not be.
  */
 export declare function linkFlushMarkers(text: string, plausible: Set<number>): string;
+export {};

@@ -4,7 +4,7 @@ import { extractParagraphNotes } from "./paragraph-notes.js";
 import { applyCorrections } from "./corrections.js";
 import { rejoinHyphenated, vocabulary } from "./hyphens.js";
 import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, mergeAcrossPages, contentsHeadings, contentsTitles, headingKey, numberedContents, emptyOutline, readContentsOutline, learnOutline, outlineContentsBlocks, divisionContents, bodyIndent, } from "./paragraphs.js";
-import { parseFootnotes, linkInlineMarkers, linkFlushMarkers, renderEndnotes, } from "./footnotes.js";
+import { parseFootnotes, linkInlineMarkers, linkFlushMarkers, renderEndnotes, isNotesChapterHead, parseNotesAppendix, linkFlushMarkersByChapter, } from "./footnotes.js";
 import { autoFix, findSuspects, rankSuspects } from "./ocr.js";
 /**
  * Whether a heading stays a section under `unlistedHeadingsMinor`: the
@@ -54,6 +54,14 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     const footnotes = [];
     const bodyChunks = [];
     let expectedNote = 1;
+    // `endnotes`: once a printed "Notes" appendix's own chapter heading is
+    // confirmed, every remaining line of the document is read from here
+    // instead of the ordinary per-page block builder — see `parseNotesAppendix`
+    // (reportsthatmatter-60p). Sticky rather than re-tested per page: the
+    // appendix is the report's back matter, and nothing of the report's own
+    // text follows it.
+    let notesStarted = false;
+    const notesLines = [];
     let pageOffset = 0;
     const splitGroups = pageGroups.map((group) => group.map(() => {
         const page = pages[pageOffset++];
@@ -127,6 +135,17 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
             const pageLines = collapseDoubleSpacing(split.body, resolved.doubleSpaced
                 ? margins[resolved.geometry === "per-volume" ? groupIndex : 0]
                 : undefined);
+            if (resolved.endnotes) {
+                if (!notesStarted) {
+                    notesStarted = pageLines.some((line) => isNotesChapterHead(line, numbered.chapters));
+                }
+                if (notesStarted) {
+                    for (const line of pageLines) {
+                        notesLines.push({ volume: split.volume, pdfIndex: split.pdfIndex, printed: split.printed, line });
+                    }
+                    continue;
+                }
+            }
             const titles = resolved.listedHeadings || resolved.unlistedHeadingsMinor ? contentsTitles(pageLines) : [];
             for (const title of titles)
                 listed.add(headingKey(title));
@@ -173,6 +192,12 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
             }
             bodyChunks.push(...blocks);
         }
+    }
+    let notesChapters = [];
+    if (notesLines.length) {
+        const appendix = parseNotesAppendix(notesLines, numbered.chapters);
+        footnotes.push(...appendix.notes);
+        notesChapters = appendix.chapters;
     }
     // A printed number that appears more than once in a report needs telling
     // apart, or every occurrence renders the same anchor and a citation to the
@@ -247,6 +272,13 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     if (!resolved.paragraphNotes) {
         const known = new Set(notes.map((note) => note.number));
         body = linkInlineMarkers(body, known);
+        // An endnotes appendix's own markers are flush against the word before
+        // them far more often than not ("Airport.1") — `linkInlineMarkers` alone
+        // leaves most of them as bare digits. Scoped per chapter because the
+        // appendix's numbering restarts (reportsthatmatter-60p).
+        if (resolved.endnotes && notesChapters.length) {
+            body = linkFlushMarkersByChapter(body, numbered.chapters, notesChapters);
+        }
     }
     const suspects = rankSuspects(pages.flatMap((page) => findSuspects(page.lines.join(" "), page.index).map((suspect) => ({
         ...suspect,
