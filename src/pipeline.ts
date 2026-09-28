@@ -15,6 +15,12 @@ import {
   headingKey,
   numberedContents,
   type NumberedContents,
+  type FindingCounter,
+  type Outline,
+  emptyOutline,
+  readContentsOutline,
+  learnOutline,
+  outlineContentsBlocks,
   divisionContents,
   type ListedDivisions,
   bodyIndent,
@@ -161,12 +167,21 @@ export function ingestPageGroups(
   const listed = new Set<string>();
   // `numberedSections`: the sections and chapters the contents numbers.
   const numbered: NumberedContents = { sections: new Map(), chapters: new Set() };
+  // `numberedFindings`: the finding number expected next, across pages.
+  const findings: FindingCounter | undefined = resolved.numberedFindings ? { next: 1 } : undefined;
+  // `contentsOutline`: the headings the contents lists, learnt as it goes by.
+  const outline: Outline | undefined = resolved.contentsOutline ? emptyOutline() : undefined;
   // `listedDivisions`: the parts, chapters and appendices the contents lists.
   const divisions: ListedDivisions = { entries: [], used: new Set() };
 
   for (const [groupIndex, group] of cleanedGroups.entries()) {
     for (const split of group) {
-      const pageLines = collapseDoubleSpacing(split.body);
+      const pageLines = collapseDoubleSpacing(
+        split.body,
+        resolved.doubleSpaced
+          ? margins[resolved.geometry === "per-volume" ? groupIndex : 0]
+          : undefined
+      );
       const titles = resolved.listedHeadings ? contentsTitles(pageLines) : [];
       for (const title of titles) listed.add(headingKey(title));
       const gate = resolved.listedHeadings && !titles.length && listed.size ? listed : undefined;
@@ -185,9 +200,13 @@ export function ingestPageGroups(
           ? divisions
           : undefined;
       const at = { volume: split.volume, pdfIndex: split.pdfIndex, printed: split.printed };
+      const outlineEntries = outline ? readContentsOutline(pageLines) : [];
+      if (outline) learnOutline(outline, outlineEntries);
       const blocks = (
         isContentsPage(pageLines)
           ? parseContentsPage(pageLines)
+          : outlineEntries.length
+            ? outlineContentsBlocks(pageLines, outlineEntries)
           : toBlocks(
               pageLines,
               resolved.geometry === "per-page"
@@ -200,6 +219,8 @@ export function ingestPageGroups(
               resolved.numberedHeadings ?? true,
               gate,
               sections,
+              findings,
+              outline,
               divisionGate,
               resolved.wrappedHeadings
             )

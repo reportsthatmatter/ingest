@@ -45,6 +45,9 @@ export type ResolvedPasses = {
   listedHeadings?: boolean;
   endnotes?: boolean;
   numberedSections?: boolean;
+  numberedFindings?: boolean;
+  doubleSpaced?: boolean;
+  contentsOutline?: boolean;
   listedDivisions?: boolean;
   wrappedHeadings?: boolean;
   pageBreakContinuations?: boolean;
@@ -104,6 +107,9 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     listedHeadings: passes.some((pass) => pass.name === "listedHeadings"),
     endnotes: passes.some((pass) => pass.name === "endnotes"),
     numberedSections: passes.some((pass) => pass.name === "numberedSections"),
+    numberedFindings: passes.some((pass) => pass.name === "numberedFindings"),
+    doubleSpaced: passes.some((pass) => pass.name === "doubleSpaced"),
+    contentsOutline: passes.some((pass) => pass.name === "contentsOutline"),
     listedDivisions: passes.some((pass) => pass.name === "listedDivisions"),
     wrappedHeadings: passes.some((pass) => pass.name === "wrappedHeadings"),
     pageBreakContinuations: passes.some((pass) => pass.name === "pageBreakContinuations"),

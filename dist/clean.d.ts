@@ -74,9 +74,11 @@ export declare function splitFootnoteBlock(lines: string[], expectedNote: number
  * stacked note opening.
  */
 export declare function splitPage(page: Page, expectedNote: number): SplitPage;
-export declare function stripRepeatedPageFurniture(pages: SplitPage[]): SplitPage[];
+export declare function stripRepeatedPageFurniture(pages: SplitPage[], minShare?: number): SplitPage[];
 /**
  * pdftotext preserves the original double-spacing on many pages, which would
- * otherwise read as a paragraph break on every single line.
+ * otherwise read as a paragraph break on every single line. A `margin` is the
+ * `doubleSpaced` pass: the page is double-spaced whatever its proportions,
+ * and its body sits at that margin.
  */
-export declare function collapseDoubleSpacing(lines: string[]): string[];
+export declare function collapseDoubleSpacing(lines: string[], margin?: number): string[];
