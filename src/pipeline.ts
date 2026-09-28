@@ -352,7 +352,9 @@ export function ingestPageGroups(
     meta.title,
     footnotes
   );
-  let body = blocksToMarkdown(corrected.blocks);
+  let body = blocksToMarkdown(corrected.blocks, {
+    escapeNumberedParagraphs: resolved.escapeNumberedParagraphs,
+  });
   const notes = corrected.footnotes;
 
   // Rejoin words the typesetter broke at a line end, decided from the
