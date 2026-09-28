@@ -96,22 +96,39 @@ export function paragraphIndex(sections: Section[]): Record<string, string> {
  * a reader would recognise as sections. The heading survives in the body, so
  * nothing is hidden — it just stops being a page of its own.
  *
- * One exception: a numbered-division heading with no body of its own — an
- * inquiry's "Part 4:" divider, which is followed straight away by its first
- * chapter — must not fold *backwards* into the part before it, or the
- * contents page loses the part entirely and lists its chapters with nothing
- * above them. It folds forwards instead, onto its own chapters, and heads
- * that section.
+ * Two exceptions, both a heading with no body of its own that must not fold
+ * *backwards* into the part before it, or the contents page loses it
+ * entirely and lists what follows with nothing above it. Both fold forwards
+ * instead, onto what comes after, and head that section:
+ *
+ * - A numbered-division heading — an inquiry's "Part 4:" divider, followed
+ *   straight away by its first chapter.
+ * - A chapter banner in a report whose sections are numbered
+ *   (`numberedSections()`, reportsthatmatter-u88): the banner carries no text
+ *   of its own before its first numbered section ("8" then "8.1 The Summer of
+ *   Threat"), and folding it backwards put it at the *foot* of the previous
+ *   chapter's last section instead. Detected structurally — an h2 with
+ *   nothing before the next heading, immediately followed by an h3 numbered
+ *   "N.N " — so this only ever fires on a document shaped that way, not on
+ *   report identity.
  */
 const DIVISION_HEADING =
   /^<h2\b[^>]*>(?:<[^>]+>)*\s*(?:Part|Appendix|Annex|Volume)\s+(?:\d|[IVXLC])/i;
+const NUMBERED_SECTION_HEADING = /^<h3\b[^>]*>(?:<[^>]+>)*\s*\d{1,2}\.\d{1,2}\s/;
+
+function isBodylessH2(part: string): boolean {
+  const match = part.match(/^<h2\b[^>]*>[\s\S]*?<\/h2>([\s\S]*)$/);
+  return match !== null && textLength(match[1]) === 0;
+}
+
 function mergeSlivers(parts: string[], minChars: number): string[] {
   const merged: string[] = [];
   // A pending top-level divider, accumulating its chapters until it is a
   // section a reader would recognise as one.
   let divider = "";
 
-  for (const part of parts) {
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
     if (!part.trim()) continue;
 
     if (divider) {
@@ -123,7 +140,9 @@ function mergeSlivers(parts: string[], minChars: number): string[] {
       continue;
     }
 
-    if (DIVISION_HEADING.test(part) && textLength(part) < minChars) {
+    const chapterBanner = isBodylessH2(part) && NUMBERED_SECTION_HEADING.test(parts[i + 1] ?? "");
+
+    if ((chapterBanner || DIVISION_HEADING.test(part)) && textLength(part) < minChars) {
       divider = part;
       continue;
     }

@@ -376,6 +376,35 @@ describe("splitSections", () => {
     expect(sections[1].html).toContain("Chapter 1: In Russia");
   });
 
+  it("folds a body-less chapter banner forwards onto its first numbered section, not backwards (reportsthatmatter-u88)", async () => {
+    const { splitSections } = await import("../src/sections");
+    const long = "word ".repeat(800);
+    const html = renderMarkdown(
+      `## 7.4 A Chance Encountered, an Assumption Not Made\n\n${long}\n\n` +
+        `## "THE SYSTEM WAS BLINKING RED"\n\n### 8.1 The Summer of Threat\n\n${long}\n\n` +
+        `### 8.2 Late-Summer Warnings\n\n${long}`
+    );
+    const sections = splitSections(html);
+    expect(sections.map((s) => [s.title, s.level])).toEqual([
+      ["7.4 A Chance Encountered, an Assumption Not Made", 2],
+      ['"THE SYSTEM WAS BLINKING RED"', 2],
+      ["8.2 Late-Summer Warnings", 3],
+    ]);
+    // The banner heads its own section — the first numbered section's text —
+    // rather than sitting at the foot of 7.4's.
+    expect(sections[0].html).not.toContain("BLINKING RED");
+    expect(sections[1].html).toContain("The Summer of Threat");
+  });
+
+  it("still folds a body-less h2 with no following numbered section backwards, as before", async () => {
+    const { splitSections } = await import("../src/sections");
+    const long = "word ".repeat(800);
+    const html = renderMarkdown(`## Real Section\n\n${long}\n\n## A Short Aside`);
+    const sections = splitSections(html);
+    expect(sections).toHaveLength(1);
+    expect(sections[0].html).toContain("A Short Aside");
+  });
+
   it("finds which section holds a paragraph", async () => {
     const { splitSections, sectionFor } = await import("../src/sections");
     const html = renderMarkdown("## One\n\nAlpha text here.\n\n## Two\n\nBeta text here.");

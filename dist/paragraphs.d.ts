@@ -98,6 +98,13 @@ export type NumberedContents = {
     divisions: Map<string, string>;
 };
 /**
+ * The letters and digits of a title, lower-cased. What a heading set in
+ * capitals ("3.3 . . .AND IN THE FEDERAL AVIATION") and its contents entry
+ * (". . . and in the Federal Aviation Administration") share, whatever the
+ * typesetter did with the case, the spacing, the dashes and the dots.
+ */
+export declare function titleLetters(text: string): string;
+/**
  * The numbered sections and chapters a contents page lists, entries set
  * "8.1   The Summer of Threat 254" with a plain space before the page number.
  * An entry that wraps runs on until a line ends in its page number. Nothing

@@ -110,7 +110,7 @@ function divisionKey(word, number) {
  * (". . . and in the Federal Aviation Administration") share, whatever the
  * typesetter did with the case, the spacing, the dashes and the dots.
  */
-function titleLetters(text) {
+export function titleLetters(text) {
     return text.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 /**
@@ -1175,7 +1175,16 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
             flush();
             list = null;
             openDivisionIndent = -1;
-            const heading = { kind: "heading", level: 2, text: section.text };
+            // Level 3, one below the chapter banner ("8", set by the all-caps
+            // heading path below at level 2), when the contents also names bare
+            // numbered chapters (`numbered.chapters`, "8.  Title"): otherwise the
+            // contents has no chapter level at all, every section flush with its
+            // chapter (reportsthatmatter-u88). A report whose chapters are instead
+            // named by word and label ("Chapter 1", Columbia) opens them with
+            // `divisionBanners` at level 2 already, flat with its own sections —
+            // nesting under a banner that pass never emits would just orphan them.
+            const level = numbered?.chapters.size ? 3 : 2;
+            const heading = { kind: "heading", level, text: section.text };
             complete.add(heading);
             blocks.push(heading);
             taken = section.end;

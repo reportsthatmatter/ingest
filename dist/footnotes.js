@@ -1,6 +1,21 @@
 import { normaliseWhitespace } from "./extract.js";
+import { titleLetters } from "./paragraphs.js";
 const NOTE_INLINE = /^\s{0,8}(\d{1,4})\s{0,3}(?=[A-Za-z"“(])/;
 const NOTE_STACKED = /^\s{0,10}(\d{1,4})\s*$/;
+/**
+ * The 9/11 Commission's endnotes appendix numbers each note "76. Hugh…" /
+ * "77.Tommy…" — the number followed by a period, space or not — rather than
+ * this pipeline's more common bare "76 Hugh…" (Jack Smith, Deepwater
+ * Horizon…). A second style, not a replacement for `NOTE_INLINE`: loosening
+ * the shared pattern to tolerate a period risked reading an incidental
+ * "Exhibit 5. The court…" inside some other report's own footnote text as
+ * the start of a new note.
+ */
+// A deeper hanging indent than the bare style's: this appendix sets its note
+// number a good 14 columns in, not the 0-8 the rest of the corpus's page-foot
+// blocks use.
+const NOTE_INLINE_PERIOD = /^\s{0,20}(\d{1,4})\.\s{0,3}(?=[A-Za-z"“(])/;
+const NOTE_STACKED_PERIOD = /^\s{0,20}(\d{1,4})\.\s*$/;
 /**
  * A note-start whose digit is followed by exactly one stray OCR character
  * before its real text — the "I" of "Ibid." landing as "%" or "!" ("0
@@ -17,8 +32,8 @@ const NOTE_STACKED = /^\s{0,10}(\d{1,4})\s*$/;
  * for the confirmation that decides whether to trust it.
  */
 const GARBLED_INLINE = /^\s{0,8}(\d{1,4})\s{0,3}[^\sA-Za-z\d]\s{0,3}(?=[A-Za-z"“(])/;
-function classify(line) {
-    const inline = line.match(NOTE_INLINE);
+function classify(line, style = "bare") {
+    const inline = line.match(style === "period" ? NOTE_INLINE_PERIOD : NOTE_INLINE);
     if (inline) {
         return {
             kind: "inline",
@@ -26,11 +41,15 @@ function classify(line) {
             text: normaliseWhitespace(line.slice(inline[0].length)),
         };
     }
-    const stacked = line.match(NOTE_STACKED);
+    const stacked = line.match(style === "period" ? NOTE_STACKED_PERIOD : NOTE_STACKED);
     if (stacked) {
         return { kind: "stacked", number: Number.parseInt(stacked[1], 10) };
     }
-    const garbled = line.match(GARBLED_INLINE);
+    // The garbled-OCR fallback is tuned to the bare style's shape (a stray
+    // character where the space before the text should be); the period style
+    // has no equivalent tolerance yet, so a candidate that fails cleanly is
+    // just a continuation line.
+    const garbled = style === "bare" ? line.match(GARBLED_INLINE) : null;
     if (garbled) {
         return { kind: "garbled", text: normaliseWhitespace(line.slice(garbled[0].length)), raw: line };
     }
@@ -56,9 +75,9 @@ function classify(line) {
  * tolerates the same (`chooseBlockStart`).
  */
 const MAX_NOTE_STEP = 6;
-export function parseFootnotes(lines, page) {
+export function parseFootnotes(lines, page, style = "bare") {
     const raw = lines.filter((line) => line.trim());
-    const tokens = raw.map(classify);
+    const tokens = raw.map((line) => classify(line, style));
     const notes = [];
     const append = (text) => {
         const last = notes[notes.length - 1];
@@ -298,6 +317,119 @@ export function linkInlineMarkers(text, known) {
  * both the references in the body and the definitions collected here follow
  * the same page-by-page reading order, and a note is normally cited once.
  */
+/**
+ * A chapter re-opening the note numbering inside a printed "Notes" appendix
+ * ("9 Heroism and Horror", `1 "We Have Some Planes"`) — a bare number then a
+ * title, no period. A note's own opener always has one ("93."), which is
+ * exactly what keeps the two apart.
+ */
+const NOTES_CHAPTER_HEAD = /^\s*\d{1,2}\s+(\S.*)$/;
+/**
+ * Whether a line is one of the appendix's own chapter headings, confirmed
+ * against the chapters the contents lists (`numberedContents`) rather than
+ * trusted on shape alone — the same discipline `numberedSectionAt` applies
+ * to a numbered section, and for the same reason: a citation that happens to
+ * open "40 U.S.C. § 1401" is not spelt like any real chapter title, so it
+ * never matches the set it is checked against.
+ */
+export function isNotesChapterHead(line, chapters) {
+    return notesChapterHeadTitle(line, chapters) !== null;
+}
+/** The confirmed chapter title's letters, if `line` is one of the appendix's own chapter headings. */
+function notesChapterHeadTitle(line, chapters) {
+    if (!chapters.size)
+        return null;
+    const match = line.match(NOTES_CHAPTER_HEAD);
+    if (!match)
+        return null;
+    const letters = titleLetters(match[1]);
+    return chapters.has(letters) ? letters : null;
+}
+export function parseNotesAppendix(lines, chapters) {
+    const notes = [];
+    const byChapter = [];
+    let segment = [];
+    let seenChapter = false;
+    let currentTitle = "";
+    const flush = () => {
+        if (!segment.length)
+            return;
+        const at = segment[0];
+        const parsed = parseFootnotes(segment.map((entry) => entry.line), at.pdfIndex, "period");
+        notes.push(...parsed.map((note) => ({ ...note, volume: at.volume, pdfIndex: at.pdfIndex, printed: at.printed })));
+        if (parsed.length)
+            byChapter.push({ title: currentTitle, numbers: new Set(parsed.map((n) => n.number)) });
+        segment = [];
+    };
+    for (const entry of lines) {
+        const title = notesChapterHeadTitle(entry.line, chapters);
+        if (title !== null) {
+            flush();
+            seenChapter = true;
+            currentTitle = title;
+            continue;
+        }
+        // Nothing before the appendix's first confirmed chapter is a note — its
+        // own citation-conventions preamble, most often — unless the report never
+        // gave us any chapters to confirm one against, in which case there is no
+        // boundary to wait for and the whole appendix is read as one run.
+        if (!seenChapter && chapters.size)
+            continue;
+        segment.push(entry);
+    }
+    flush();
+    return { notes, chapters: byChapter };
+}
+/**
+ * Links a flush-glued marker ("Airport.1", no space before the digit —
+ * `linkFlushMarkers`'s usual shape) within a report whose notes restart every
+ * chapter, scoped to each body chapter's own note numbers rather than the
+ * whole appendix's.
+ *
+ * `linkFlushMarkers` elsewhere in this pipeline confirms a candidate against
+ * the notes near its *page*, because page-foot notes sit close to what cites
+ * them. An endnotes appendix breaks that: chapter 1's notes sit hundreds of
+ * pages from chapter 1's own body, so nothing is ever "near". Chapter
+ * boundaries stand in for page locality instead: a glued "1" is only chapter
+ * 3's note 1 if 3 is the chapter it was found in.
+ *
+ * A report's own contents page can list the same chapter titles a second
+ * time as headings of its own — misread as body headings rather than a
+ * contents listing (reportsthatmatter-5fn, still open) — always earlier in
+ * the document than any real chapter, since the contents comes first. Rather
+ * than trust every text match as a real chapter boundary, this keeps only the
+ * *last* one candidate per confirmed chapter, in document order, and further
+ * only applies where that candidate's own title agrees with the appendix
+ * chapter it would be paired with — so a miscount never mismatches a
+ * chapter's markers against a different chapter's notes; it just leaves that
+ * chapter's flush markers unlinked instead (the honest "not linked" list
+ * still catches them).
+ */
+export function linkFlushMarkersByChapter(body, chapters, notesChapters) {
+    if (!chapters.size || !notesChapters.length)
+        return body;
+    const HEADING = /^#{2,3} (.+)$/gm;
+    const candidates = [];
+    for (const match of body.matchAll(HEADING)) {
+        const title = titleLetters(match[1]);
+        if (chapters.has(title))
+            candidates.push({ index: match.index, title });
+    }
+    const bounds = candidates.slice(-notesChapters.length);
+    if (bounds.length < notesChapters.length)
+        return body;
+    const bodyChapters = notesChapters.slice(notesChapters.length - bounds.length);
+    const ends = [...bounds.slice(1).map((b) => b.index), body.length];
+    let out = body.slice(0, bounds[0].index);
+    for (const [i, bound] of bounds.entries()) {
+        const segment = body.slice(bound.index, ends[i]);
+        // The candidate and the appendix chapter it lines up with must actually
+        // be the same chapter — otherwise this segment's own numbers are left
+        // exactly as read rather than scoped against the wrong chapter's notes.
+        out += bound.title === bodyChapters[i].title ? linkFlushMarkers(segment, bodyChapters[i].numbers) : segment;
+    }
+    return out;
+}
 export function renderEndnotes(notes) {
     if (!notes.length)
         return "";
