@@ -225,6 +225,201 @@ function numberedSectionAt(
   return read === target ? { text: `${opener[1]} ${title}`, end } : null;
 }
 
+/**
+ * The divisions a contents page lists (`listedDivisions`): its parts,
+ * chapters and appendices by label and number, and the unlabelled entries
+ * around them ("Foreword", "Endnotes", "Index"), each with its title as the
+ * contents spells it. `used` records which have been found in the body, so
+ * each opens once.
+ */
+export type ListedDivision = {
+  /** "chapter", "part", "appendix"…; absent for an unlabelled entry. */
+  kind?: string;
+  /** The division's number, canonical: "3" for "3", "III" or "Three"; "a" for "Appendix A". */
+  number?: string;
+  title: string;
+};
+export type ListedDivisions = { entries: ListedDivision[]; used: Set<ListedDivision> };
+
+const DIVISION_OPENER =
+  /^\s*(Part|Chapter|Appendix|Annex|Volume|Section)\s+(\d{1,3}|[IVXLC]{1,7}|[A-Z]|[A-Za-z]{3,9})(?![\w-])[:.]?\s*(.*)$/i;
+/** A contents entry's page, arabic or roman, after a gap wider than a word space. */
+const CONTENTS_PAGE = /\s{2,}(?:\d{1,4}|[ivxlc]{1,7})\s*$/;
+const NUMBER_WORDS = [
+  "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+  "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen",
+  "nineteen", "twenty",
+];
+const ROMAN_VALUES: Record<string, number> = { i: 1, v: 5, x: 10, l: 50, c: 100 };
+
+/**
+ * A division's number however it is set: "3", "III", "Three" all read "3";
+ * an appendix's or annex's letter stays a letter ("Appendix C" is not 100).
+ * Null for anything that is not a number, so "Chapter on" opens nothing.
+ */
+function divisionNumber(kind: string, token: string): string | null {
+  const t = token.toLowerCase();
+  if (/^\d+$/.test(t)) return String(Number(t));
+  if (/^(appendix|annex)$/i.test(kind) && /^[a-z]$/.test(t)) return t;
+  const word = NUMBER_WORDS.indexOf(t);
+  if (word > 0) return String(word);
+  if (/^[ivxlc]+$/.test(t)) {
+    let value = 0;
+    for (let k = 0; k < t.length; k++) {
+      const here = ROMAN_VALUES[t[k]];
+      const next = ROMAN_VALUES[t[k + 1]] ?? 0;
+      value += here < next ? -here : here;
+    }
+    return String(value);
+  }
+  return null;
+}
+
+/**
+ * What a contents page lists, when its entries are set as divisions with a
+ * page after a gap rather than dot leaders: "Chapter 3      55" over its
+ * title lines, "PART II: Explosion and Aftermath:" wrapping to its page on
+ * the next line, "Foreword      vi". A labelled entry whose own line carries
+ * the page takes the lines below it as its title, up to the next entry; one
+ * whose line has no page runs on until a line does. Nothing from a page with
+ * fewer than three labelled entries.
+ */
+export function divisionContents(lines: string[]): ListedDivision[] {
+  const entries: ListedDivision[] = [];
+  let labelled = 0;
+  const filled = lines.map((line, i) => i).filter((i) => lines[i].trim());
+  for (let k = 0; k < filled.length; k++) {
+    const line = lines[filled[k]];
+    const paged = CONTENTS_PAGE.test(line);
+    const opener = line.replace(CONTENTS_PAGE, "").match(DIVISION_OPENER);
+    const number = opener ? divisionNumber(opener[1], opener[2]) : null;
+    if (opener && number) {
+      const own = normaliseWhitespace(opener[3]);
+      const title = own ? [own] : [];
+      const opensNext = (at: number) => {
+        const next = lines[filled[at]]?.match(DIVISION_OPENER);
+        return Boolean(next && divisionNumber(next[1], next[2]));
+      };
+      let located = paged;
+      if (paged && !own) {
+        // "Chapter 3   55", its title on the lines below.
+        while (k + 1 < filled.length && !opensNext(k + 1) && !CONTENTS_PAGE.test(lines[filled[k + 1]])) {
+          title.push(normaliseWhitespace(lines[filled[++k]]));
+        }
+      } else if (!paged) {
+        // "PART II: Explosion and Aftermath:", its page on a later line.
+        while (k + 1 < filled.length && !opensNext(k + 1)) {
+          const next = lines[filled[++k]];
+          title.push(normaliseWhitespace(next.replace(CONTENTS_PAGE, "")));
+          if (CONTENTS_PAGE.test(next)) {
+            located = true;
+            break;
+          }
+        }
+      }
+      // An entry is located by a page; a division named in running text
+      // ("Section 1. Establishment. There is…") is not one.
+      if (!located || !title.length) continue;
+      entries.push({ kind: opener[1].toLowerCase(), number, title: title.join(" ") });
+      labelled++;
+    } else if (paged) {
+      // Not the page's own running number ("v   v").
+      const title = normaliseWhitespace(line.replace(CONTENTS_PAGE, ""));
+      if (/[a-z]{3}/i.test(title) && !/^[ivxlc\d\s]+$/i.test(title)) entries.push({ title });
+    }
+  }
+  return labelled >= 3 ? entries : [];
+}
+
+/**
+ * A body line that opens a division the contents lists: "Chapter Three" over
+ * the title's wrapped lines, "Appendix A", a blank, then "Commission
+ * Members", or a lone "ENDNOTES". The letters must spell the listed title
+ * exactly; a title the body sets longer than the contents ("Executive
+ * Order-- National Commission on…" for "Executive Order") is taken as the
+ * body sets it, provided it ends in a blank line within a line of passing the
+ * listed one. The heading is the body's label ("Chapter Three") and the
+ * contents' title; `end` is the last line it took.
+ */
+function listedDivisionAt(
+  lines: string[],
+  i: number,
+  divisions: ListedDivisions
+): { text: string; level: number; end: number; entry: ListedDivision } | null {
+  const line = lines[i];
+  const opener = line.match(DIVISION_OPENER);
+  const number = opener ? divisionNumber(opener[1], opener[2]) : null;
+  const candidates = divisions.entries.filter(
+    (entry) =>
+      !divisions.used.has(entry) &&
+      (entry.kind
+        ? opener && number && entry.kind === opener[1].toLowerCase() && entry.number === number
+        : true)
+  );
+  for (const entry of candidates) {
+    const target = titleLetters(entry.title);
+    if (!target) continue;
+    const first = entry.kind ? opener![3] : line;
+    let read = titleLetters(first);
+    const taken = [first.trim()];
+    let end = i;
+    // At most a dozen lines: a chapter opener sets its title a word or two to a line.
+    while (read !== target && target.startsWith(read) && end - i < 12) {
+      const next = lines[end + 1];
+      if (next === undefined) break;
+      // Blank lines inside a title only before any of it has been read
+      // ("Appendix A", a blank, "Commission Members").
+      if (!next.trim()) {
+        if (read) break;
+        end++;
+        continue;
+      }
+      end++;
+      read += titleLetters(next);
+      taken.push(next.trim());
+    }
+    let title: string | null = null;
+    if (read === target) title = entry.title;
+    else if (entry.kind && read.length > target.length && read.startsWith(target)) {
+      // The body's title runs past the contents'; accept it only as a title
+      // block of its own, ended by a blank line.
+      let k = end;
+      if (lines[k + 1]?.trim() && !lines[k + 2]?.trim()) {
+        k++;
+        taken.push(lines[k].trim());
+      }
+      if (!lines[k + 1]?.trim()) {
+        end = k;
+        title = normaliseWhitespace(taken.join(" "));
+      }
+    }
+    if (title === null) continue;
+    divisions.used.add(entry);
+    const kind = entry.kind ?? "";
+    const label = entry.kind ? normaliseWhitespace(`${opener![1]} ${opener![2]}`) : "";
+    const level = /^(chapter|section)$/.test(kind) ? 3 : 2;
+    return { text: label ? `${label}: ${title}` : title, level, end, entry };
+  }
+  return null;
+}
+
+/**
+ * A numbered heading's title that wraps onto a short line of its own
+ * (`wrappedHeadings`): "4. The Need for Increased Research and Development
+ * to Improve Spill" over "Response". The line is folded in when it is a few
+ * words, every one capitalised but the small words, and ends on no stop.
+ */
+function headingTail(line: string | undefined): string | null {
+  if (!line?.trim()) return null;
+  const text = normaliseWhitespace(line);
+  const words = text.split(/\s+/);
+  if (words.length > 6 || /[.?!:;,]$/.test(text)) return null;
+  if (/^([IVXLC]{1,6}|[A-Z]|\d{1,2})\.\s/.test(text)) return null;
+  if (!/^[A-Z]/.test(text)) return null;
+  const titular = words.every((word) => /^[A-Z("'“]/.test(word) || STOPWORD.test(word));
+  return titular ? text : null;
+}
+
 /** Leading-space count, which `pdftotext -layout` preserves from the page. */
 function indentOf(line: string): number {
   return line.length - line.trimStart().length;
@@ -647,7 +842,9 @@ export function toBlocks(
   paragraphContents = false,
   numberedHeadings = true,
   listed?: Set<string>,
-  numbered?: NumberedContents
+  numbered?: NumberedContents,
+  divisions?: ListedDivisions,
+  wrappedHeadings = false
 ): Block[] {
   if (paragraphContents) lines = joinParagraphContents(lines);
   // With `listedHeadings`, a would-be heading the contents does not name is
@@ -812,6 +1009,20 @@ export function toBlocks(
     // may carry a date ("9.2 SEPTEMBER 11, 2001") or wrap, and as ordinary
     // caps headings they were lost into the paragraph below or fused onto
     // the chapter banner above.
+    // A part, chapter or appendix the contents lists (`listedDivisions`),
+    // its title spelt out over the lines of a chapter opener.
+    const division = divisions ? listedDivisionAt(lines, i, divisions) : null;
+    if (division) {
+      flush();
+      list = null;
+      openDivisionIndent = -1;
+      const heading: Block = { kind: "heading", level: division.level, text: division.text };
+      complete.add(heading);
+      blocks.push(heading);
+      taken = division.end;
+      continue;
+    }
+
     const section = numbered ? numberedSectionAt(lines, i, numbered.sections) : null;
     if (section) {
       flush();
@@ -902,6 +1113,20 @@ export function toBlocks(
         previous.text = `${previous.text} ${standalone.text}`;
       } else {
         blocks.push({ kind: "heading", ...standalone });
+      }
+      // `wrappedHeadings`: the rest of the title, on a short line below.
+      const opened = blocks[blocks.length - 1];
+      const tail =
+        wrappedHeadings &&
+        !inTable[i] &&
+        /^([IVXLC]{1,6}|[A-Z]|\d{1,2})\.\s/.test(single) &&
+        opened.kind === "heading" &&
+        !/[.?!:]$/.test(opened.text)
+        ? headingTail(lines[i + 1])
+        : null;
+      if (tail && opened.kind === "heading" && !structural[i + 1]) {
+        opened.text = `${opened.text} ${tail}`;
+        taken = i + 1;
       }
       continue;
     }

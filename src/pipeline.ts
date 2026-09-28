@@ -15,6 +15,8 @@ import {
   headingKey,
   numberedContents,
   type NumberedContents,
+  divisionContents,
+  type ListedDivisions,
   bodyIndent,
   type Block,
 } from "./paragraphs";
@@ -159,6 +161,8 @@ export function ingestPageGroups(
   const listed = new Set<string>();
   // `numberedSections`: the sections and chapters the contents numbers.
   const numbered: NumberedContents = { sections: new Map(), chapters: new Set() };
+  // `listedDivisions`: the parts, chapters and appendices the contents lists.
+  const divisions: ListedDivisions = { entries: [], used: new Set() };
 
   for (const [groupIndex, group] of cleanedGroups.entries()) {
     for (const split of group) {
@@ -173,6 +177,12 @@ export function ingestPageGroups(
       const sections =
         resolved.numberedSections && !entries?.sections.size && numbered.sections.size
           ? numbered
+          : undefined;
+      const listedHere = resolved.listedDivisions ? divisionContents(pageLines) : [];
+      divisions.entries.push(...listedHere);
+      const divisionGate =
+        resolved.listedDivisions && !listedHere.length && divisions.entries.length
+          ? divisions
           : undefined;
       const at = { volume: split.volume, pdfIndex: split.pdfIndex, printed: split.printed };
       const blocks = (
@@ -189,7 +199,9 @@ export function ingestPageGroups(
               resolved.chapterContents,
               resolved.numberedHeadings ?? true,
               gate,
-              sections
+              sections,
+              divisionGate,
+              resolved.wrappedHeadings
             )
       ).map((block) => ({ ...block, at }));
 
