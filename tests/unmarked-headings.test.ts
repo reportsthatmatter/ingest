@@ -65,4 +65,23 @@ describe("unmarkedHeadings (reportsthatmatter-ixe)", () => {
     expect(headings(markdown)).toContain("### Occupation");
     expect(headings(markdown).some((h) => h.includes("period Occupation"))).toBe(false);
   });
+
+  it("does not read a page-opening word as a heading when it continues the sentence before it", () => {
+    // p.85 opens on "reconstruction." — the tail of a sentence carried over
+    // from p.84's "...oversee the UK contribution to post-conflict" — and
+    // "Reconstruction" also happens to be a real heading elsewhere in the
+    // report (a Key Findings entry, p.124 and p.135).
+    const withReconstruction = [
+      pages[0],
+      { index: 2, volume: 1, pdfIndex: 2, lines: fixture("chilcot-contents-3") },
+      { index: 3, volume: 1, pdfIndex: 3, lines: fixture("chilcot-reconstruction") },
+    ];
+    const markdown = ingestPageGroups(
+      [withReconstruction],
+      { title: "T" },
+      resolvePasses(pipeline({ ...base, passes: [numberedParagraphs(), listedHeadings(), unmarkedHeadings()] }))
+    ).markdown;
+    expect(headings(markdown).some((h) => /reconstruction/i.test(h))).toBe(false);
+    expect(markdown).toContain("reconstruction.");
+  });
 });
