@@ -911,8 +911,13 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
         // `unmarkedHeadings`: the other half of `listedHeadings` — a line with no
         // heading shape of its own (no caps, number or division label) is still
         // the heading the contents names, when it matches one letter for letter.
+        // `bare`: an exact match against the contents, never a wrapping fragment
+        // of the heading before or after it — two of these can sit on consecutive
+        // lines with no blank between (a section heading directly over its first
+        // subsection), and neither may absorb the other the way a heading whose
+        // title merely runs long does.
         if (unmarkedHeadings && listed?.has(headingKey(text)))
-            return { level: 3, text };
+            return { level: 3, text, bare: true };
         return null;
     };
     // The left margin is a property of the document's layout, not of one page. A
@@ -1180,11 +1185,15 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
                 // A line that opens its own numbering starts a new heading, not a
                 // continuation. Test for the numbering, not the first letter — "I" and
                 // "C" begin plenty of ordinary words.
-                !/^([IVXLC]{1,6}|[A-Z]|\d{1,2})\.\s/.test(single)) {
+                !/^([IVXLC]{1,6}|[A-Z]|\d{1,2})\.\s/.test(single) &&
+                !standalone.bare) {
                 previous.text = `${previous.text} ${standalone.text}`;
             }
             else {
-                blocks.push({ kind: "heading", ...standalone });
+                const heading = { kind: "heading", level: standalone.level, text: standalone.text };
+                if (standalone.bare)
+                    complete.add(heading);
+                blocks.push(heading);
             }
             // `wrappedHeadings`: the rest of the title, on a short line below.
             const opened = blocks[blocks.length - 1];

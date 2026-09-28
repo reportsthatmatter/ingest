@@ -45,4 +45,24 @@ describe("unmarkedHeadings (reportsthatmatter-ixe)", () => {
     const without = run([numberedParagraphs()]);
     expect(withPass).toBe(without);
   });
+
+  it("keeps two bare headings with no blank line between them separate", () => {
+    // p.90: "The post‑conflict period" directly over "Occupation", its own
+    // first subsection — nothing wraps a title across these two lines, so
+    // neither may absorb the other the way a heading whose title runs onto
+    // a second line does.
+    const withOccupation = [
+      pages[0],
+      { index: 2, volume: 1, pdfIndex: 2, lines: fixture("chilcot-contents-2") },
+      { index: 3, volume: 1, pdfIndex: 3, lines: fixture("chilcot-occupation") },
+    ];
+    const markdown = ingestPageGroups(
+      [withOccupation],
+      { title: "T" },
+      resolvePasses(pipeline({ ...base, passes: [numberedParagraphs(), listedHeadings(), unmarkedHeadings()] }))
+    ).markdown;
+    expect(headings(markdown)).toContain("### The post‑conflict period");
+    expect(headings(markdown)).toContain("### Occupation");
+    expect(headings(markdown).some((h) => h.includes("period Occupation"))).toBe(false);
+  });
 });
