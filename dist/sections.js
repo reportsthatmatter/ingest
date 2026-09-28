@@ -1,4 +1,4 @@
-import { slugify } from "./markdown.js";
+import { PARAGRAPH_ID_CHARS, slugify } from "./markdown.js";
 /**
  * Splits a rendered report into its own top-level sections.
  *
@@ -58,7 +58,7 @@ export function sectionFor(sections, paragraphId) {
  */
 export function paragraphIndex(sections) {
     const index = {};
-    const idPattern = /\bid="([a-z0-9-]+)"/g;
+    const idPattern = new RegExp(`\\bid="(${PARAGRAPH_ID_CHARS})"`, "gu");
     for (const section of sections) {
         for (const match of section.html.matchAll(idPattern)) {
             if (!(match[1] in index))

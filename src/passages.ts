@@ -11,6 +11,8 @@
  * cleanup steps rather than force one shape onto both.
  */
 
+import { PARAGRAPH_ID_CHARS } from "./markdown";
+
 export type Passage = {
   paragraphId: string;
   text: string;
@@ -37,7 +39,10 @@ function cleanPassageText(innerHtml: string): string {
   return text.trim();
 }
 
-const CITABLE_UNIT = /<(p|ul) id="([a-z0-9-]+)"([^>]*)>([\s\S]*?)<\/\1>/g;
+const CITABLE_UNIT = new RegExp(
+  `<(p|ul) id="(${PARAGRAPH_ID_CHARS})"([^>]*)>([\\s\\S]*?)<\\/\\1>`,
+  "gu"
+);
 
 export function extractPassages(html: string): Passage[] {
   const passages: Passage[] = [];

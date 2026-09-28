@@ -29,7 +29,7 @@ export { takePrintedNumber, splitFootnoteBlock, bodyIndent } from "./passes.js";
 export { linkFlushMarkers, linkInlineMarkers } from "./footnotes.js";
 // — Rendering: markdown → the content a report publishes —
 export { renderArtifacts } from "./render.js";
-export { renderMarkdown, paragraphId, slugify } from "./markdown.js";
+export { renderMarkdown, paragraphId, slugify, PARAGRAPH_ID_CHARS } from "./markdown.js";
 export { splitSections, sectionFor, paragraphIndex } from "./sections.js";
 export { extractPassages } from "./passages.js";
 // — Publishing rendered content to reportsthatmatter (see src/publish.ts) —
