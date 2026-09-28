@@ -51,6 +51,7 @@ export function resolvePasses(def) {
         listedDivisions: passes.some((pass) => pass.name === "listedDivisions"),
         wrappedHeadings: passes.some((pass) => pass.name === "wrappedHeadings"),
         pageBreakContinuations: passes.some((pass) => pass.name === "pageBreakContinuations"),
+        citationRunOver: passes.some((pass) => pass.name === "citationRunOver"),
         quoteInset: passes.find((pass) => pass.stage === "quoteInset")?.columns,
         allCapsHeadings: passes.find((pass) => pass.stage === "allCapsHeadings")?.enabled ?? true,
         numberedHeadings: passes.find((pass) => pass.stage === "numberedHeadings")?.enabled ?? true,

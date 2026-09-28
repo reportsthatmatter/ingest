@@ -32,6 +32,7 @@ export {
   listedDivisions,
   wrappedHeadings,
   pageBreakContinuations,
+  citationRunOver,
   runningFurniture,
   geometry,
   columns,

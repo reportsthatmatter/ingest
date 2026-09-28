@@ -159,6 +159,25 @@ export const hangingIndents = () => ({ name: "hangingIndents", stage: "page" });
  */
 export const endnotes = () => ({ name: "endnotes", stage: "page" });
 /**
+ * A footnote's run-over may be several ordinary-looking paragraphs, not one
+ * unbroken run: PSI's "BSAM mark recap" note (reportsthatmatter-626) fills
+ * two whole pages with a quotation, its source line, and more prose, all
+ * single-spaced like the body around it, so the ordinary run-over check
+ * (which needs a double-spaced page) never fires. Walking upward from a
+ * footnote block's own start, a paragraph joins the run-over only while it
+ * is itself dense with this report's citations — Bates numbers, hearing
+ * exhibits, transcript cites — which its footnotes are built out of and its
+ * body prose uses only in passing; the first paragraph that reads as
+ * ordinary prose stops the walk where it is (`looksLikeCitation`).
+ *
+ * Opt-in only: it only ever helps a report whose footnotes are themselves
+ * that citation-dense, and a first attempt at this keyed on gap width
+ * instead, which moved a real section heading ("D. Ratings Deficiencies")
+ * into a footnote — a heading or a table sits behind a wide gap exactly as a
+ * footnote separator does, with nothing in the whitespace to tell them apart.
+ */
+export const citationRunOver = () => ({ name: "citationRunOver", stage: "page" });
+/**
  * Reads the report's chapter-and-section numbering from its contents
  * ("8.1   The Summer of Threat 254") and takes each numbered section's heading
  * from there (reportsthatmatter-w8g).

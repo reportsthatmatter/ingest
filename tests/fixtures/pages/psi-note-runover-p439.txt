@@ -1,0 +1,58 @@
+                                                         432
+
+        On June 8, 2007, Mr. Sparks received an urgent early morning email from Goldman’s
+Japan office regarding “unprecedented overnight [rates] market volatility,” suggesting that he call
+in the ABX traders early.1771 “Given the recent correlation of risk assume this is not a good sign for
+RMBS/ABS spreads.”1772 Later that day, when another trader complained about “getting crushed”
+in the ABX market, Mr. Birnbaum replied: “Patience, patience. The CDO unwind has only
+begun.”1773
+
+        Around June 12, 2007, public news accounts indicated that the two Bear Stearns funds
+were unable to meet collateral calls on their subprime mortgage backed securities holdings.1774 The
+funds also devalued their Net Asset Valuations (NAVs) to significantly lower levels, which
+effectively triggered the funds’ total collapse.1775
+
+
+
+
+         Mr. Lehman: Told Egol I’m comfortable w/ the prices, especially when u include the 5 pt [percent] HC
+         [haircut.] Don’t think mar[k]ing him down 1 or 2 pts makes sense or sends the right message .... I wud run it
+         by Dan [Sparks] and get his take .... [M]y opinion is that the Firm is appropriately protected w/ current HC
+         [haircut] and mark.
+         Mr. Swenson: W e need to mark him he is the biggest elephant by far and it has an impact on the m$arket[.]
+         Mr. Lehman: How much do u [sic] want to mark him by?
+         Mr. Swenson: A lot[.]
+         Mr. Lehman: I disagree on this one ... Let’s talk tomorrow[.]
+         Mr. Swenson: He is done[.]
+
+6/7/2007 email exchange between Mr. Swenson and Mr. Lehman, “BSAM Post,” GS MBS-E-011184213.
+
+         The next day, Friday, June 8, 2007, Mr. Egol reported he had marked down all four CDO positions by two
+points. 6/8/2007 email from Jon Egol to Daniel Sparks, “BSAM mark recap,” GS MBS-E-001920339. Upon
+reviewing the marks the following Monday, Mr. Sparks wrote: “The marks look stale.” 6/11/2007 email from
+Daniel Sparks, “BSAM Exposure Summary,” GS MBS-E-010798675. A Mortgage Department employee replied:
+“Marks for everything but the correlation positions are taken from work egol did last thurs. Correlation marks are as
+of friday’s cob [close of business].” Id.
+
+          On June 12, Bear Stearns announced that it would be changing the hedge funds’ Net Asset Valuations
+(NAVs). 6/12/2007 email to Craig Broderick, “BSAM Bullet Points,” GS MBS-E-009967117 (“BSAM is currently
+in the process of restating their performance figures for April, from down 5% to down 10%. This was due to many
+dealers changing the way they are marking their Repo positions”). The Mortgage Department later marked down
+two Timberwolf tranches owned by the Bear Stearns hedge funds by another 2 points and 5 points, respectively, to
+95 and 89, before it bought them back from Bear Stearns at 96 and 90 on June 19, 2007, in a negotiated unwind of
+the Bear funds’ positions with Goldman. See 6/22/2007 emails from Mr. Lehman, “BSAM Repo Summary,” GS
+MBS-E-001916435. See also 6/18/2007 email from Mr. Lehman, “Today’s Bear Stearns Prices,” GS MBS-E-
+001919600; 6/27/2007 email from Mr. Sparks to Mr. Viniar, “CDO^2s,” GS MBS-E-009747489.
+1771
+     6/8/2007 email to Daniel Sparks, “Heads Up – rates market volatile,” GS MBS-E-010796702.
+1772
+     Id.
+1773
+     6/8/2007 email from Joshua Birnbaum, “* ABX Markets 07-1, 06-2, 06-1: 11:00 a.m.,” GS MBS-E-012900708.
+1774
+     6/12/2007 email to Craig Broderick, “BSAM Bullet Points,” GS MBS-E-009967117.
+1775
+     Id. A month later, on July 17, 2007, Mr. Sparks reported to Mr. Mullen and Mr. Montag that the Bear Stearns
+funds were “returning 9 cents and 0 cents on the dollar in the less-levered and more-levered funds.” 7/17/2007 email
+from Daniel Sparks, “Mortgages Estimate,” GS MBS-E-010857498.
+

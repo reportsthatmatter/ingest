@@ -1,0 +1,54 @@
+                                                         431
+
+position included the $9 billion AAA ABX short which had suddenly begun gaining value as the
+subprime market worsened. In June, two Bear Stearns hedge funds specializing in subprime
+mortgage assets collapsed. In July 2007, the credit rating agencies began downgrading ratings for
+hundreds and then thousands of RMBS and CDO securities. Soon after, the subprime mortgage
+backed securities market froze and then collapsed. Each of these events increased the value of
+Goldman’s net short position.
+
+        Bear Stearns Hedge Fund Collapse. The collapse of the Bear Stearns hedge funds in
+mid-June triggered Goldman’s effort to rebuild its net short position. On June 7, 2007, the
+Mortgage Department learned that the Bear Stearns hedge funds were seeking quietly to sell some
+of their subprime portfolio to meet client redemption requests, which Goldman interpreted as a
+signal of serious financial distress.1769 After reviewing the hedge funds’ assets, one Goldman
+employee remarked:
+
+         “In total these two portfolios add up to roughly $17bil in total exposure after leverage. It
+         goes without saying that if this portfolio were to be released into the market the
+         implications would be pretty severe.”1770
+
+
+1769
+     See 6/7/2007 Goldman email chain, “BSAM Post,” GS MBS-E-011184213.
+1770
+     Id. Some have suggested that the financial problems experienced by the Bear Stearns hedge funds were caused
+in part by severe markdowns taken by Goldman on assets held in the funds’ portfolios, and that Goldman caused the
+funds to collapse. In its final report, the Financial Crisis Inquiry Commission (FCIC) briefly addressed these
+allegations. See The Financial Crisis Inquiry Report 2010 at 237-40, 244 (hereinafter “Final Report”). Goldman
+denied the allegations with respect to its April and M ay 2007 marks in filings with the FCIC. See 11/1/2010 letter
+from Goldman counsel Janet Broecke to FCIC, “FCIC Requests for Documents and Information” and Appendices A-
+G, available at www2.goldmansachs.com. The FCIC’s Final Report was critical of Goldman’s marks in general as
+being significantly lower than those of other banks and noted in particular its collateral dispute with AIG. See Final
+Report at 243-44, 265-71. W ith respect to the Bear Stearns hedge funds, however, the Final Report merely noted
+that Bear Stearns had disputed marks from Goldman and three other banks and cited the testimony of the funds’
+portfolio manager, Ralph Cioffi, that “a number of factors contributed to the April revision [in the hedge funds’
+values, which ultimately led to the funds’ collapse], and Goldman’s marks were one factor.” Final Report at 240.
+
+          In addition to the markdowns in April and May, Goldman also marked down certain CDO securities held by
+the Bear Stearns funds in June 2007, but it appears those June markdowns did not play a significant role in the hedge
+funds’ collapse. That month, Goldman marked down their positions in four Goldman CDOs by two points each. See,
+e.g., 6/8/2007 email from Jonathan Egol to Daniel Sparks, “BSAM mark recap,” GS MBS-E-001920339 (Mr. Egol
+emailed Mr. Sparks a recap of the Bear Stearns markdowns and stated: “W e lowered the marks on 4 bonds down 2
+pts each.”).
+
+         Mr. Swenson had urged larger markdowns, but his advice was not followed. On June 7, 2007, Mr. Egol had
+first marked down the funds’ holdings in a single Abacus CDO by 2 points, from 89 to 87. Mr. Egol emailed Mr.
+Sparks a spreadsheet with a cover note: “GS exposure to BSAM [Bear Stearns Asset Management] as of today.
+ABACUS mark corrected to 87 to handle.” 6/7/2007 email from Mr. Egol to Mr. Sparks GS MBS-E-003375593.
+Since Abacus was only one of four Goldman CDOs in which the Bear Stearns funds held positions, Mr. Swenson
+emailed Mr. Lehman recommending further markdowns:
+
+         Mr. Swenson: I am on the same page [as] egol we n[e]ed to mark him [Ralph Cioffi, Portfolio Manager of
+         the Bear Stearns funds]
+
