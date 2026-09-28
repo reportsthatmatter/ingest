@@ -39,6 +39,7 @@ export type ResolvedPasses = {
     numberedSections?: boolean;
     listedDivisions?: boolean;
     wrappedHeadings?: boolean;
+    pageBreakContinuations?: boolean;
     quoteInset?: number;
     allCapsHeadings: boolean;
     numberedHeadings?: boolean;

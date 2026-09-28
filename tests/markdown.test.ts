@@ -430,6 +430,20 @@ describe("paragraphIndex", () => {
       expect(sections.find((s) => s.slug === index[id])).toBe(sectionFor(sections, id));
     }
   });
+
+  it("includes a paragraph whose id keeps the report's own non-ASCII apostrophe (reportsthatmatter-4k6)", async () => {
+    const { splitSections, paragraphIndex } = await import("../src/sections");
+    // U+02BC MODIFIER LETTER APOSTROPHE, as it appears in the Columbia report's
+    // own text ("Boardʼs view of NASAʼs organizational culture").
+    const html = renderMarkdown("## One\n\nBoardʼs view of NASAʼs organizational culture.");
+    const sections = splitSections(html, 0);
+
+    expect(html).toContain('id="boardʼs-view-nasaʼs-organizational-culture"');
+
+    const index = paragraphIndex(sections);
+
+    expect(index["boardʼs-view-nasaʼs-organizational-culture"]).toBe("one");
+  });
 });
 
 describe("lists are citable", () => {

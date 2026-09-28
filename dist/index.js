@@ -11,14 +11,14 @@
  */
 // — What a report declares —
 export { pipeline, resolvePasses } from "./define.js";
-export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, paragraphNotes, chapterContents, listedHeadings, endnotes, numberedSections, listedDivisions, wrappedHeadings, runningFurniture, geometry, columns, quoteInset, allCapsHeadings, numberedHeadings, } from "./passes.js";
+export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, paragraphNotes, chapterContents, listedHeadings, endnotes, numberedSections, listedDivisions, wrappedHeadings, pageBreakContinuations, runningFurniture, geometry, columns, quoteInset, allCapsHeadings, numberedHeadings, } from "./passes.js";
 export { detectGutter, splitColumns } from "./columns.js";
 // — Running a build —
 export { extractPages, normaliseWhitespace } from "./extract.js";
 export { ingest, ingestPages, ingestPageGroups } from "./pipeline.js";
 export { resolveVolume, checkVolume, fileChecksum } from "./volumes.js";
 // — Checking a build —
-export { runChecks, structuralChecks, losslessCheck, retentionCheck, severedSentenceCheck, digitDensityCheck, } from "./fidelity.js";
+export { runChecks, structuralChecks, losslessCheck, retentionCheck, severedSentenceCheck, pageBreakSplits, digitDensityCheck, } from "./fidelity.js";
 export { computeBaseline, diffBaselines } from "./baseline.js";
 export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler.js";
 // — Human corrections —
@@ -29,7 +29,7 @@ export { takePrintedNumber, splitFootnoteBlock, bodyIndent } from "./passes.js";
 export { linkFlushMarkers, linkInlineMarkers } from "./footnotes.js";
 // — Rendering: markdown → the content a report publishes —
 export { renderArtifacts } from "./render.js";
-export { renderMarkdown, paragraphId, slugify } from "./markdown.js";
+export { renderMarkdown, paragraphId, slugify, PARAGRAPH_ID_CHARS } from "./markdown.js";
 export { splitSections, sectionFor, paragraphIndex } from "./sections.js";
 export { extractPassages } from "./passages.js";
 // — Publishing rendered content to reportsthatmatter (see src/publish.ts) —

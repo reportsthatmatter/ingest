@@ -47,4 +47,12 @@ describe("extractPassages", () => {
       { paragraphId: "x", text: "Moody's & Standard & Poor's", page: null },
     ]);
   });
+
+  it("extracts a paragraph whose id keeps the report's own non-ASCII apostrophe (reportsthatmatter-4k6)", () => {
+    // U+02BC MODIFIER LETTER APOSTROPHE, as slugify keeps it verbatim.
+    const html = '<p id="boardʼs-view">Board’s view.</p>';
+    expect(extractPassages(html)).toEqual([
+      { paragraphId: "boardʼs-view", text: "Board’s view.", page: null },
+    ]);
+  });
 });
