@@ -61,7 +61,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         // as a block at the page foot; endnotes are not read as notes at all.
         const split = resolved.paragraphNotes || resolved.endnotes
             ? splitPageNumberOnly(page)
-            : splitPage(page, expectedNote);
+            : splitPage(page, expectedNote, { citationRunOver: resolved.citationRunOver });
         // A note that ran over the page break: its tail opens this page's
         // block, and belongs to the last note read before it.
         const previous = footnotes[footnotes.length - 1];

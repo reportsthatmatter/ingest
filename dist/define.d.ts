@@ -45,6 +45,7 @@ export type ResolvedPasses = {
     listedDivisions?: boolean;
     wrappedHeadings?: boolean;
     pageBreakContinuations?: boolean;
+    citationRunOver?: boolean;
     quoteInset?: number;
     allCapsHeadings: boolean;
     numberedHeadings?: boolean;

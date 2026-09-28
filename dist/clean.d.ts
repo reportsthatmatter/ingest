@@ -62,7 +62,9 @@ export declare function takePrintedNumber(input: string[]): {
  * 735 …") look identical to a note opening, and only the numbering tells them
  * apart. Walking upward matters because footnote numbers also appear inline.
  */
-export declare function splitFootnoteBlock(lines: string[], expectedNote: number): {
+export declare function splitFootnoteBlock(lines: string[], expectedNote: number, options?: {
+    citationRunOver?: boolean;
+}): {
     body: string[];
     footnotes: string[];
     runOver: string[];
@@ -73,7 +75,9 @@ export declare function splitFootnoteBlock(lines: string[], expectedNote: number
  * the order they must run in — the page number would otherwise look like a
  * stacked note opening.
  */
-export declare function splitPage(page: Page, expectedNote: number): SplitPage;
+export declare function splitPage(page: Page, expectedNote: number, options?: {
+    citationRunOver?: boolean;
+}): SplitPage;
 export type FurnitureOptions = {
     /**
      * Strip a line that repeats only once its digits are blanked only where its

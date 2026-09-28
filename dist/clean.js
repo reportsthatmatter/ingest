@@ -91,7 +91,7 @@ export function takePrintedNumber(input) {
  * 735 …") look identical to a note opening, and only the numbering tells them
  * apart. Walking upward matters because footnote numbers also appear inline.
  */
-export function splitFootnoteBlock(lines, expectedNote) {
+export function splitFootnoteBlock(lines, expectedNote, options = {}) {
     const candidates = noteCandidates(lines);
     if (!candidates.length)
         return { body: lines, footnotes: [], runOver: [] };
@@ -107,7 +107,7 @@ export function splitFootnoteBlock(lines, expectedNote) {
             runOver: [],
         };
     }
-    const from = runOverStart(lines, at);
+    const from = runOverStart(lines, at, options.citationRunOver ?? false);
     return { body: lines.slice(0, from), footnotes: lines.slice(at), runOver: lines.slice(from, at) };
 }
 const indentOf = (line) => line.length - line.trimStart().length;
@@ -167,31 +167,97 @@ const DISPLACED_OPENING_MAX = 8;
  * with no blank between is what tells it apart from that body, whose lines
  * are each followed by one. A single-spaced page has no such contrast, so it
  * is left exactly as it was.
+ *
+ * `citations`: a report may opt in (`citationRunOver()`) to a second, weaker
+ * fallback for a single-spaced page whose run-over is not one unbroken run
+ * but several ordinary-looking paragraphs (`citationRunOverStart`). It is not
+ * safe as a default — see that function's own comment — so it only runs
+ * where the report's own footnotes are dense enough with citations to tell
+ * them from body prose that way.
  */
-function runOverStart(lines, at) {
+function runOverStart(lines, at, citations) {
     let top = at;
     while (top > 0 && lines[top - 1].trim())
         top -= 1;
     if (top === at)
-        return at;
+        return citations ? citationRunOverStart(lines, at) : at;
     let gap = 0;
     while (top - gap - 1 >= 0 && !lines[top - gap - 1].trim())
         gap += 1;
     // Nothing above the run at all: the whole page is the block's, and there
     // is no body line to tell the run from.
     if (top - gap === 0)
-        return at;
+        return citations ? citationRunOverStart(lines, at) : at;
     // One line under a single blank is spaced exactly like a line of the body
     // above it; a wider gap, or a second line with no blank before it, is not.
     if (gap < RUN_OVER_MIN_GAP && at - top < 2)
-        return at;
+        return citations ? citationRunOverStart(lines, at) : at;
     // Only a double-spaced body makes an unbroken run stand out. On a
     // single-spaced page the body's own last paragraph is exactly such a run
     // (Litvinenko sets its paragraphs straight onto their notes), and taking it
     // would move prose, headings and all, into a footnote.
-    return isDoubleSpaced(lines.slice(0, top - gap)) ? top : at;
+    if (isDoubleSpaced(lines.slice(0, top - gap)))
+        return top;
+    return citations ? citationRunOverStart(lines, at) : at;
 }
 const RUN_OVER_MIN_GAP = 2;
+/**
+ * A note whose run-over is not one unbroken run but several paragraphs —
+ * quotations, their source lines, more prose — none of them double-spaced
+ * (PSI's "BSAM mark recap" note, reportsthatmatter-626: two whole pages are
+ * notes 1770-1775's overflow, a block quotation and all).
+ *
+ * Gap width cannot tell a paragraph break from the body/footnote boundary on
+ * a single-spaced page: both are exactly one blank line. A first attempt at
+ * this trusted a *wider* gap instead, and moved a real heading, "D. Ratings
+ * Deficiencies" — a section break sits behind a wide gap here too, table and
+ * all, with nothing to tell it from a footnote's own separator.
+ *
+ * What does tell a footnote's overflow from body prose is its content: this
+ * report's footnotes are citations, dense with the Bates numbers and hearing
+ * exhibits its body prose uses only in passing. Walking upward paragraph by
+ * paragraph — a paragraph being a run of lines with no blank line inside it,
+ * whatever the gap around it — a paragraph joins the run-over only while it
+ * is itself that dense with citations (`looksLikeCitation`); the first
+ * paragraph that reads as prose instead — a heading, a table, a quotation
+ * with no citation of its own, ordinary narration — stops the walk exactly
+ * where it is, and nothing above that point is touched.
+ */
+function citationRunOverStart(lines, at) {
+    let boundary = at;
+    while (true) {
+        let top = boundary;
+        while (top > 0 && lines[top - 1].trim())
+            top -= 1;
+        if (top === boundary)
+            return boundary;
+        const paragraph = lines.slice(top, boundary).join(" ");
+        if (!looksLikeCitation(paragraph))
+            return boundary;
+        let gap = 0;
+        while (top - gap - 1 >= 0 && !lines[top - gap - 1].trim())
+            gap += 1;
+        if (top - gap === 0)
+            return top;
+        boundary = top - gap;
+    }
+}
+/**
+ * Dense with the source identifiers this report's footnotes cite by —
+ * Bates-numbered document productions ("GS MBS-E-011184213", "UBS-CT
+ * 021485", "OTSWMEF-0000031969", "SCO-00310619"), hearing exhibits,
+ * transcript cites, and QFR responses. Ordinary body prose mentions these in
+ * passing; a footnote's own text is built almost entirely out of them.
+ */
+function looksLikeCitation(paragraph) {
+    return (
+    // A Bates-style document identifier: one or more all-caps (or
+    // underscore-joined) segments, however OCR spaced or hyphenated them,
+    // ending in a run of digits — "GS MBS-E-011184213", "PSI_QFR_GS0249",
+    // "OTSWMEF-0000031969", "UBS-CT 021485".
+    /\b[A-Z]{2,}(?:[ _-][A-Z0-9]{1,12}){0,4}[ -]{0,2}\d{4,}\b/.test(paragraph) ||
+        /Hearing Exhibit|Int\. Tr\.|HSC Tr\.|Subcommittee QFR/.test(paragraph));
+}
 /** Most of the text lines are followed by a blank: the page is set double-spaced. */
 function isDoubleSpaced(lines) {
     const text = lines.filter((line) => line.trim()).length;
@@ -220,9 +286,9 @@ function provenance(page) {
  * the order they must run in — the page number would otherwise look like a
  * stacked note opening.
  */
-export function splitPage(page, expectedNote) {
+export function splitPage(page, expectedNote, options = {}) {
     const { printed, lines } = takePrintedNumber(page.lines);
-    const { body, footnotes, runOver } = splitFootnoteBlock(lines, expectedNote);
+    const { body, footnotes, runOver } = splitFootnoteBlock(lines, expectedNote, options);
     return { ...provenance(page), printed, body, footnotes, ...(runOver.length ? { runOver } : {}) };
 }
 /**
