@@ -533,6 +533,165 @@ export function contentsHeadings(blocks) {
     }
     return out;
 }
+export function emptyOutline() {
+    return { entries: new Map(), prefixes: new Set() };
+}
+/** An outline label and the title after it: "IV.", "A.", "3.", "c.", "(2)", "(b)", "(iii)". */
+const OUTLINE_LABEL = /^\s*(\((?:\d{1,2}|[a-z]{1,4})\)|(?:[IVXLC]{1,6}|[A-Za-z]|\d{1,2})\.)\s+(\S.*)$/;
+/**
+ * Spaced leaders to a page number, ". . . . 219", ending a contents entry —
+ * two dots at the least, where a long title leaves no room for more.
+ */
+const LEADER_TAIL = /\s*(?:\.\s?){2,}\s*(\d{1,4})\s*$/;
+/**
+ * An outline label's level. A roman numeral over a title in capitals is a
+ * top-level part ("V. DEFENDANTS DEVISED…"); "I." over a title in title case
+ * is the ninth lettered section. Capital letters and numbers are the
+ * sections a reader pages through; anything below is a subheading within one.
+ */
+function outlineLevel(label, title) {
+    if (/^[IVXLC]+\.$/.test(label) && title === title.toUpperCase())
+        return 2;
+    if (/^(?:[A-Z]|\d{1,2})\.$/.test(label))
+        return 3;
+    return 4;
+}
+/**
+ * The entries of a contents page set out as an outline, each opening on its
+ * label and wrapping until its spaced leaders reach a page number:
+ *
+ *   C.   TIRC/CTR -- Tobacco Industry Research Committee/Council
+ *        for Tobacco Research-USA . . . . . . . . . . . . 26
+ *
+ * Nothing from a page with fewer than three entries.
+ */
+export function readContentsOutline(lines) {
+    const entries = [];
+    let open = null;
+    for (const line of lines) {
+        if (!line.trim())
+            continue;
+        const label = open ? null : line.match(OUTLINE_LABEL);
+        if (label)
+            open = { label: label[1], parts: [label[2]] };
+        else if (open)
+            open.parts.push(line.trim());
+        else
+            continue;
+        const text = normaliseWhitespace(open.parts.join(" "));
+        const tail = text.match(LEADER_TAIL);
+        if (!tail)
+            continue;
+        const title = text.replace(LEADER_TAIL, "").trim();
+        entries.push({ label: open.label, title, page: tail[1], level: outlineLevel(open.label, title) });
+        open = null;
+    }
+    return entries.length >= 3 ? entries : [];
+}
+/**
+ * A contents page read as an outline, laid out as its entries: each with its
+ * label, as the contents numbers it, and its page. A title over the entries
+ * ("TABLE OF CONTENTS") stays a heading.
+ */
+export function outlineContentsBlocks(lines, entries) {
+    const blocks = [];
+    const first = lines.findIndex((line) => OUTLINE_LABEL.test(line));
+    const title = normaliseWhitespace(lines.slice(0, Math.max(first, 0)).join(" "));
+    if (title && title === title.toUpperCase() && /[A-Z]{4}/.test(title)) {
+        blocks.push({ kind: "heading", level: 2, text: title });
+    }
+    for (const entry of entries) {
+        // "- 1. Title" would nest an ordered list in the contents' bullet.
+        const label = entry.label.replace(/^(\d+)\./, "$1\\.");
+        blocks.push({ kind: "contents", text: `${label} ${entry.title}`, page: entry.page });
+    }
+    return blocks;
+}
+/** Adds a contents page's entries to the outline the body is read against. */
+export function learnOutline(outline, entries) {
+    for (const entry of entries) {
+        const letters = titleLetters(entry.title);
+        const key = `${entry.level}:${letters}`;
+        if (!outline.entries.has(key))
+            outline.entries.set(key, { title: entry.title, level: entry.level });
+        for (let n = 1; n <= letters.length; n++)
+            outline.prefixes.add(`${entry.level}:${letters.slice(0, n)}`);
+    }
+}
+/**
+ * The body lines that open a heading the outline lists: a label, then the
+ * title letter for letter as the contents gives it, across as many lines as
+ * it wraps over. A footnote marker the title carries ("THE ENTERPRISE9") is
+ * kept after it. Keyed by the first line; `end` is the last line it took.
+ */
+function readOutline(lines, outline) {
+    const found = new Map();
+    for (let i = 0; i < lines.length; i++) {
+        const label = lines[i].match(OUTLINE_LABEL);
+        if (!label)
+            continue;
+        const level = outlineLevel(label[1], normaliseWhitespace(label[2]));
+        let read = titleLetters(label[2]);
+        let end = i;
+        const at = (letters) => outline.entries.get(`${level}:${letters}`);
+        while (!at(read) && !at(read.replace(/\d+$/, "")) && outline.prefixes.has(`${level}:${read}`)) {
+            const next = lines[end + 1];
+            if (!next?.trim())
+                break;
+            end++;
+            read += titleLetters(next);
+        }
+        const entry = at(read);
+        const marked = entry ? null : at(read.replace(/\d+$/, ""));
+        if (!entry && !marked)
+            continue;
+        const marker = marked ? read.match(/\d+$/)[0] : "";
+        found.set(i, { text: `${(entry ?? marked).title}${marker}`, level, end });
+        i = end;
+    }
+    return found;
+}
+/**
+ * A line set in the middle of the page — "FINDINGS OF FACT" — rather than
+ * inset from the left like a quotation: about as far from the right edge of
+ * the page's text as from the left.
+ */
+function isCentred(line, width) {
+    const left = indentOf(line);
+    const right = width - line.trimEnd().length;
+    return left >= 20 && Math.abs(left - right) <= 0.3 * (left + right);
+}
+const FINDING_LINE = /^\s*(\d{1,4})\.\s+\S/;
+/**
+ * Which lines open a numbered finding: indented past the margin, carrying the
+ * next number in the report's sequence (or one of the two after it, so a
+ * single misread does not lose every finding that follows), on a page that is
+ * not a contents page, and not a contents entry nor a heading — "3.
+ * Tobacco Institute Committees" is an outline label, not finding 3 — unless
+ * its number is exactly the next. Advances the counter as it goes; the value
+ * at each line is its finding number, 0 where none opens.
+ */
+function readFindings(lines, margin, counter, isHeading) {
+    // A contents page numbers its entries too, and they wrap without leaders:
+    // "1.   Research Review Committee, Research Liaison Committee,".
+    if (lines.filter((line) => SPACED_LEADERS.test(line)).length >= 3)
+        return lines.map(() => 0);
+    return lines.map((line) => {
+        const match = line.match(FINDING_LINE);
+        if (!match || indentOf(line) <= margin || TOC_ENTRY.test(line))
+            return 0;
+        const n = Number.parseInt(match[1], 10);
+        if (n < counter.next || n > counter.next + 2)
+            return 0;
+        // A title-case opening reads as a heading ("71. Geoffrey F. Todd,
+        // Executive Director of the Tobacco Research Council, a British"), so
+        // only the exact next number overrides one.
+        if (n !== counter.next && isHeading(normaliseWhitespace(line), true))
+            return 0;
+        counter.next = n + 1;
+        return n;
+    });
+}
 /**
  * Reflows hard-wrapped lines back into paragraphs.
  *
@@ -540,13 +699,30 @@ export function contentsHeadings(blocks) {
  * a new paragraph. Blank lines are a secondary signal, and block quotes (set
  * far to the right) are kept as quotes.
  */
-export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false, allCapsHeadings = true, paragraphContents = false, numberedHeadings = true, listed, numbered) {
+export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false, allCapsHeadings = true, paragraphContents = false, numberedHeadings = true, listed, numbered, findings, outline) {
     if (paragraphContents)
         lines = joinParagraphContents(lines);
     // With `listedHeadings`, a would-be heading the contents does not name is
     // text: judged before anything else looks at the line, so a quoted cue line
     // counts as part of its quotation rather than as structure beside it.
-    const isHeading = (text, allowDivisions) => {
+    // `contentsOutline`: once the contents has been read, a heading is one it
+    // lists, or a title centred on the page; anything else heading-shaped —
+    // advertising copy in capitals, a quoted document's caption — is text.
+    const outlined = outline?.entries.size ? readOutline(lines, outline) : undefined;
+    const width = Math.max(0, ...lines.map((line) => line.trimEnd().length));
+    // A line continuing a sentence from the one above it is not a title, however
+    // it sits: '…deleted Star's onsert statement that "ALL SMOKED' / 'TOBACCO
+    // PRODUCTS ARE ADDICTIVE AND POSE'.
+    const runsOn = (at) => {
+        for (let j = at - 1; j >= 0; j--) {
+            if (lines[j].trim())
+                return !/[.:;?!"”)\]]$/.test(lines[j].trim());
+        }
+        return false;
+    };
+    const isHeading = (text, allowDivisions, at) => {
+        if (outlined && (at === undefined || !isCentred(lines[at], width) || runsOn(at)))
+            return null;
         const heading = isHeadingLine(text, allowDivisions, allCapsHeadings, numberedHeadings);
         return heading && listed && !listed.has(headingKey(heading.text)) ? null : heading;
     };
@@ -570,26 +746,40 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
     // Headings and contents entries are indented too, so they must not count as
     // quote neighbours — otherwise the first line of the paragraph beneath a
     // heading looks like the continuation of an indented block and gets quoted.
+    // `numberedFindings`: the lines that open the next finding in sequence.
+    const findingAt = findings ? readFindings(lines, margin, findings, isHeading) : [];
+    const outlineLines = new Set();
+    for (const [start, heading] of outlined ?? []) {
+        for (let j = start; j <= heading.end; j++)
+            outlineLines.add(j);
+    }
     const structural = lines.map((line, i) => {
-        if (!line.trim())
+        if (outlineLines.has(i))
+            return true;
+        if (!line.trim() || findingAt[i])
             return false;
         // TOC_ENTRY's whitespace-gap branch needs the line's real spacing, which
         // normaliseWhitespace below would collapse away before it gets a look.
         return (TOC_ENTRY.test(line) ||
-            isHeading(normaliseWhitespace(line), !inTable[i]) !== null);
+            isHeading(normaliseWhitespace(line), !inTable[i], i) !== null);
     });
     const quoted = lines.map((line, i) => {
-        if (!line.trim() || structural[i] || indentOf(line) < margin + quoteInset)
+        if (!line.trim() || structural[i] || findingAt[i] || indentOf(line) < margin + quoteInset) {
             return false;
+        }
         const neighbour = (j) => {
             const other = lines[j];
-            return (Boolean(other?.trim()) && !structural[j] && indentOf(other) >= margin + quoteInset);
+            return (Boolean(other?.trim()) &&
+                !structural[j] &&
+                !findingAt[j] &&
+                indentOf(other) >= margin + quoteInset);
         };
         return neighbour(i - 1) || neighbour(i + 1);
     });
     let current = [];
     let currentStart = 0;
     let currentKind = "paragraph";
+    let currentFinding;
     // The column a division heading's title starts at, while its title may still
     // be wrapping onto aligned continuation lines below it. -1 once the title is
     // complete (a blank line, a nested heading, or the first paragraph).
@@ -631,8 +821,14 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
             return;
         const text = normaliseWhitespace(current.join(" "));
         current = [];
+        const finding = currentFinding;
+        currentFinding = undefined;
         if (!text)
             return;
+        if (finding !== undefined) {
+            blocks.push({ kind: "paragraph", text, finding });
+            return;
+        }
         // A paragraph that is only a number is page furniture the footer sweep
         // missed, not content.
         if (/^\d{1,4}$/.test(text))
@@ -641,7 +837,7 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
             blocks.push({ kind: "quote", text });
             return;
         }
-        const heading = isHeading(text, !inTable[currentStart]);
+        const heading = isHeading(text, !inTable[currentStart], currentStart);
         if (heading)
             blocks.push({ kind: "heading", ...heading });
         else
@@ -706,6 +902,17 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
             taken = section.end;
             continue;
         }
+        const listedHeading = outlined?.get(i);
+        if (listedHeading) {
+            flush();
+            list = null;
+            openDivisionIndent = -1;
+            const heading = { kind: "heading", level: listedHeading.level, text: listedHeading.text };
+            complete.add(heading);
+            blocks.push(heading);
+            taken = listedHeading.end;
+            continue;
+        }
         // Headings and contents entries are recognisable on their own, and on
         // structured pages the indentation alone will not separate them — the
         // table of contents is set at a single indent throughout.
@@ -729,7 +936,8 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
         // by Mr. Trump's prosecution" — so the title ships stopping mid-phrase and
         // its tail becomes a stray paragraph.
         const openHeading = blocks[blocks.length - 1];
-        if (!current.length &&
+        if (!findingAt[i] &&
+            !current.length &&
             openHeading?.kind === "heading" &&
             !complete.has(openHeading) &&
             danglesMidPhrase(openHeading.text) &&
@@ -746,13 +954,14 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
             openHeading?.kind === "heading" &&
             isDivisionHeading(openHeading.text) &&
             !structural[i] &&
+            !findingAt[i] &&
             !opensNumberedParagraph(single) &&
             indentOf(line) >= openDivisionIndent - 2) {
             openHeading.text = `${openHeading.text} ${single}`;
             continue;
         }
         openDivisionIndent = -1;
-        const standalone = isHeading(single, !inTable[i]);
+        const standalone = findingAt[i] ? null : isHeading(single, !inTable[i], i);
         if (standalone) {
             flush();
             if (isDivisionHeading(standalone.text)) {
@@ -798,13 +1007,16 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
         // this way at all. Confirmed empirically: applying this unconditionally
         // moved every report in the corpus, not just the ones that use the
         // convention.
-        const startsParagraph = !quoted[i] &&
-            (indent > margin + 1 || (numberedParagraphs && opensNumberedParagraph(single)));
+        const startsParagraph = Boolean(findingAt[i]) ||
+            (!quoted[i] &&
+                (indent > margin + 1 || (numberedParagraphs && opensNumberedParagraph(single))));
         if ((startsParagraph || kind !== currentKind) && current.length)
             flush();
         currentKind = kind;
         if (!current.length)
             currentStart = i;
+        if (findingAt[i])
+            currentFinding = findingAt[i];
         current.push(line.trim());
     }
     flush();
@@ -910,6 +1122,7 @@ export function mergeAcrossPages(blocks) {
             continue;
         }
         if (block.kind === "paragraph" &&
+            block.finding === undefined &&
             previous?.kind === "paragraph" &&
             !endsSentence(previous.text) &&
             // A lowercase opening is the usual sign of a continuation. After an
@@ -927,24 +1140,32 @@ export function mergeAcrossPages(blocks) {
 export function blocksToMarkdown(blocks) {
     return blocks
         .map((block) => {
-        if (block.kind === "heading")
-            return `${"#".repeat(block.level)} ${block.text}`;
-        if (block.kind === "quote")
-            return `> ${block.text}`;
-        // Em dash rather than a full stop: the inline-marker pass keys off
-        // sentence punctuation, and a contents page number is not a footnote.
-        if (block.kind === "contents")
-            return `- ${block.text} — ${block.page}`;
-        if (block.kind === "page") {
-            return block.occurrence
-                ? `%%page ${block.number}#${block.occurrence}%%`
-                : `%%page ${block.number}%%`;
+        // "3437. Projects…" is an ordered list to Markdown; a finding is a
+        // paragraph that opens with its number (`numberedFindings`).
+        if (block.kind === "paragraph" && block.finding !== undefined) {
+            return block.text.replace(/^(\d+)\./, "$1\\.");
         }
-        if (block.kind === "list") {
-            const prefix = block.quoted ? "> - " : "- ";
-            return block.items.map((item) => `${prefix}${item}`).join("\n");
-        }
-        return block.text;
+        return blockToMarkdown(block);
     })
         .join("\n\n");
+}
+function blockToMarkdown(block) {
+    if (block.kind === "heading")
+        return `${"#".repeat(block.level)} ${block.text}`;
+    if (block.kind === "quote")
+        return `> ${block.text}`;
+    // Em dash rather than a full stop: the inline-marker pass keys off
+    // sentence punctuation, and a contents page number is not a footnote.
+    if (block.kind === "contents")
+        return `- ${block.text} — ${block.page}`;
+    if (block.kind === "page") {
+        return block.occurrence
+            ? `%%page ${block.number}#${block.occurrence}%%`
+            : `%%page ${block.number}%%`;
+    }
+    if (block.kind === "list") {
+        const prefix = block.quoted ? "> - " : "- ";
+        return block.items.map((item) => `${prefix}${item}`).join("\n");
+    }
+    return block.text;
 }

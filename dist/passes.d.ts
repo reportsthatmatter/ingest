@@ -154,6 +154,69 @@ export declare const endnotes: () => PagePass;
  */
 export declare const numberedSections: () => PagePass;
 /**
+ * Reads the report's run of numbered paragraphs — a court's Findings of Fact,
+ * "3437. Projects recommended by this Advisory Group…", numbered 1 to 4,088
+ * straight through the opinion — as paragraphs (reportsthatmatter-9ek).
+ *
+ * Without it, each one reached the markdown as "3437. …", which Markdown reads
+ * as an ordered list: every finding rendered as an `<li>` with no id, so the
+ * bulk of the Philip Morris opinion could not be cited, highlighted or
+ * linked. And a finding's first line, set with a hanging indent, was quoted
+ * together with an indented neighbour — the heading above it or the
+ * quotation below — severing the finding from its own text.
+ *
+ * A finding is recognised by its number coming next in the sequence (within
+ * two, so one misread does not lose the rest), on a line indented past the
+ * margin that is not a heading or a contents entry. It always opens its own
+ * paragraph, is never quoted, and is written so Markdown keeps it a paragraph
+ * — "3437\. Projects…" — whose id then carries the finding's own number:
+ * `#3437-projects-recommended-advisory-group`.
+ *
+ * Opt-in: elsewhere a numbered paragraph may genuinely be a list, and only a
+ * report numbered this way throughout says what its numbers are.
+ */
+export declare const numberedFindings: () => PagePass;
+/**
+ * Declares the body double-spaced on every page, so a single blank line is
+ * line spacing and never a paragraph break.
+ *
+ * Without it, double spacing is judged page by page — most lines followed by
+ * a blank — and a page carrying a long single-spaced quotation falls under
+ * that bar. On 268 of the Philip Morris opinion's 1,682 pages every line of
+ * the body then became a paragraph of its own: finding 1028 stopped at
+ * "…titled “The Effect of Smoking”, and its next lines were separate
+ * paragraphs, one of them opening "1975." and so read as a list
+ * (reportsthatmatter-9ek). Paragraphs there are marked by indent, which the
+ * block reader still sees; a wider gap is still a break.
+ *
+ * Opt-in: a single-spaced report separates its paragraphs with exactly the
+ * blank line this discards.
+ */
+export declare const doubleSpaced: () => PagePass;
+/**
+ * Reads the report's headings from its contents, set out as a lettered and
+ * numbered outline with spaced leaders to the page ("C.   TIRC/CTR --
+ * Tobacco Industry Research Committee/Council / for Tobacco Research-USA
+ * . . . 26"), as `numberedSections` does for a report numbered "8.1"
+ * (reportsthatmatter-72f).
+ *
+ * The Philip Morris opinion wraps its long titles under a hanging label, and
+ * its lower levels — "a.", "(1)" — are not shapes the heading reader knows. A
+ * title was cut at the line end with its tail quoted along with the first
+ * line of the finding below; two levels were fused into one heading; and a
+ * finding's opening words, a record citation, advertising copy in capitals
+ * and a footnote's text were all read as headings. With this, a body line
+ * opening on a label whose title matches an entry letter for letter, across
+ * the lines it wraps over, is that heading, spelt as the contents spells it;
+ * once the contents has been read, nothing else is a heading unless it is
+ * centred on the page ("FINDINGS OF FACT"). The contents pages are laid out
+ * as their entries.
+ *
+ * Opt-in: only a report whose contents lists every heading can say that
+ * whatever it does not list is text.
+ */
+export declare const contentsOutline: () => PagePass;
+/**
  * Whether a numbered or lettered line ("1. Withdrawing the Army", "C. The
  * Scarman Inquiry") may be read as a heading. On by default — Jack Smith's
  * report is structured that way. A report whose structure comes from its
@@ -171,8 +234,18 @@ export declare const footnoteBlock: () => PagePass;
  * bottom of three distinct pages. Opt in — a report whose furniture does not
  * repeat gets nothing from this, and a short report could lose a real
  * repeated line to it.
+ *
+ * Lines are compared with their digits masked, so "Page 302 of 1682" matches
+ * "Page 303 of 1682". A report that ends paragraphs on record citations pays
+ * for that: "1350 at 1346 (US 63531)." and "WD, 103:23-104:19." recur, masked,
+ * at the top of dozens of the Philip Morris opinion's 1,682 pages, and were
+ * deleted as furniture — 270-odd lines, gluing finding 648 onto the citation
+ * before it (reportsthatmatter-9ek). `minShare` asks that a line recur on at
+ * least that share of the volume's pages, as a running header or folio does.
  */
-export declare const runningFurniture: () => VolumePass;
+export declare const runningFurniture: (options?: {
+    minShare?: number;
+}) => VolumePass;
 /**
  * Reads a two-column page column by column rather than line by line.
  *

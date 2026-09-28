@@ -12,6 +12,8 @@ export type Provenance = {
 export type Block = ({
     kind: "paragraph";
     text: string;
+    /** A numbered finding's number (`numberedFindings`). */
+    finding?: number;
 } | {
     kind: "list";
     items: string[];
@@ -139,13 +141,54 @@ export declare function tabularContext(lines: string[]): boolean[];
  */
 export declare function contentsHeadings(blocks: Block[]): Block[];
 /**
+ * The outline a report's contents sets out (`contentsOutline`): every entry's
+ * title, by its level and letters, and every prefix of those letters, so a
+ * body heading can be followed across the lines it wraps over.
+ */
+export type Outline = {
+    entries: Map<string, {
+        title: string;
+        level: number;
+    }>;
+    prefixes: Set<string>;
+};
+export declare function emptyOutline(): Outline;
+export type OutlineEntry = {
+    label: string;
+    title: string;
+    page: string;
+    level: number;
+};
+/**
+ * The entries of a contents page set out as an outline, each opening on its
+ * label and wrapping until its spaced leaders reach a page number:
+ *
+ *   C.   TIRC/CTR -- Tobacco Industry Research Committee/Council
+ *        for Tobacco Research-USA . . . . . . . . . . . . 26
+ *
+ * Nothing from a page with fewer than three entries.
+ */
+export declare function readContentsOutline(lines: string[]): OutlineEntry[];
+/**
+ * A contents page read as an outline, laid out as its entries: each with its
+ * label, as the contents numbers it, and its page. A title over the entries
+ * ("TABLE OF CONTENTS") stays a heading.
+ */
+export declare function outlineContentsBlocks(lines: string[], entries: OutlineEntry[]): Block[];
+/** Adds a contents page's entries to the outline the body is read against. */
+export declare function learnOutline(outline: Outline, entries: OutlineEntry[]): void;
+/** The next finding number a report numbered throughout expects (`numberedFindings`). */
+export type FindingCounter = {
+    next: number;
+};
+/**
  * Reflows hard-wrapped lines back into paragraphs.
  *
  * The signal is indentation: a line indented past the running left margin opens
  * a new paragraph. Blank lines are a secondary signal, and block quotes (set
  * far to the right) are kept as quotes.
  */
-export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>, numbered?: NumberedContents): Block[];
+export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>, numbered?: NumberedContents, findings?: FindingCounter, outline?: Outline): Block[];
 export declare function endsSentence(text: string): boolean;
 export declare function mergeAcrossPages(blocks: Block[]): Block[];
 export declare function blocksToMarkdown(blocks: Block[]): string;
