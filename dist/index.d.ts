@@ -11,7 +11,7 @@
  */
 export { pipeline, resolvePasses } from "./define.js";
 export type { PipelineDef, Volume, ResolvedPasses } from "./define.js";
-export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, paragraphNotes, chapterContents, listedHeadings, endnotes, numberedSections, runningFurniture, geometry, columns, quoteInset, allCapsHeadings, numberedHeadings, } from "./passes.js";
+export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, paragraphNotes, chapterContents, listedHeadings, endnotes, numberedSections, pageBreakContinuations, runningFurniture, geometry, columns, quoteInset, allCapsHeadings, numberedHeadings, } from "./passes.js";
 export type { Pass, PagePass, BodyPass, VolumePass, GeometryPass, QuoteInsetPass, AllCapsHeadingsPass, NumberedHeadingsPass, } from "./passes.js";
 export { detectGutter, splitColumns } from "./columns.js";
 export type { Gutter } from "./columns.js";
@@ -20,8 +20,8 @@ export type { Page } from "./extract.js";
 export { ingest, ingestPages, ingestPageGroups } from "./pipeline.js";
 export type { IngestResult, Metadata } from "./pipeline.js";
 export { resolveVolume, checkVolume, fileChecksum } from "./volumes.js";
-export { runChecks, structuralChecks, losslessCheck, retentionCheck, severedSentenceCheck, digitDensityCheck, } from "./fidelity.js";
-export type { Check } from "./fidelity.js";
+export { runChecks, structuralChecks, losslessCheck, retentionCheck, severedSentenceCheck, pageBreakSplits, digitDensityCheck, } from "./fidelity.js";
+export type { Check, PageBreakSplit } from "./fidelity.js";
 export { computeBaseline, diffBaselines } from "./baseline.js";
 export type { Baseline } from "./baseline.js";
 export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler.js";

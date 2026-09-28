@@ -186,9 +186,10 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     // Footnote-definition text goes through the same pass — a footnote's OCR
     // degrades at least as badly as the body's, and until this it had nowhere
     // a correction could reach it (reportsthatmatter-3jb).
-    const corrected = applyCorrections(resolved.chapterContents
-        ? contentsHeadings(mergeAcrossPages(bodyChunks))
-        : mergeAcrossPages(bodyChunks), corrections, meta.title, footnotes);
+    const joined = mergeAcrossPages(bodyChunks, {
+        continuations: resolved.pageBreakContinuations,
+    });
+    const corrected = applyCorrections(resolved.chapterContents ? contentsHeadings(joined) : joined, corrections, meta.title, footnotes);
     let body = blocksToMarkdown(corrected.blocks);
     const notes = corrected.footnotes;
     // Rejoin words the typesetter broke at a line end, decided from the

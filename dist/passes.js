@@ -125,6 +125,32 @@ export const numberedSections = () => ({
     stage: "page",
 });
 /**
+ * Rejoins a sentence the page break left in pieces (reportsthatmatter-ca3,
+ * reportsthatmatter-kb4; jack-smith-report#1).
+ *
+ * Two shapes the default page-break merge misses. A paragraph that runs over
+ * a whole page leaves that page's marker behind it, so the continuation on
+ * the page after meets two markers and is not joined. And a skewed scan
+ * insets a page's first lines, so the rest of the sentence above arrives as a
+ * block quotation. With this pass the merge looks past every page marker, and
+ * a quotation opening a page after a paragraph that stops mid-sentence is
+ * read as that sentence's continuation when it opens in lower case, or when
+ * it stops mid-sentence too and runs straight into a lower-case paragraph.
+ * A quotation introduced by a finished sentence ("as follows:") or opening on
+ * a quotation mark is left alone, as is a capitalised paragraph opening the
+ * next page (reportsthatmatter-q0m).
+ *
+ * Opt-in: across the rest of the corpus most page-opening lower-case
+ * quotations are a real quotation whose first lines, on the page before, were
+ * read as prose (Leveson), or OCR noise (Challenger), and joining them would
+ * turn a quotation into the reporter's own words. `pageBreakSplits` in the
+ * fidelity checks counts what is left for a report to judge by.
+ */
+export const pageBreakContinuations = () => ({
+    name: "pageBreakContinuations",
+    stage: "page",
+});
+/**
  * Whether a numbered or lettered line ("1. Withdrawing the Army", "C. The
  * Scarman Inquiry") may be read as a heading. On by default — Jack Smith's
  * report is structured that way. A report whose structure comes from its
