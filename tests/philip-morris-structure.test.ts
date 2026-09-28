@@ -104,7 +104,7 @@ describe("runningFurniture minShare (reportsthatmatter-9ek)", () => {
   });
 
   it("keeps it where furniture must recur on half the pages", () => {
-    const stripped = stripRepeatedPageFurniture(pages, 0.5);
+    const stripped = stripRepeatedPageFurniture(pages, { minShare: 0.5 });
     expect(stripped[0].body.join("\n")).toContain("100-200 at 300 (US 400).");
     expect(stripped[0].body.join("\n")).not.toContain("Case 1:99-cv-02496-GK");
   });

@@ -1,0 +1,54 @@
+                                                      COLUMBIA
+                                                   ACCIDENT INVESTIGATION BOARD
+
+                                                                                                       CHAPTER 1
+
+
+
+
+                                     The Evolution of the
+                                   Space Shuttle Program
+
+More than two decades after its first flight, the Space Shuttle    1.1    GENESIS OF THE
+remains the only reusable spacecraft in the world capable                 SPACE TRANSPORTATION SYSTEM
+of simultaneously putting multiple-person crews and heavy
+cargo into orbit, of deploying, servicing, and retrieving          The origins of the Space Shuttle Program date to discussions
+satellites, and of returning the products of on-orbit research     on what should follow Project Apollo, the dramatic U.S.
+to Earth. These capabilities are an important asset for the        missions to the moon.1 NASA centered its post-Apollo plans
+United States and its international partners in space. Current     on developing increasingly larger outposts in Earth orbit that
+plans call for the Space Shuttle to play a central role in the     would be launched atop Apolloʼs immense Saturn V booster.
+U.S. human space flight program for years to come.                 The space agency hoped to construct a 12-person space sta-
+                                                                   tion by 1975; subsequent stations would support 50, then
+The Space Shuttle Programʼs remarkable successes, how-             100 people. Other stations would be placed in orbit around
+ever, come with high costs and tremendous risks. The Feb-          the moon and then be constructed on the lunar surface. In
+ruary 1 disintegration of Columbia during re-entry, 17 years       parallel, NASA would develop the capability for the manned
+after Challenger was destroyed on ascent, is the most recent       exploration of Mars. The concept of a vehicle – or Space
+reminder that sending people into orbit and returning them         Shuttle – to take crews and supplies to and from low-Earth
+safely to Earth remains a difficult and perilous endeavor.         orbit arose as part of this grand vision (see Figure 1.1-1). To
+                                                                   keep the costs of these trips to a minimum, NASA intended
+It is the view of the Columbia Accident Investigation Board        to develop a fully reusable vehicle.2
+that the Columbia accident is not a random event, but rather
+a product of the Space Shuttle Programʼs history and current
+management processes. Fully understanding how it hap-
+pened requires an exploration of that history and manage-
+ment. This chapter charts how the Shuttle emerged from a
+series of political compromises that produced unreasonable
+expectations – even myths – about its performance, how the
+Challenger accident shattered those myths several years af-
+ter NASA began acting upon them as fact, and how, in retro-
+spect, the Shuttleʼs technically ambitious design resulted in
+an inherently vulnerable vehicle, the safe operation of which
+exceeded NASAʼs organizational capabilities as they existed
+at the time of the Columbia accident. The Boardʼs investiga-
+tion of what caused the Columbia accident thus begins in the
+fields of East Texas but reaches more than 30 years into the
+past, to a series of economically and politically driven deci-
+sions that cast the Shuttle program in a role that its nascent
+technology could not support. To understand the cause of the
+Columbia accident is to understand how a program promis-
+ing reliability and cost efficiency resulted instead in a devel-   Figure 1.1-1. Early concepts for the Space Shuttle envisioned a
+opmental vehicle that never achieved the fully operational         reusable two-stage vehicle with the reliability and versatility of a
+status NASA and the nation accorded it.                            commercial airliner.
+
+
+                                             Report Volume I        August 2003                                                   21

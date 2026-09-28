@@ -1,0 +1,46 @@
+                                                       COLUMBIA
+                                                    ACCIDENT INVESTIGATION BOARD
+
+
+
+
+Figure 6.4-2. The rescue option had Atlantis (lower vehicle) rendezvousing with Columbia and the STS-107 crew transferring via ropes. Note
+that the payload bay of Atlantis is empty except for the external airlock/docking adapter.
+
+
+
+er, pilot, and two astronauts trained for spacewalks. In Janu-                      was potentially catastrophic damage to the left
+ary, seven commanders, seven pilots, and nine spacewalk-                            wing, accelerated processing of Atlantis might
+trained astronauts were available. During the rendezvous on                         have provided a window in which Atlantis could
+Atlantisʼs first day in orbit, the two Orbiters would maneuver                      rendezvous with Columbia before Columbiaʼs
+to face each other with their payload bay doors open (see                           limited consumables ran out.
+Figure 6.4-2). Suited Columbia crew members would then
+be transferred to Atlantis via spacewalks. Atlantis would               Recommendation:
+return with four crew members on the flight deck and seven
+in the mid-deck. Mission Control would then configure Co-               R6.4-1      For missions to the International Space Station,
+lumbia for a de-orbit burn that would ditch the Orbiter in the                      develop a practicable capability to inspect and
+Pacific Ocean, or would have the Columbia crew take it to a                         effect emergency repairs to the widest possible
+higher orbit for a possible subsequent repair mission if more                       range of damage to the Thermal Protection Sys-
+thorough repairs could be developed.                                                tem, including both tile and Reinforced Carbon-
+                                                                                    Carbon, taking advantage of the additional capa-
+This rescue was considered challenging but feasible. To                             bilities available when near to or docked at the
+succeed, it required problem-free processing of Atlantis and                        International Space Station.
+a flawless launch countdown. If Program managers had un-
+derstood the threat that the bipod foam strike posed and were                       For non-Station missions, develop a comprehen-
+able to unequivocally determine before Flight Day Seven                             sive autonomous (independent of Station) inspec-
+that there was potentially catastrophic damage to the left                          tion and repair capability to cover the widest
+wing, these repair and rescue plans would most likely have                          possible range of damage scenarios.
+been developed, and a rescue would have been conceivable.
+For a detailed discussion of the rescue and repair options,                         Accomplish an on-orbit Thermal Protection
+see Appendix D.13.                                                                  System inspection, using appropriate assets and
+                                                                                    capabilities, early in all missions.
+Findings:
+                                                                                    The ultimate objective should be a fully autono-
+F6.4-1      The repair option, while logistically viable using                      mous capability for all missions to address the
+            existing materials onboard Columbia, relied on so                       possibility that an International Space Station
+            many uncertainties that NASA rated this option                          mission fails to achieve the correct orbit, fails to
+            “high risk.”                                                            dock successfully, or is damaged during or after
+F6.4-2      If Program managers were able to unequivocally                          undocking.
+            determine before Flight Day Seven that there
+
+174                                           Report Volume I           August 2003

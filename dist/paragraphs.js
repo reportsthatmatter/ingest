@@ -89,8 +89,21 @@ export function headingKey(text) {
 }
 const SECTION_ENTRY = /^\s*(\d{1,2}\.\d{1,2})\s+(\S.*)$/;
 const CHAPTER_ENTRY = /^\s*(\d{1,2})\.\s+(\S.*)$/;
-/** The page number a contents entry ends on, after a space rather than leaders. */
-const ENTRY_PAGE = /\s+(?:\d{1,4}|[ivxlc]{1,7})\s*$/;
+const SECTION_OPENER = /^\s*(\d{1,2})\.\s?(\d{1,2})\s+(\S.*)$/;
+/** The page number a contents entry ends on, after a space or its leaders. */
+const ENTRY_PAGE = /(?:\s+|[.·…]{2,}\s*)(?:\d{1,4}|[ivxlc]{1,7})\s*$/;
+/** Dot leaders left on a title once its page number is off. */
+const TRAILING_LEADERS = /\s*(?:[.·…]\s?){2,}$/;
+/** A division's label: a number, a numeral, a letter, or a number spelt out. */
+const DIVISION_WORD = "(Part|Chapter|Appendix)";
+const DIVISION_NUMBER = "(\\d{1,2}|[A-Z]|[IVXLC]{1,6}|One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten)";
+/** "Chapter 1     The Evolution of the Space Shuttle Program" — at least two spaces apart. */
+const DIVISION_ENTRY = new RegExp(`^\\s*${DIVISION_WORD}\\s+${DIVISION_NUMBER}\\s{2,}(\\S.*)$`, "i");
+/** A banner naming a division and nothing else: "CHAPTER 1", "Part One". */
+const DIVISION_BANNER = new RegExp(`^\\s*${DIVISION_WORD}\\s+${DIVISION_NUMBER}\\s*$`, "i");
+function divisionKey(word, number) {
+    return `${word} ${number}`.toLowerCase();
+}
 /**
  * The letters and digits of a title, lower-cased. What a heading set in
  * capitals ("3.3 . . .AND IN THE FEDERAL AVIATION") and its contents entry
@@ -110,7 +123,17 @@ function titleLetters(text) {
 export function numberedContents(lines) {
     const sections = new Map();
     const chapters = new Set();
+    const divisions = new Map();
     for (let i = 0; i < lines.length; i++) {
+        // A division entry may carry no page number of its own — Columbia's
+        // "Chapter 1" line names the chapter, and its first section the page.
+        const division = lines[i].match(DIVISION_ENTRY);
+        if (division) {
+            const title = normaliseWhitespace(division[3].replace(ENTRY_PAGE, "").replace(TRAILING_LEADERS, ""));
+            if (title)
+                divisions.set(divisionKey(division[1], division[2]), title);
+            continue;
+        }
         const section = lines[i].match(SECTION_ENTRY);
         const chapter = section ? null : lines[i].match(CHAPTER_ENTRY);
         const entry = section ?? chapter;
@@ -129,13 +152,15 @@ export function numberedContents(lines) {
         if (!ENTRY_PAGE.test(text))
             continue;
         i = j;
-        const title = normaliseWhitespace(text.replace(ENTRY_PAGE, ""));
+        const title = normaliseWhitespace(text.replace(ENTRY_PAGE, "").replace(TRAILING_LEADERS, ""));
         if (section)
             sections.set(section[1], title);
         else
             chapters.add(titleLetters(title));
     }
-    return sections.size >= 3 ? { sections, chapters } : { sections: new Map(), chapters: new Set() };
+    return sections.size >= 3
+        ? { sections, chapters, divisions }
+        : { sections: new Map(), chapters: new Set(), divisions: new Map() };
 }
 /**
  * A body line that opens a section the contents lists: its number, then its
@@ -144,18 +169,20 @@ export function numberedContents(lines) {
  * Threat", and `end` the last line it took.
  */
 function numberedSectionAt(lines, i, sections) {
-    const opener = lines[i].match(SECTION_ENTRY);
-    const title = opener ? sections.get(opener[1]) : undefined;
+    // The body may space its number ("5. 7 THE RETURN OF SCHEDULE PRESSURE").
+    const opener = lines[i].match(SECTION_OPENER);
+    const number = opener ? `${opener[1]}.${opener[2]}` : "";
+    const title = opener ? sections.get(number) : undefined;
     if (!opener || !title)
         return null;
     const target = titleLetters(title);
-    let read = titleLetters(opener[2]);
+    let read = titleLetters(opener[3]);
     let end = i;
     while (read !== target && target.startsWith(read) && lines[end + 1]?.trim()) {
         end++;
         read += titleLetters(lines[end]);
     }
-    return read === target ? { text: `${opener[1]} ${title}`, end } : null;
+    return read === target ? { text: `${number} ${title}`, end } : null;
 }
 const DIVISION_OPENER = /^\s*(Part|Chapter|Appendix|Annex|Volume|Section)\s+(\d{1,3}|[IVXLC]{1,7}|[A-Z]|[A-Za-z]{3,9})(?![\w-])[:.]?\s*(.*)$/i;
 /** A contents entry's page, arabic or roman, after a gap wider than a word space. */
@@ -452,6 +479,9 @@ export function danglesMidPhrase(text) {
 const TOC_ENTRY = /[.·]{4,}\s*\d{1,4}\s*$|(?<![.,;:])[ \t]{3,}\d{1,4}\s*$/;
 /** Section headings carry the printed page number after the title. */
 function stripTrailingPageNumber(text) {
+    // "ENDNOTES FOR CHAPTER 1" ends on the chapter's number, not a page's.
+    if (/\b(?:part|chapter|appendix|section|volume)\s+\d{1,4}$/i.test(text))
+        return text.trim();
     return text.replace(/\s+\d{1,4}$/, "").trim();
 }
 const ALIGNED = /\S {3,}\S/;
@@ -881,9 +911,10 @@ function readFindings(lines, margin, counter, isHeading) {
  * a new paragraph. Blank lines are a secondary signal, and block quotes (set
  * far to the right) are kept as quotes.
  */
-export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false, allCapsHeadings = true, paragraphContents = false, numberedHeadings = true, listed, numbered, findings, outline, divisions, wrappedHeadings = false) {
+export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false, allCapsHeadings = true, paragraphContents = false, numberedHeadings = true, listed, numbered, findings, outline, divisions, wrappedHeadings = false, hangingIndents = false) {
     if (paragraphContents)
         lines = joinParagraphContents(lines);
+    const hanging = hangingIndents ? hangingItems(lines) : null;
     // With `listedHeadings`, a would-be heading the contents does not name is
     // text: judged before anything else looks at the line, so a quoted cue line
     // counts as part of its quotation rather than as structure beside it.
@@ -946,6 +977,8 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
             isHeading(normaliseWhitespace(line), !inTable[i], i) !== null);
     });
     const quoted = lines.map((line, i) => {
+        if (hanging?.continues[i])
+            return false;
         if (!line.trim() || structural[i] || findingAt[i] || indentOf(line) < margin + quoteInset) {
             return false;
         }
@@ -998,6 +1031,8 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
     const complete = new Set();
     // The last line a numbered section's heading took.
     let taken = -1;
+    // Division banners and the title lines they took (`divisionBanners`).
+    const banners = numbered?.divisions.size ? divisionBanners(lines, numbered.divisions) : null;
     const flush = () => {
         if (!current.length)
             return;
@@ -1027,6 +1062,18 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
     };
     for (const [i, line] of lines.entries()) {
         if (i <= taken)
+            continue;
+        const banner = banners?.headings.get(i);
+        if (banner) {
+            flush();
+            list = null;
+            openDivisionIndent = -1;
+            const heading = { kind: "heading", level: 2, text: banner };
+            complete.add(heading);
+            blocks.push(heading);
+            continue;
+        }
+        if (banners?.title.has(i))
             continue;
         if (line === COLUMN_BREAK) {
             flush();
@@ -1217,7 +1264,10 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
         // convention.
         const startsParagraph = Boolean(findingAt[i]) ||
             (!quoted[i] &&
-                (indent > margin + 1 || (numberedParagraphs && opensNumberedParagraph(single))));
+                !hanging?.continues[i] &&
+                (indent > margin + 1 ||
+                    (numberedParagraphs && opensNumberedParagraph(single)) ||
+                    Boolean(hanging?.opens[i])));
         if ((startsParagraph || kind !== currentKind) && current.length)
             flush();
         currentKind = kind;
@@ -1231,6 +1281,93 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
     if (numbered?.chapters.size)
         joinChapterBanners(blocks, numbered.chapters);
     return blocks;
+}
+/**
+ * Items set with a hanging indent under a label (`hangingIndents`):
+ *
+ *     F6.3-1     The foam strike was first seen by the Intercenter Photo
+ *                Working Group on the morning of Flight Day Two …
+ *
+ * Columbia sets every finding, recommendation and observation this way. The
+ * wrapped lines sit well past the margin, so they read as a quotation cut
+ * from the item's first line ("…on the morn-" / "> ing of Flight Day Two"),
+ * and a label at the margin opened no paragraph of its own, so one item ran
+ * on into the next. A label here is a short token carrying a digit, set two
+ * or more spaces before its text; the item is the lines indented to that
+ * text, within a character.
+ */
+function hangingItems(lines) {
+    const opens = lines.map(() => false);
+    const continues = lines.map(() => false);
+    for (let i = 0; i < lines.length; i++) {
+        const label = lines[i].match(/^(\s*)(?=\S*\d)(\S{2,12})( {2,})\S/);
+        if (!label)
+            continue;
+        const column = label[0].length - 1;
+        let k = i + 1;
+        while (k < lines.length && lines[k].trim() && Math.abs(indentOf(lines[k]) - column) <= 1) {
+            continues[k] = true;
+            k++;
+        }
+        if (k === i + 1)
+            continue;
+        opens[i] = true;
+        i = k - 1;
+    }
+    return { opens, continues };
+}
+/**
+ * Where a division opens under a banner that names it and nothing else —
+ * "CHAPTER 1", "Part One", "APPENDIX A" — with its title set apart on lines
+ * of its own ("The Evolution of the" / "Space Shuttle Program"), and the
+ * contents lists the division by that label (`numberedSections`).
+ *
+ * The title is looked for anywhere on the page, not just below the banner:
+ * Columbia centres it over a two-column page, and read column by column it
+ * can open either column. It is found by its letters against the contents'
+ * title, across consecutive lines, so the page's own case and line breaks do
+ * not matter; the heading is the page's own words, "Chapter 1: The Evolution
+ * of the Space Shuttle Program". A banner whose title is not found on the page
+ * is left alone.
+ */
+function divisionBanners(lines, divisions) {
+    const headings = new Map();
+    const title = new Set();
+    for (const [i, line] of lines.entries()) {
+        const banner = line.match(DIVISION_BANNER);
+        const listed = banner ? divisions.get(divisionKey(banner[1], banner[2])) : undefined;
+        if (!banner || !listed)
+            continue;
+        const target = titleLetters(listed);
+        let found = null;
+        for (let start = 0; start < lines.length && !found; start++) {
+            if (start === i || !lines[start].trim() || title.has(start))
+                continue;
+            let read = "";
+            const run = [];
+            for (let k = start; k < lines.length && k !== i && lines[k].trim(); k++) {
+                read += titleLetters(lines[k]);
+                run.push(k);
+                if (read === target) {
+                    found = run;
+                    break;
+                }
+                if (!target.startsWith(read))
+                    break;
+            }
+        }
+        if (!found)
+            continue;
+        for (const k of found)
+            title.add(k);
+        const word = banner[1][0].toUpperCase() + banner[1].slice(1).toLowerCase();
+        const number = /^\d|^[A-Z]$|^[IVXLC]+$/.test(banner[2])
+            ? banner[2].toUpperCase()
+            : banner[2][0].toUpperCase() + banner[2].slice(1).toLowerCase();
+        const text = normaliseWhitespace(found.map((k) => lines[k]).join(" "));
+        headings.set(i, `${word} ${number}: ${text}`);
+    }
+    return { headings, title };
 }
 /**
  * A chapter banner set over two lines that each end like a title ("WHAT TO

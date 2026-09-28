@@ -53,6 +53,19 @@ export type Metadata = {
 };
 
 /**
+ * Whether a heading stays a section under `unlistedHeadingsMinor`: the
+ * contents lists it, it is a numbered section or division read from the
+ * contents, it is numbered like a section, or it names a division.
+ */
+function keepsSection(text: string, listed: Set<string>, numbered: NumberedContents): boolean {
+  if (listed.has(headingKey(text))) return true;
+  if (/^(?:Part|Chapter|Appendix) [^:]+: /.test(text)) return true;
+  if (/^(?:[A-Z]|\d{1,2})\.\d{1,2}\s/.test(text)) return true;
+  if (/\b(?:part|chapter|appendix)\s+(?:\d{1,2}|[a-z])$/i.test(text)) return true;
+  return [...numbered.divisions.values()].some((title) => headingKey(title) === headingKey(text));
+}
+
+/**
  * PDF → Markdown, deterministically. The same input always produces the same
  * output, so fixes belong in this pipeline rather than in hand-edits of the
  * result — that way every correction compounds across future reports.
@@ -166,7 +179,7 @@ export function ingestPageGroups(
   // anything before them — the contents lists what follows it.
   const listed = new Set<string>();
   // `numberedSections`: the sections and chapters the contents numbers.
-  const numbered: NumberedContents = { sections: new Map(), chapters: new Set() };
+  const numbered: NumberedContents = { sections: new Map(), chapters: new Set(), divisions: new Map() };
   // `numberedFindings`: the finding number expected next, across pages.
   const findings: FindingCounter | undefined = resolved.numberedFindings ? { next: 1 } : undefined;
   // `contentsOutline`: the headings the contents lists, learnt as it goes by.
@@ -182,13 +195,15 @@ export function ingestPageGroups(
           ? margins[resolved.geometry === "per-volume" ? groupIndex : 0]
           : undefined
       );
-      const titles = resolved.listedHeadings ? contentsTitles(pageLines) : [];
+      const titles =
+        resolved.listedHeadings || resolved.unlistedHeadingsMinor ? contentsTitles(pageLines) : [];
       for (const title of titles) listed.add(headingKey(title));
       const gate = resolved.listedHeadings && !titles.length && listed.size ? listed : undefined;
       // The contents pages themselves are laid out as they were before.
       const entries = resolved.numberedSections ? numberedContents(pageLines) : undefined;
       for (const [number, title] of entries?.sections ?? []) numbered.sections.set(number, title);
       for (const chapter of entries?.chapters ?? []) numbered.chapters.add(chapter);
+      for (const [key, title] of entries?.divisions ?? []) numbered.divisions.set(key, title);
       const sections =
         resolved.numberedSections && !entries?.sections.size && numbered.sections.size
           ? numbered
@@ -222,7 +237,8 @@ export function ingestPageGroups(
               findings,
               outline,
               divisionGate,
-              resolved.wrappedHeadings
+              resolved.wrappedHeadings,
+              resolved.hangingIndents
             )
       ).map((block) => ({ ...block, at }));
 
@@ -231,6 +247,13 @@ export function ingestPageGroups(
       // already use — and it can be checked against the original PDF.
       if (split.printed !== null && blocks.length) {
         bodyChunks.push({ kind: "page", number: split.printed, at });
+      }
+      if (resolved.unlistedHeadingsMinor && !titles.length && listed.size) {
+        for (const block of blocks) {
+          if (block.kind === "heading" && !keepsSection(block.text, listed, numbered)) {
+            block.level = 4;
+          }
+        }
       }
       bodyChunks.push(...blocks);
     }

@@ -1,0 +1,55 @@
+                                                        COLUMBIA
+                                                     ACCIDENT INVESTIGATION BOARD
+
+
+
+
+                                 MISSION CONTROL CENTER COMMUNICATIONS
+
+
+
+
+ At 8:49 a.m. Eastern Standard Time (EI+289), the Orbiterʼs flight     The Flight Director then continues to discuss indications with other
+ control system began steering a precise course, or drag profile,      Mission Control Center personnel, including the Guidance, Navi-
+ with the initial roll command occurring about 30 seconds later. At    gation, and Control officer (GNC).
+ 8:49:38 a.m., the Mission Control Guidance and Procedures offi-
+ cer called the Flight Director and indicated that the “closed-loop”   Flight:      “GNC – Flight.”
+ guidance system had been initiated.                                   GNC:         “Flight – GNC.”
+                                                                       Flight:       “Everything look good to you, control and rates and
+ The Maintenance, Mechanical, and Crew Systems (MMACS) of-                          everything is nominal, right?”
+ ficer and the Flight Director (Flight) had the following exchange     GNC:         “Controlʼs been stable through the rolls that weʼve
+ beginning at 8:54:24 a.m. (EI+613).                                                done so far, flight. We have good trims. I donʼt see
+                                                                                    anything out of the ordinary.”
+ MMACS: “Flight – MMACS.”                                              Flight:      “Okay. And MMACS, Flight?”
+ Flight: “Go ahead, MMACS.”                                            MMACS:       “Flight – MMACS.”
+ MMACS: “FYI, Iʼve just lost four separate temperature                 Flight:      “All other indications for your hydraulic system
+         transducers on the left side of the vehicle, hydraulic                     indications are good.”
+         return temperatures. Two of them on system one and            MMACS:       “Theyʼre all good. Weʼve had good quantities all the
+         one in each of systems two and three.”                                     way across.”
+ Flight: “Four hyd [hydraulic] return temps?”                          Flight:      “And the other temps are normal?”
+ MMACS: “To the left outboard and left inboard elevon.”                MMACS:       “The other temps are normal, yes sir.”
+ Flight: “Okay, is there anything common to them? DSC                  Flight:      “And when you say you lost these, are you saying
+         [discrete signal conditioner] or MDM [multiplexer-                         that they went to zero?” [Time: 8:57:59 a.m., EI+830]
+         demultiplexer] or anything? I mean, youʼre telling                         “Or, off-scale low?”
+         me you lost them all at exactly the same time?”               MMACS:       “All four of them are off-scale low. And they were
+ MMACS: “No, not exactly. They were within probably four or                         all staggered. They were, like I said, within several
+         five seconds of each other.”                                               seconds of each other.”
+ Flight: “Okay, where are those, where is that instrumenta-            Flight:      “Okay.”
+         tion located?”
+ MMACS: “All four of them are located in the aft part of the           At 8:58:00 a.m. (EI+831), Columbia crossed the New Mexico-
+         left wing, right in front of the elevons, elevon actua-       Texas state line. Within the minute, a broken call came on the
+         tors. And there is no commonality.”                           air-to-ground voice loop from Columbiaʼs commander, “And, uh,
+ Flight: “No commonality.”                                             Hou …” This was followed by a call from MMACS about failed tire
+                                                                       pressure sensors at 8:59:15 a.m. (EI+906).
+ At 8:56:02 a.m. (EI+713), the conversation between the Flight
+ Director and the MMACS officer continues:                             MMACS: “Flight – MMACS.”
+                                                                       Flight: “Go.”
+ Flight: “MMACS, tell me again which systems theyʼre for.”             MMACS: “We just lost tire pressure on the left outboard and left
+ MMACS: “Thatʼs all three hydraulic systems. Itʼs ... two of                   inboard, both tires.”
+         them are to the left outboard elevon and two of them
+         to the left inboard.”
+ Flight: “Okay, I got you.”                                                                                     [continued on next page]
+
+
+
+42                                            Report Volume I          August 2003

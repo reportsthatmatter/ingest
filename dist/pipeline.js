@@ -7,6 +7,22 @@ import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, mergeAcr
 import { parseFootnotes, linkInlineMarkers, linkFlushMarkers, renderEndnotes, } from "./footnotes.js";
 import { autoFix, findSuspects, rankSuspects } from "./ocr.js";
 /**
+ * Whether a heading stays a section under `unlistedHeadingsMinor`: the
+ * contents lists it, it is a numbered section or division read from the
+ * contents, it is numbered like a section, or it names a division.
+ */
+function keepsSection(text, listed, numbered) {
+    if (listed.has(headingKey(text)))
+        return true;
+    if (/^(?:Part|Chapter|Appendix) [^:]+: /.test(text))
+        return true;
+    if (/^(?:[A-Z]|\d{1,2})\.\d{1,2}\s/.test(text))
+        return true;
+    if (/\b(?:part|chapter|appendix)\s+(?:\d{1,2}|[a-z])$/i.test(text))
+        return true;
+    return [...numbered.divisions.values()].some((title) => headingKey(title) === headingKey(text));
+}
+/**
  * PDF → Markdown, deterministically. The same input always produces the same
  * output, so fixes belong in this pipeline rather than in hand-edits of the
  * result — that way every correction compounds across future reports.
@@ -99,7 +115,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     // anything before them — the contents lists what follows it.
     const listed = new Set();
     // `numberedSections`: the sections and chapters the contents numbers.
-    const numbered = { sections: new Map(), chapters: new Set() };
+    const numbered = { sections: new Map(), chapters: new Set(), divisions: new Map() };
     // `numberedFindings`: the finding number expected next, across pages.
     const findings = resolved.numberedFindings ? { next: 1 } : undefined;
     // `contentsOutline`: the headings the contents lists, learnt as it goes by.
@@ -111,7 +127,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
             const pageLines = collapseDoubleSpacing(split.body, resolved.doubleSpaced
                 ? margins[resolved.geometry === "per-volume" ? groupIndex : 0]
                 : undefined);
-            const titles = resolved.listedHeadings ? contentsTitles(pageLines) : [];
+            const titles = resolved.listedHeadings || resolved.unlistedHeadingsMinor ? contentsTitles(pageLines) : [];
             for (const title of titles)
                 listed.add(headingKey(title));
             const gate = resolved.listedHeadings && !titles.length && listed.size ? listed : undefined;
@@ -121,6 +137,8 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
                 numbered.sections.set(number, title);
             for (const chapter of entries?.chapters ?? [])
                 numbered.chapters.add(chapter);
+            for (const [key, title] of entries?.divisions ?? [])
+                numbered.divisions.set(key, title);
             const sections = resolved.numberedSections && !entries?.sections.size && numbered.sections.size
                 ? numbered
                 : undefined;
@@ -139,12 +157,19 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
                     ? outlineContentsBlocks(pageLines, outlineEntries)
                     : toBlocks(pageLines, resolved.geometry === "per-page"
                         ? pageMargin(split.body, margins[0])
-                        : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings)).map((block) => ({ ...block, at }));
+                        : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings, resolved.hangingIndents)).map((block) => ({ ...block, at }));
             // Record where each printed page begins. These documents are cited by page
             // ("Report at 62"), so the printed number is the citation unit readers
             // already use — and it can be checked against the original PDF.
             if (split.printed !== null && blocks.length) {
                 bodyChunks.push({ kind: "page", number: split.printed, at });
+            }
+            if (resolved.unlistedHeadingsMinor && !titles.length && listed.size) {
+                for (const block of blocks) {
+                    if (block.kind === "heading" && !keepsSection(block.text, listed, numbered)) {
+                        block.level = 4;
+                    }
+                }
             }
             bodyChunks.push(...blocks);
         }

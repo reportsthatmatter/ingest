@@ -1,4 +1,4 @@
-import { takePrintedNumber, splitFootnoteBlock, type SplitPage } from "./clean.js";
+import { takePrintedNumber, splitFootnoteBlock, type SplitPage, type FurnitureOptions } from "./clean.js";
 import { bodyIndent } from "./paragraphs.js";
 /**
  * A pass is one named decision about how to read a source.
@@ -120,6 +120,35 @@ export declare const chapterContents: () => PagePass;
  * would strip real structure. See `contentsTitles` and `headingKey`.
  */
 export declare const listedHeadings: () => PagePass;
+/**
+ * A heading the report's contents does not list is a minor heading — set
+ * apart, but not a section of its own (reportsthatmatter-tk8).
+ *
+ * Columbia boxes sidebars through its chapters — "MISSED OPPORTUNITY", "THE
+ * CREW", "ENGINEERING BY VIEWGRAPHS" — and its figures, emails and charts
+ * carry caps lines of their own ("ORB,FWD\"", "TEMPERATURE (F)"). Read as
+ * headings each opened a section, and the chapter's text that followed the
+ * box was filed under it: 6.3's own summary sat in "Missed Opportunities".
+ * With this pass a heading after the contents stays a section only if the
+ * contents lists it (as `listedHeadings` reads a contents), it is a section or
+ * division `numberedSections` took from the contents, it is numbered like
+ * one ("A.1 …"), or it names a division ("ENDNOTES FOR CHAPTER 6"); anything
+ * else becomes a level-4 heading where it was printed. Unlike
+ * `listedHeadings` it keeps the line a heading, because a sidebar's title is
+ * one. Opt-in, and meant alongside `numberedSections`: it is only as good as
+ * the contents it reads.
+ */
+export declare const unlistedHeadingsMinor: () => PagePass;
+/**
+ * Reads an item set with a hanging indent under a short numbered label —
+ * Columbia's "F6.3-1", "R6.4-1", "O10.7-1" findings, recommendations and
+ * observations — as one paragraph, label and all (reportsthatmatter-tk8).
+ * Without it the wrapped lines, indented to the item's text, read as a
+ * quotation cut from its first line, and consecutive items ran together.
+ * Opt-in: a label-and-gap line followed by indented lines is also the shape
+ * of a table row. See `hangingItems`.
+ */
+export declare const hangingIndents: () => PagePass;
 /**
  * This report's notes are endnotes: printed together at the back, never at a
  * page foot, so no page is searched for a footnote block (reportsthatmatter-vpx).
@@ -294,17 +323,26 @@ export declare const footnoteBlock: () => PagePass;
  * repeat gets nothing from this, and a short report could lose a real
  * repeated line to it.
  *
- * Lines are compared with their digits masked, so "Page 302 of 1682" matches
- * "Page 303 of 1682". A report that ends paragraphs on record citations pays
- * for that: "1350 at 1346 (US 63531)." and "WD, 103:23-104:19." recur, masked,
- * at the top of dozens of the Philip Morris opinion's 1,682 pages, and were
- * deleted as furniture — 270-odd lines, gluing finding 648 onto the citation
- * before it (reportsthatmatter-9ek). `minShare` asks that a line recur on at
- * least that share of the volume's pages, as a running header or folio does.
+ * `{ numbersTrackPages: true }`: a line that repeats only once its digits are
+ * blanked ("CHAPTER 1", "CHAPTER 2" …) is furniture only if its number
+ * advances with the page, as a page number does. Without it, Columbia's
+ * eleven chapter banners and its "ENDNOTES FOR CHAPTER n" heads were all
+ * stripped, and each chapter's number taken for its opening page's number.
+ * Opt-in for now only because it moves other reports that have not asked for
+ * it (Hillsborough and Leveson recover chapter banners; 9/11, Philip Morris
+ * and Hillsborough recover citation tails that had been dropped as a footer)
+ * — each needs its own reading before it adopts it.
+ *
+ * `{ minShare }`: lines are compared with their digits masked, so "Page 302
+ * of 1682" matches "Page 303 of 1682". A report that ends paragraphs on
+ * record citations pays for that: "1350 at 1346 (US 63531)." and "WD,
+ * 103:23-104:19." recur, masked, at the top of dozens of the Philip Morris
+ * opinion's 1,682 pages, and were deleted as furniture — 270-odd lines,
+ * gluing finding 648 onto the citation before it (reportsthatmatter-9ek).
+ * `minShare` asks that a line recur on at least that share of the volume's
+ * pages, as a running header or folio does.
  */
-export declare const runningFurniture: (options?: {
-    minShare?: number;
-}) => VolumePass;
+export declare const runningFurniture: (options?: FurnitureOptions) => VolumePass;
 /**
  * Reads a two-column page column by column rather than line by line.
  *
