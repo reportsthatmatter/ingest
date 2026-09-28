@@ -183,6 +183,128 @@ export declare const endnotes: () => PagePass;
  */
 export declare const numberedSections: () => PagePass;
 /**
+ * Reads the report's run of numbered paragraphs — a court's Findings of Fact,
+ * "3437. Projects recommended by this Advisory Group…", numbered 1 to 4,088
+ * straight through the opinion — as paragraphs (reportsthatmatter-9ek).
+ *
+ * Without it, each one reached the markdown as "3437. …", which Markdown reads
+ * as an ordered list: every finding rendered as an `<li>` with no id, so the
+ * bulk of the Philip Morris opinion could not be cited, highlighted or
+ * linked. And a finding's first line, set with a hanging indent, was quoted
+ * together with an indented neighbour — the heading above it or the
+ * quotation below — severing the finding from its own text.
+ *
+ * A finding is recognised by its number coming next in the sequence (within
+ * two, so one misread does not lose the rest), on a line indented past the
+ * margin that is not a heading or a contents entry. It always opens its own
+ * paragraph, is never quoted, and is written so Markdown keeps it a paragraph
+ * — "3437\. Projects…" — whose id then carries the finding's own number:
+ * `#3437-projects-recommended-advisory-group`.
+ *
+ * Opt-in: elsewhere a numbered paragraph may genuinely be a list, and only a
+ * report numbered this way throughout says what its numbers are.
+ */
+export declare const numberedFindings: () => PagePass;
+/**
+ * Reads the parts, chapters and appendices the report's contents lists, and
+ * takes each one's heading from the body lines that spell it
+ * (reportsthatmatter-a0z).
+ *
+ * Deep Water opens each chapter on a page of its own: "Chapter Three", then
+ * a title set a word or two to a line ("“It was like / pulling teeth.” /
+ * Oversight—and Oversights—in / …"), then the first paragraph with no blank
+ * line between. Nothing in that shape is a heading line by line, so every
+ * chapter's title was read into its first paragraph, and the report's
+ * sections were its figure captions instead. The contents names each
+ * division — "Chapter 3" over its title, "PART I: The Path to Tragedy",
+ * "Foreword", "Endnotes", "Appendix A: Commission Members" — and a body line
+ * that opens the same division, its number spelt out or not, and whose
+ * letters spell the listed title across however many lines the body wraps
+ * it over, is that division's heading. Parts and unlabelled entries are
+ * top level, chapters nest under them.
+ *
+ * It only adds headings. Opt-in: a contents entry set without dot leaders
+ * looks like any line with a number at its end, and only a report whose
+ * contents is laid out this way says which lines are entries.
+ */
+export declare const listedDivisions: () => PagePass;
+/**
+ * Declares the body double-spaced on every page, so a single blank line is
+ * line spacing and never a paragraph break.
+ *
+ * Without it, double spacing is judged page by page — most lines followed by
+ * a blank — and a page carrying a long single-spaced quotation falls under
+ * that bar. On 268 of the Philip Morris opinion's 1,682 pages every line of
+ * the body then became a paragraph of its own: finding 1028 stopped at
+ * "…titled “The Effect of Smoking”, and its next lines were separate
+ * paragraphs, one of them opening "1975." and so read as a list
+ * (reportsthatmatter-9ek). Paragraphs there are marked by indent, which the
+ * block reader still sees; a wider gap is still a break.
+ *
+ * Opt-in: a single-spaced report separates its paragraphs with exactly the
+ * blank line this discards.
+ */
+export declare const doubleSpaced: () => PagePass;
+/**
+ * A numbered or lettered heading whose title runs onto a short line of its
+ * own is one heading (reportsthatmatter-a0z): Deep Water's Chapter 9 sets
+ * "4. The Need for Increased Research and Development to Improve Spill" over
+ * "Response", then its paragraph with no blank line between, and the heading
+ * stopped at "Spill". The line below is folded in when it is at most six
+ * words, capitalised but for small words, and ends on no stop.
+ *
+ * Opt-in: elsewhere a short title-case line under a heading can be a byline,
+ * a dateline or a run-in label, and only a report that wraps its headings
+ * this way says which it is.
+ */
+export declare const wrappedHeadings: () => PagePass;
+/**
+ * Reads the report's headings from its contents, set out as a lettered and
+ * numbered outline with spaced leaders to the page ("C.   TIRC/CTR --
+ * Tobacco Industry Research Committee/Council / for Tobacco Research-USA
+ * . . . 26"), as `numberedSections` does for a report numbered "8.1"
+ * (reportsthatmatter-72f).
+ *
+ * The Philip Morris opinion wraps its long titles under a hanging label, and
+ * its lower levels — "a.", "(1)" — are not shapes the heading reader knows. A
+ * title was cut at the line end with its tail quoted along with the first
+ * line of the finding below; two levels were fused into one heading; and a
+ * finding's opening words, a record citation, advertising copy in capitals
+ * and a footnote's text were all read as headings. With this, a body line
+ * opening on a label whose title matches an entry letter for letter, across
+ * the lines it wraps over, is that heading, spelt as the contents spells it;
+ * once the contents has been read, nothing else is a heading unless it is
+ * centred on the page ("FINDINGS OF FACT"). The contents pages are laid out
+ * as their entries.
+ *
+ * Opt-in: only a report whose contents lists every heading can say that
+ * whatever it does not list is text.
+ */
+export declare const contentsOutline: () => PagePass;
+/**
+ * Rejoins a sentence the page break left in pieces (reportsthatmatter-ca3,
+ * reportsthatmatter-kb4; jack-smith-report#1).
+ *
+ * Two shapes the default page-break merge misses. A paragraph that runs over
+ * a whole page leaves that page's marker behind it, so the continuation on
+ * the page after meets two markers and is not joined. And a skewed scan
+ * insets a page's first lines, so the rest of the sentence above arrives as a
+ * block quotation. With this pass the merge looks past every page marker, and
+ * a quotation opening a page after a paragraph that stops mid-sentence is
+ * read as that sentence's continuation when it opens in lower case, or when
+ * it stops mid-sentence too and runs straight into a lower-case paragraph.
+ * A quotation introduced by a finished sentence ("as follows:") or opening on
+ * a quotation mark is left alone, as is a capitalised paragraph opening the
+ * next page (reportsthatmatter-q0m).
+ *
+ * Opt-in: across the rest of the corpus most page-opening lower-case
+ * quotations are a real quotation whose first lines, on the page before, were
+ * read as prose (Leveson), or OCR noise (Challenger), and joining them would
+ * turn a quotation into the reporter's own words. `pageBreakSplits` in the
+ * fidelity checks counts what is left for a report to judge by.
+ */
+export declare const pageBreakContinuations: () => PagePass;
+/**
  * Whether a numbered or lettered line ("1. Withdrawing the Army", "C. The
  * Scarman Inquiry") may be read as a heading. On by default — Jack Smith's
  * report is structured that way. A report whose structure comes from its
@@ -210,6 +332,15 @@ export declare const footnoteBlock: () => PagePass;
  * it (Hillsborough and Leveson recover chapter banners; 9/11, Philip Morris
  * and Hillsborough recover citation tails that had been dropped as a footer)
  * — each needs its own reading before it adopts it.
+ *
+ * `{ minShare }`: lines are compared with their digits masked, so "Page 302
+ * of 1682" matches "Page 303 of 1682". A report that ends paragraphs on
+ * record citations pays for that: "1350 at 1346 (US 63531)." and "WD,
+ * 103:23-104:19." recur, masked, at the top of dozens of the Philip Morris
+ * opinion's 1,682 pages, and were deleted as furniture — 270-odd lines,
+ * gluing finding 648 onto the citation before it (reportsthatmatter-9ek).
+ * `minShare` asks that a line recur on at least that share of the volume's
+ * pages, as a running header or folio does.
  */
 export declare const runningFurniture: (options?: FurnitureOptions) => VolumePass;
 /**

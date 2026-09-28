@@ -10,6 +10,7 @@
  * once to find every id — a different enough job to duplicate the handful of
  * cleanup steps rather than force one shape onto both.
  */
+import { PARAGRAPH_ID_CHARS } from "./markdown.js";
 const CLEANUP_STEPS = [
     [/<span class="sidenote">[\s\S]*?<\/span>/g, ""],
     [/<label class="sidenote-toggle"[\s\S]*?<\/label>/g, ""],
@@ -28,7 +29,7 @@ function cleanPassageText(innerHtml) {
         text = text.replace(pattern, replacement);
     return text.trim();
 }
-const CITABLE_UNIT = /<(p|ul) id="([a-z0-9-]+)"([^>]*)>([\s\S]*?)<\/\1>/g;
+const CITABLE_UNIT = new RegExp(`<(p|ul) id="(${PARAGRAPH_ID_CHARS})"([^>]*)>([\\s\\S]*?)<\\/\\1>`, "gu");
 export function extractPassages(html) {
     const passages = [];
     for (const match of html.matchAll(CITABLE_UNIT)) {

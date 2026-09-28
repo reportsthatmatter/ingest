@@ -1,4 +1,4 @@
-import { slugify } from "./markdown";
+import { PARAGRAPH_ID_CHARS, slugify } from "./markdown";
 
 export type Section = {
   slug: string;
@@ -80,7 +80,7 @@ export function sectionFor(sections: Section[], paragraphId: string): Section | 
  */
 export function paragraphIndex(sections: Section[]): Record<string, string> {
   const index: Record<string, string> = {};
-  const idPattern = /\bid="([a-z0-9-]+)"/g;
+  const idPattern = new RegExp(`\\bid="(${PARAGRAPH_ID_CHARS})"`, "gu");
 
   for (const section of sections) {
     for (const match of section.html.matchAll(idPattern)) {

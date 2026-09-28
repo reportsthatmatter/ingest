@@ -25,6 +25,12 @@ export {
   hangingIndents,
   endnotes,
   numberedSections,
+  numberedFindings,
+  doubleSpaced,
+  contentsOutline,
+  listedDivisions,
+  wrappedHeadings,
+  pageBreakContinuations,
   runningFurniture,
   geometry,
   columns,
@@ -59,9 +65,10 @@ export {
   losslessCheck,
   retentionCheck,
   severedSentenceCheck,
+  pageBreakSplits,
   digitDensityCheck,
 } from "./fidelity";
-export type { Check } from "./fidelity";
+export type { Check, PageBreakSplit } from "./fidelity";
 export { computeBaseline, diffBaselines } from "./baseline";
 export type { Baseline } from "./baseline";
 export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler";
@@ -87,7 +94,7 @@ export type { Suspect } from "./ocr";
 // — Rendering: markdown → the content a report publishes —
 export { renderArtifacts } from "./render";
 export type { RenderedArtifacts, ReportMeta, SectionSummary } from "./render";
-export { renderMarkdown, paragraphId, slugify } from "./markdown";
+export { renderMarkdown, paragraphId, slugify, PARAGRAPH_ID_CHARS } from "./markdown";
 export { splitSections, sectionFor, paragraphIndex } from "./sections";
 export type { Section } from "./sections";
 export { extractPassages } from "./passages";

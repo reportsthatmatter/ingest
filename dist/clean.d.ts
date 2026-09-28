@@ -81,10 +81,18 @@ export type FurnitureOptions = {
      * moves reports that have not asked for it — see `runningFurniture`.
      */
     numbersTrackPages?: boolean;
+    /**
+     * Raise the share of pages a line must repeat on before it counts as
+     * furniture, beyond the flat `MIN_REPEATED_FURNITURE` count. See
+     * `runningFurniture`.
+     */
+    minShare?: number;
 };
 export declare function stripRepeatedPageFurniture(pages: SplitPage[], options?: FurnitureOptions): SplitPage[];
 /**
  * pdftotext preserves the original double-spacing on many pages, which would
- * otherwise read as a paragraph break on every single line.
+ * otherwise read as a paragraph break on every single line. A `margin` is the
+ * `doubleSpaced` pass: the page is double-spaced whatever its proportions,
+ * and its body sits at that margin.
  */
-export declare function collapseDoubleSpacing(lines: string[]): string[];
+export declare function collapseDoubleSpacing(lines: string[], margin?: number): string[];

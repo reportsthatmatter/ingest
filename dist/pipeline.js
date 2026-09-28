@@ -3,7 +3,7 @@ import { splitPage, takePrintedNumber, collapseDoubleSpacing } from "./clean.js"
 import { extractParagraphNotes } from "./paragraph-notes.js";
 import { applyCorrections } from "./corrections.js";
 import { rejoinHyphenated, vocabulary } from "./hyphens.js";
-import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, mergeAcrossPages, contentsHeadings, contentsTitles, headingKey, numberedContents, bodyIndent, } from "./paragraphs.js";
+import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, mergeAcrossPages, contentsHeadings, contentsTitles, headingKey, numberedContents, emptyOutline, readContentsOutline, learnOutline, outlineContentsBlocks, divisionContents, bodyIndent, } from "./paragraphs.js";
 import { parseFootnotes, linkInlineMarkers, linkFlushMarkers, renderEndnotes, } from "./footnotes.js";
 import { autoFix, findSuspects, rankSuspects } from "./ocr.js";
 /**
@@ -116,9 +116,17 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     const listed = new Set();
     // `numberedSections`: the sections and chapters the contents numbers.
     const numbered = { sections: new Map(), chapters: new Set(), divisions: new Map() };
+    // `numberedFindings`: the finding number expected next, across pages.
+    const findings = resolved.numberedFindings ? { next: 1 } : undefined;
+    // `contentsOutline`: the headings the contents lists, learnt as it goes by.
+    const outline = resolved.contentsOutline ? emptyOutline() : undefined;
+    // `listedDivisions`: the parts, chapters and appendices the contents lists.
+    const divisions = { entries: [], used: new Set() };
     for (const [groupIndex, group] of cleanedGroups.entries()) {
         for (const split of group) {
-            const pageLines = collapseDoubleSpacing(split.body);
+            const pageLines = collapseDoubleSpacing(split.body, resolved.doubleSpaced
+                ? margins[resolved.geometry === "per-volume" ? groupIndex : 0]
+                : undefined);
             const titles = resolved.listedHeadings || resolved.unlistedHeadingsMinor ? contentsTitles(pageLines) : [];
             for (const title of titles)
                 listed.add(headingKey(title));
@@ -134,12 +142,22 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
             const sections = resolved.numberedSections && !entries?.sections.size && numbered.sections.size
                 ? numbered
                 : undefined;
+            const listedHere = resolved.listedDivisions ? divisionContents(pageLines) : [];
+            divisions.entries.push(...listedHere);
+            const divisionGate = resolved.listedDivisions && !listedHere.length && divisions.entries.length
+                ? divisions
+                : undefined;
             const at = { volume: split.volume, pdfIndex: split.pdfIndex, printed: split.printed };
+            const outlineEntries = outline ? readContentsOutline(pageLines) : [];
+            if (outline)
+                learnOutline(outline, outlineEntries);
             const blocks = (isContentsPage(pageLines)
                 ? parseContentsPage(pageLines)
-                : toBlocks(pageLines, resolved.geometry === "per-page"
-                    ? pageMargin(split.body, margins[0])
-                    : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, resolved.hangingIndents)).map((block) => ({ ...block, at }));
+                : outlineEntries.length
+                    ? outlineContentsBlocks(pageLines, outlineEntries)
+                    : toBlocks(pageLines, resolved.geometry === "per-page"
+                        ? pageMargin(split.body, margins[0])
+                        : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings, resolved.hangingIndents)).map((block) => ({ ...block, at }));
             // Record where each printed page begins. These documents are cited by page
             // ("Report at 62"), so the printed number is the citation unit readers
             // already use — and it can be checked against the original PDF.
@@ -211,9 +229,10 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     // Footnote-definition text goes through the same pass — a footnote's OCR
     // degrades at least as badly as the body's, and until this it had nowhere
     // a correction could reach it (reportsthatmatter-3jb).
-    const corrected = applyCorrections(resolved.chapterContents
-        ? contentsHeadings(mergeAcrossPages(bodyChunks))
-        : mergeAcrossPages(bodyChunks), corrections, meta.title, footnotes);
+    const joined = mergeAcrossPages(bodyChunks, {
+        continuations: resolved.pageBreakContinuations,
+    });
+    const corrected = applyCorrections(resolved.chapterContents ? contentsHeadings(joined) : joined, corrections, meta.title, footnotes);
     let body = blocksToMarkdown(corrected.blocks);
     const notes = corrected.footnotes;
     // Rejoin words the typesetter broke at a line end, decided from the

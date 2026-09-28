@@ -320,8 +320,12 @@ export function stripRepeatedPageFurniture(pages, options = {}) {
     const tracked = new Map();
     const isFurniture = (line) => {
         const key = furnitureKey(line);
-        if (!key || (counts.get(key) ?? 0) < MIN_REPEATED_FURNITURE)
+        if (!key)
             return false;
+        const count = counts.get(key) ?? 0;
+        if (count < MIN_REPEATED_FURNITURE || count < (options.minShare ?? 0) * pages.length) {
+            return false;
+        }
         if (!options.numbersTrackPages || !/\d/.test(line))
             return true;
         if ((literal.get(normaliseWhitespace(line)) ?? 0) >= MIN_REPEATED_FURNITURE)
@@ -424,11 +428,14 @@ function longestRun(candidates) {
 }
 /**
  * pdftotext preserves the original double-spacing on many pages, which would
- * otherwise read as a paragraph break on every single line.
+ * otherwise read as a paragraph break on every single line. A `margin` is the
+ * `doubleSpaced` pass: the page is double-spaced whatever its proportions,
+ * and its body sits at that margin.
  */
-export function collapseDoubleSpacing(lines) {
+export function collapseDoubleSpacing(lines, margin) {
+    const always = margin !== undefined;
     const nonEmpty = lines.filter((l) => l.trim()).length;
-    if (nonEmpty < 4)
+    if (nonEmpty < 4 && !always)
         return lines;
     let alternating = 0;
     for (let i = 0; i < lines.length - 1; i++) {
@@ -436,11 +443,19 @@ export function collapseDoubleSpacing(lines) {
             alternating += 1;
     }
     // Double-spaced if most content lines are followed by a blank.
-    if (alternating / nonEmpty < 0.6)
+    if (alternating / nonEmpty < 0.6 && !always)
         return lines;
     // On a double-spaced page a single blank line is just the line spacing, but a
     // wider gap is a real break — a paragraph, or a heading standing on its own.
     // Dropping every blank loses that structure entirely.
+    //
+    // A quotation is single-spaced, so a blank inside one is a break between
+    // its paragraphs. Where the page is declared double-spaced (`always`), a
+    // blank with neither neighbour at the margin is kept — a double-spaced
+    // paragraph's continuation lines sit at the margin, a quotation's do not: without it every paragraph of a quoted document ran into
+    // one — the Frank Statement's "We believe the products we make are not
+    // injurious to health." lost its own line.
+    const quoteLine = (line) => line !== undefined && indentOf(line) > (margin ?? 0);
     const out = [];
     for (let i = 0; i < lines.length; i++) {
         if (lines[i].trim()) {
@@ -450,7 +465,8 @@ export function collapseDoubleSpacing(lines) {
         let gap = 0;
         while (i + gap < lines.length && !lines[i + gap].trim())
             gap += 1;
-        if (gap > 1)
+        const between = always && quoteLine(out[out.length - 1]) && quoteLine(lines[i + gap]);
+        if (gap > 1 || between)
             out.push("");
         i += gap - 1;
     }
