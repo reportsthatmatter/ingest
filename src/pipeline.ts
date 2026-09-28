@@ -238,7 +238,8 @@ export function ingestPageGroups(
               outline,
               divisionGate,
               resolved.wrappedHeadings,
-              resolved.hangingIndents
+              resolved.hangingIndents,
+              resolved.unmarkedHeadings
             )
       ).map((block) => ({ ...block, at }));
 

@@ -40,6 +40,7 @@ export function resolvePasses(def) {
         paragraphNotes: passes.some((pass) => pass.name === "paragraphNotes"),
         chapterContents: passes.some((pass) => pass.name === "chapterContents"),
         listedHeadings: passes.some((pass) => pass.name === "listedHeadings"),
+        unmarkedHeadings: passes.some((pass) => pass.name === "unmarkedHeadings"),
         endnotes: passes.some((pass) => pass.name === "endnotes"),
         numberedSections: passes.some((pass) => pass.name === "numberedSections"),
         unlistedHeadingsMinor: passes.some((pass) => pass.name === "unlistedHeadingsMinor"),

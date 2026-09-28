@@ -1069,7 +1069,8 @@ export function toBlocks(
   outline?: Outline,
   divisions?: ListedDivisions,
   wrappedHeadings = false,
-  hangingIndents = false
+  hangingIndents = false,
+  unmarkedHeadings = false
 ): Block[] {
   if (paragraphContents) lines = joinParagraphContents(lines);
   const hanging = hangingIndents ? hangingItems(lines) : null;
@@ -1090,10 +1091,48 @@ export function toBlocks(
     }
     return false;
   };
-  const isHeading = (text: string, allowDivisions: boolean, at?: number) => {
+  // `unmarkedHeadings`: whether the nearest non-blank line before `at`, on
+  // this page, is a safe place for a bare heading to start — it ends a
+  // sentence, or it is itself a heading the contents names (two of these can
+  // sit back to back with nothing between them, a section directly over its
+  // own first subsection). Nothing before it on the page at all is
+  // unknowable, since it may continue a sentence from the page before.
+  const priorEndsCleanly = (at: number): boolean => {
+    for (let j = at - 1; j >= 0; j--) {
+      const prior = lines[j];
+      if (!prior.trim()) continue;
+      if (listed?.has(headingKey(normaliseWhitespace(prior)))) return true;
+      return /[.:;?!"”)\]]$/.test(prior.trim());
+    }
+    return false;
+  };
+  const isHeading = (
+    text: string,
+    allowDivisions: boolean,
+    at?: number
+  ): { level: number; text: string; bare?: boolean } | null => {
     if (outlined && (at === undefined || !isCentred(lines[at], width) || runsOn(at))) return null;
     const heading = isHeadingLine(text, allowDivisions, allCapsHeadings, numberedHeadings);
-    return heading && listed && !listed.has(headingKey(heading.text)) ? null : heading;
+    if (heading) return listed && !listed.has(headingKey(heading.text)) ? null : heading;
+    // `unmarkedHeadings`: the other half of `listedHeadings` — a line with no
+    // heading shape of its own (no caps, number or division label) is still
+    // the heading the contents names, when it matches one letter for letter.
+    // `bare`: an exact match against the contents, never a wrapping fragment
+    // of the heading before or after it — two of these can sit on consecutive
+    // lines with no blank between (a section heading directly over its first
+    // subsection), and neither may absorb the other the way a heading whose
+    // title merely runs long does.
+    // Only where the nearest line before it on the same page either ends
+    // cleanly or is itself a heading the contents names: the first line of a
+    // page can equally be the tail end of a sentence carried over from the
+    // page before, invisible here ("...to oversee the UK contribution to
+    // post-conflict" / page break / "reconstruction." — which happens to be
+    // a real heading elsewhere in this report). Nothing before it at all, on
+    // its page, is unknowable and so unsafe.
+    if (unmarkedHeadings && at !== undefined && listed?.has(headingKey(text)) && priorEndsCleanly(at)) {
+      return { level: 3, text, bare: true as const };
+    }
+    return null;
   };
   // The left margin is a property of the document's layout, not of one page. A
   // short page — the last of a section, say — can have too few lines to infer
@@ -1397,11 +1436,14 @@ export function toBlocks(
         // A line that opens its own numbering starts a new heading, not a
         // continuation. Test for the numbering, not the first letter — "I" and
         // "C" begin plenty of ordinary words.
-        !/^([IVXLC]{1,6}|[A-Z]|\d{1,2})\.\s/.test(single)
+        !/^([IVXLC]{1,6}|[A-Z]|\d{1,2})\.\s/.test(single) &&
+        !standalone.bare
       ) {
         previous.text = `${previous.text} ${standalone.text}`;
       } else {
-        blocks.push({ kind: "heading", ...standalone });
+        const heading: Block = { kind: "heading", level: standalone.level, text: standalone.text };
+        if (standalone.bare) complete.add(heading);
+        blocks.push(heading);
       }
       // `wrappedHeadings`: the rest of the title, on a short line below.
       const opened = blocks[blocks.length - 1];

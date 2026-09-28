@@ -35,6 +35,7 @@ export type ResolvedPasses = {
     paragraphNotes?: boolean;
     chapterContents?: boolean;
     listedHeadings?: boolean;
+    unmarkedHeadings?: boolean;
     endnotes?: boolean;
     numberedSections?: boolean;
     unlistedHeadingsMinor?: boolean;

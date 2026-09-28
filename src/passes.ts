@@ -186,6 +186,32 @@ export const unlistedHeadingsMinor = (): PagePass => ({
 });
 
 /**
+ * The other half of `listedHeadings`: a line the contents names becomes a
+ * heading even where nothing about its own shape says so.
+ *
+ * The Iraq Inquiry's Executive Summary sets its section titles in plain
+ * sentence case with no capital, number or "Part"/"Chapter" label at all —
+ * "UK policy before 9/11", "Why Iraq? Why now?" — so `isHeadingLine` never
+ * proposes them as heading-shaped in the first place, and 75 of the
+ * Executive Summary's 88 contents-listed headings ran straight into the
+ * numbered paragraph after them ("UK policy before 9/11 26. Before the
+ * attacks on the US…"), because nothing marked a break between the two.
+ * With this, a line at the start of a block whose text matches a contents
+ * entry letter for letter — the same match `listedHeadings` already reads —
+ * opens its own heading instead.
+ *
+ * Single physical line only: a title that wraps over two lines in the body
+ * is not joined here, the way `contentsOutline` joins a labelled one. Opt-in,
+ * and only additive alongside `listedHeadings`: a report whose contents
+ * lists only its chapters, not every subsection, would otherwise turn a
+ * chapter title's stray repetition in running prose into a heading.
+ */
+export const unmarkedHeadings = (): PagePass => ({
+  name: "unmarkedHeadings",
+  stage: "page",
+});
+
+/**
  * Reads an item set with a hanging indent under a short numbered label —
  * Columbia's "F6.3-1", "R6.4-1", "O10.7-1" findings, recommendations and
  * observations — as one paragraph, label and all (reportsthatmatter-tk8).

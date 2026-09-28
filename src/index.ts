@@ -23,6 +23,7 @@ export {
   listedHeadings,
   unlistedHeadingsMinor,
   hangingIndents,
+  unmarkedHeadings,
   endnotes,
   numberedSections,
   numberedFindings,
