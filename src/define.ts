@@ -7,8 +7,9 @@ import type {
   AllCapsHeadingsPass,
   NumberedHeadingsPass,
 } from "./passes";
+import type { Crop } from "./extract";
 
-export type Volume = { path: string; sha256?: string };
+export type Volume = { path: string; sha256?: string; crop?: Crop };
 
 /**
  * One report's build, as a program rather than as data the pipeline

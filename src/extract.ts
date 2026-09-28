@@ -11,13 +11,35 @@ export type Page = {
 };
 
 /**
+ * A rectangle in PDF user-space points (poppler's own coordinate system,
+ * origin at the page's top-left corner) to extract text from, discarding
+ * everything outside it before layout reconstruction runs.
+ *
+ * For a source whose furniture sits outside the trimmed page — a rotated
+ * chapter-tab printed in the bleed margin beyond the CropBox, say — this
+ * removes it before it can be threaded into the line stream, rather than
+ * matching its text back out afterwards. `pdfinfo -box` prints a PDF's
+ * MediaBox/CropBox so the furniture's margin can be measured once and
+ * declared here, the same way a checksum is declared once and reused.
+ */
+export type Crop = { x: number; y: number; width: number; height: number };
+
+/** The `pdftotext` arguments for one page range, with an optional crop. */
+export function pdftotextArgs(pdfPath: string, crop?: Crop): string[] {
+  const cropArgs = crop
+    ? ["-x", String(crop.x), "-y", String(crop.y), "-W", String(crop.width), "-H", String(crop.height)]
+    : [];
+  return [...cropArgs, "-layout", "-enc", "UTF-8", pdfPath, "-"];
+}
+
+/**
  * Extracts text with `pdftotext -layout`, which preserves leading whitespace.
  * The indentation is load-bearing: it is what tells us where paragraphs begin.
  */
-export function extractPages(pdfPath: string): Page[] {
+export function extractPages(pdfPath: string, crop?: Crop): Page[] {
   let raw: string;
   try {
-    raw = execFileSync("pdftotext", ["-layout", "-enc", "UTF-8", pdfPath, "-"], {
+    raw = execFileSync("pdftotext", pdftotextArgs(pdfPath, crop), {
       encoding: "utf8",
       maxBuffer: 512 * 1024 * 1024,
       stdio: ["ignore", "pipe", "ignore"],
