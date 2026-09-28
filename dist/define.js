@@ -22,6 +22,10 @@ export function pipeline(def) {
     if ((def.passes ?? []).filter((pass) => pass.stage === "allCapsHeadings").length > 1) {
         throw new Error(`${def.id}: more than one allCapsHeadings pass declared`);
     }
+    const passNames = new Set((def.passes ?? []).map((pass) => pass.name));
+    if (passNames.has("escapeNumberedParagraphs") && !passNames.has("numberedParagraphs")) {
+        throw new Error(`${def.id}: escapeNumberedParagraphs declared without numberedParagraphs — it only escapes the number numberedParagraphs already split on`);
+    }
     return def;
 }
 /**
@@ -37,6 +41,7 @@ export function resolvePasses(def) {
         geometry: geometry?.scope ?? "document",
         flushFootnoteMarkers: passes.some((pass) => pass.name === "flushFootnoteMarkers"),
         numberedParagraphs: passes.some((pass) => pass.name === "numberedParagraphs"),
+        escapeNumberedParagraphs: passes.some((pass) => pass.name === "escapeNumberedParagraphs"),
         paragraphNotes: passes.some((pass) => pass.name === "paragraphNotes"),
         chapterContents: passes.some((pass) => pass.name === "chapterContents"),
         listedHeadings: passes.some((pass) => pass.name === "listedHeadings"),

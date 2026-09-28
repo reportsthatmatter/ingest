@@ -241,4 +241,6 @@ export type MergeOptions = {
     continuations?: boolean;
 };
 export declare function mergeAcrossPages(blocks: Block[], options?: MergeOptions): Block[];
-export declare function blocksToMarkdown(blocks: Block[]): string;
+export declare function blocksToMarkdown(blocks: Block[], options?: {
+    escapeNumberedParagraphs?: boolean;
+}): string;

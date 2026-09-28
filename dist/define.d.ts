@@ -32,6 +32,7 @@ export type ResolvedPasses = {
     geometry: "per-volume" | "per-page" | "document";
     flushFootnoteMarkers: boolean;
     numberedParagraphs: boolean;
+    escapeNumberedParagraphs?: boolean;
     paragraphNotes?: boolean;
     chapterContents?: boolean;
     listedHeadings?: boolean;

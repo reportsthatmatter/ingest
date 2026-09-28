@@ -1568,12 +1568,18 @@ export function mergeAcrossPages(blocks, options = {}) {
     }
     return merged;
 }
-export function blocksToMarkdown(blocks) {
+export function blocksToMarkdown(blocks, options = {}) {
     return blocks
         .map((block) => {
         // "3437. Projects…" is an ordered list to Markdown; a finding is a
-        // paragraph that opens with its number (`numberedFindings`).
-        if (block.kind === "paragraph" && block.finding !== undefined) {
+        // paragraph that opens with its number (`numberedFindings`). A report
+        // numbered at the margin instead has no finding sequence to match, but
+        // `numberedParagraphs` has already decided the line opens a paragraph,
+        // so any leading number there is the paragraph's own
+        // (`escapeNumberedParagraphs`, reportsthatmatter-4qw).
+        if (block.kind === "paragraph" &&
+            (block.finding !== undefined ||
+                (options.escapeNumberedParagraphs && /^\d{1,4}\.\s/.test(block.text)))) {
             return block.text.replace(/^(\d+)\./, "$1\\.");
         }
         return blockToMarkdown(block);

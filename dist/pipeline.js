@@ -258,7 +258,9 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         continuations: resolved.pageBreakContinuations,
     });
     const corrected = applyCorrections(resolved.chapterContents ? contentsHeadings(joined) : joined, corrections, meta.title, footnotes);
-    let body = blocksToMarkdown(corrected.blocks);
+    let body = blocksToMarkdown(corrected.blocks, {
+        escapeNumberedParagraphs: resolved.escapeNumberedParagraphs,
+    });
     const notes = corrected.footnotes;
     // Rejoin words the typesetter broke at a line end, decided from the
     // document's own vocabulary. Before autoFix, so a repaired word is judged
