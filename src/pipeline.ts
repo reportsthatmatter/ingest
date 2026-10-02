@@ -265,7 +265,8 @@ export function ingestPageGroups(
               divisionGate,
               resolved.wrappedHeadings,
               resolved.hangingIndents,
-              resolved.unmarkedHeadings
+              resolved.unmarkedHeadings,
+              resolved.letteredItems
             )
       ).map((block) => ({ ...block, at }));
 
@@ -345,6 +346,7 @@ export function ingestPageGroups(
   // a correction could reach it (reportsthatmatter-3jb).
   const joined = mergeAcrossPages(bodyChunks, {
     continuations: resolved.pageBreakContinuations,
+    letteredItems: resolved.letteredItems,
   });
   const corrected = applyCorrections(
     resolved.chapterContents ? contentsHeadings(joined) : joined,

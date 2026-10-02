@@ -41,6 +41,7 @@ export type ResolvedPasses = {
     numberedSections?: boolean;
     unlistedHeadingsMinor?: boolean;
     hangingIndents?: boolean;
+    letteredItems?: boolean;
     numberedFindings?: boolean;
     doubleSpaced?: boolean;
     contentsOutline?: boolean;

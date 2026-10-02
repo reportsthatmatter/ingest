@@ -174,6 +174,22 @@ export const unmarkedHeadings = () => ({
  */
 export const hangingIndents = () => ({ name: "hangingIndents", stage: "page" });
 /**
+ * Reads a lettered sub-item ("a.", "(b)", "iv.") set with a hanging indent as
+ * one paragraph of its own (reportsthatmatter-56s).
+ *
+ * The Litvinenko Inquiry sets "a. Mr Litvinenko had been suffering from
+ * abdominal pain, profuse diarrhoea and" with the wrapped lines one tab-stop
+ * further in, which is where its block quotations sit, so every wrapped item
+ * read as prose cut off into a quotation ("…diarrhoea and" / "> vomiting for
+ * two days…"), 244 times in that report. The item is the label's line plus the
+ * lines indented to its text, within a character, and only where the label
+ * itself sits short of a quotation's inset, so a quotation's own lettered
+ * items stay inside it. Opt-in, for the same reason as `hangingIndents`: a
+ * lettered line followed by indented lines is also a table row or a
+ * quotation's heading in another document.
+ */
+export const letteredItems = () => ({ name: "letteredItems", stage: "page" });
+/**
  * This report's notes are endnotes: printed together at the back, never at a
  * page foot, so no page is searched for a footnote block (reportsthatmatter-vpx).
  *
