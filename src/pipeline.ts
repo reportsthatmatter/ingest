@@ -290,7 +290,8 @@ export function ingestPageGroups(
               resolved.hangingIndents,
               resolved.unmarkedHeadings,
               resolved.numberedOutsideTables,
-              resolved.recoverListedHeadings
+              resolved.recoverListedHeadings,
+              resolved.letteredItems
         );
       const blocks = (
         resolved.contentsEntries && (entries?.sections.size || isIllustrationList(pageLines))
@@ -397,6 +398,7 @@ export function ingestPageGroups(
     quoteTails: resolved.pageBreakQuoteTails,
     quoteRunOn: resolved.quoteRunOn,
     photoCredits: resolved.photoCredits,
+    letteredItems: resolved.letteredItems,
   });
   const corrected = applyCorrections(
     resolved.chapterContents ? contentsHeadings(joined) : joined,

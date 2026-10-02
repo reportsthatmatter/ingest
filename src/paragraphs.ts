@@ -1229,10 +1229,10 @@ export function toBlocks(
   hangingIndents = false,
   unmarkedHeadings = false,
   numberedOutsideTables = false,
-  recoverListedHeadings = false
+  recoverListedHeadings = false,
+  letteredItems = false
 ): Block[] {
   if (paragraphContents) lines = joinParagraphContents(lines);
-  const hanging = hangingIndents ? hangingItems(lines) : null;
   // With `listedHeadings`, a would-be heading the contents does not name is
   // text: judged before anything else looks at the line, so a quoted cue line
   // counts as part of its quotation rather than as structure beside it.
@@ -1347,6 +1347,10 @@ export function toBlocks(
   // short page — the last of a section, say — can have too few lines to infer
   // it from, and getting it wrong turns an ordinary paragraph into a quote.
   const margin = documentMargin ?? bodyIndent(lines);
+  const hanging =
+    hangingIndents || letteredItems
+      ? hangingItems(lines, hangingIndents, letteredItems ? margin + quoteInset : 0)
+      : null;
   const blocks: Block[] = [];
 
   // A row of a table is not a division. The Jack Smith docket lists "Section 4
@@ -1750,11 +1754,21 @@ export function toBlocks(
  * or more spaces before its text; the item is the lines indented to that
  * text, within a character.
  */
-function hangingItems(lines: string[]): { opens: boolean[]; continues: boolean[] } {
+function hangingItems(
+  lines: string[],
+  numbered = true,
+  letteredBelow = 0
+): { opens: boolean[]; continues: boolean[] } {
   const opens = lines.map(() => false);
   const continues = lines.map(() => false);
   for (let i = 0; i < lines.length; i++) {
-    const label = lines[i].match(/^(\s*)(?=\S*\d)(\S{2,12})( {2,})\S/);
+    let label = numbered ? lines[i].match(/^(\s*)(?=\S*\d)(\S{2,12})( {2,})\S/) : null;
+    // `letteredItems`: a sub-item's own letter ("a.", "(b)", "iv.") over its
+    // wrapped lines, wherever it sits short of a quotation's inset.
+    if (!label && letteredBelow) {
+      label = lines[i].match(/^(\s*)(\(?(?:[a-z]|[ivx]{1,4})[.)])( {2,})\S/);
+      if (label && indentOf(lines[i]) >= letteredBelow) label = null;
+    }
     if (!label) continue;
     const column = label[0].length - 1;
     let k = i + 1;
@@ -1886,7 +1900,16 @@ export type MergeOptions = {
    * set aside, and the continuation rejoins the paragraph it continues.
    */
   photoCredits?: boolean;
+  /**
+   * `letteredItems`: a block opening on its own item letter ("b. On 4
+   * November…") is the next item, not the lower-case rest of the sentence
+   * above, however the item above ends.
+   */
+  letteredItems?: boolean;
 };
+
+/** An item's own letter: "b." or "(c)" or "iv.", then its text. */
+const ITEM_LABEL = /^\(?(?:[a-z]|[ivx]{1,4})[.)]\s+\S/;
 
 /** Opens on a quotation mark, perhaps behind an ellipsis: `"… if Mr Wallis`. */
 const OPENS_QUOTATION = /^(?:\.\.\.\s*|…\s*)?["\u201c\u2018']/;
@@ -2099,6 +2122,7 @@ export function mergeAcrossPages(blocks: Block[], options: MergeOptions = {}): B
       !endsSentence(previous.text) &&
       // A lowercase opening is the usual sign of a continuation. After an
       // abbreviation the next word is often a name, so allow either.
+      !(options.letteredItems && ITEM_LABEL.test(block.text)) &&
       (/^[a-z,;]/.test(block.text) ||
         ABBREVIATION.test(previous.text) ||
         INITIAL.test(previous.text))

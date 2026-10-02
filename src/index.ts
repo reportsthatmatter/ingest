@@ -25,6 +25,7 @@ export {
   listedHeadings,
   unlistedHeadingsMinor,
   hangingIndents,
+  letteredItems,
   unmarkedHeadings,
   recoverListedHeadings,
   endnotes,

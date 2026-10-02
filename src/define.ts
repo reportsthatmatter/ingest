@@ -55,6 +55,7 @@ export type ResolvedPasses = {
   quoteRunOn?: boolean;
   unlistedHeadingsMinor?: boolean;
   hangingIndents?: boolean;
+  letteredItems?: boolean;
   numberedFindings?: boolean;
   doubleSpaced?: boolean;
   contentsOutline?: boolean;
@@ -152,6 +153,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     quoteRunOn: passes.some((pass) => pass.name === "quoteRunOn"),
     unlistedHeadingsMinor: passes.some((pass) => pass.name === "unlistedHeadingsMinor"),
     hangingIndents: passes.some((pass) => pass.name === "hangingIndents"),
+    letteredItems: passes.some((pass) => pass.name === "letteredItems"),
     numberedFindings: passes.some((pass) => pass.name === "numberedFindings"),
     doubleSpaced: passes.some((pass) => pass.name === "doubleSpaced"),
     contentsOutline: passes.some((pass) => pass.name === "contentsOutline"),
