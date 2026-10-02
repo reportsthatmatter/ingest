@@ -19,6 +19,7 @@ export {
   flushFootnoteMarkers,
   numberedParagraphs,
   escapeNumberedParagraphs,
+  escapeLeadingHash,
   paragraphNotes,
   chapterContents,
   listedHeadings,

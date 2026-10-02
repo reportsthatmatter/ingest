@@ -1778,7 +1778,7 @@ export function mergeAcrossPages(blocks: Block[], options: MergeOptions = {}): B
 
 export function blocksToMarkdown(
   blocks: Block[],
-  options: { escapeNumberedParagraphs?: boolean } = {}
+  options: { escapeNumberedParagraphs?: boolean; escapeLeadingHash?: boolean } = {}
 ): string {
   return blocks
     .map((block) => {
@@ -1795,9 +1795,18 @@ export function blocksToMarkdown(
       ) {
         return block.text.replace(/^(\d+)\./, "$1\\.");
       }
-      return blockToMarkdown(block);
+      const markdown = blockToMarkdown(block);
+      return options.escapeLeadingHash ? escapeHash(block, markdown) : markdown;
     })
     .join("\n\n");
+}
+
+/** "# x" opens a heading; "\# x" is the text. Headings themselves are left alone. */
+function escapeHash(block: Block, markdown: string): string {
+  if (block.kind === "paragraph") return markdown.replace(/^(#{1,6})(?=\s|$)/, "\\$1");
+  if (block.kind === "quote") return markdown.replace(/^> (#{1,6})(?=\s|$)/, "> \\$1");
+  if (block.kind === "list") return markdown.replace(/^((?:> )?- )(#{1,6})(?=\s|$)/gm, "$1\\$2");
+  return markdown;
 }
 
 function blockToMarkdown(block: Block): string {

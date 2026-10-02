@@ -354,6 +354,7 @@ export function ingestPageGroups(
   );
   let body = blocksToMarkdown(corrected.blocks, {
     escapeNumberedParagraphs: resolved.escapeNumberedParagraphs,
+    escapeLeadingHash: resolved.escapeLeadingHash,
   });
   const notes = corrected.footnotes;
 
