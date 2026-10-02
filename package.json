@@ -23,7 +23,8 @@
     "build": "tsc -p tsconfig.build.json && node scripts/fix-extensions.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "check-dist": "pnpm build && git diff --exit-code dist"
+    "check-dist": "pnpm build && git diff --exit-code dist",
+    "release": "node scripts/release.mjs"
   },
   "dependencies": {
     "yaml": "^2.6.1",

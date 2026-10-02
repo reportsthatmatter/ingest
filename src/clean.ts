@@ -6,6 +6,8 @@ export type SplitPage = {
   pdfIndex: number;
   /** Printed page number, if the page carries one. */
   printed: number | null;
+  /** A roman-numeral folio (`romanFolios`), lower case, when the page carries one and no arabic number. */
+  roman?: string;
   body: string[];
   footnotes: string[];
   /**
@@ -82,8 +84,9 @@ export function noteCandidates(
  * uses a footer, the PSI report a header, and looking in only one place loses
  * page anchors for half the archive.
  */
-export function takePrintedNumber(input: string[]): {
+export function takePrintedNumber(input: string[], options: { roman?: boolean } = {}): {
   printed: number | null;
+  roman?: string;
   lines: string[];
 } {
   const lines = [...input];
@@ -110,7 +113,38 @@ export function takePrintedNumber(input: string[]): {
     }
   }
 
+  if (printed === null && options.roman) {
+    const roman = takeRomanFolio(lines);
+    if (roman) return { printed, roman, lines };
+  }
+
   return { printed, lines };
+}
+
+/**
+ * A lowercase roman folio alone on a line at the head or foot, possibly set
+ * twice or three times on the line ("vii   vii"). Removes it from `lines`.
+ */
+const ROMAN_FOLIO = /^\s*([ivxlc]{1,6})(?:\s+\1)*\s*$/;
+const ROMAN_NUMERAL = /^(?:xl|l)?x{0,3}(?:ix|iv|v?i{0,3})$/;
+function takeRomanFolio(lines: string[]): string | undefined {
+  const tryAt = (index: number): string | undefined => {
+    const match = lines[index].match(ROMAN_FOLIO);
+    if (!match || !ROMAN_NUMERAL.test(match[1])) return undefined;
+    lines.splice(index, 1);
+    return match[1];
+  };
+  for (let i = lines.length - 1; i >= 0 && i >= lines.length - 4; i--) {
+    if (!lines[i].trim()) continue;
+    const found = tryAt(i);
+    if (found) return found;
+    break;
+  }
+  for (let i = 0; i < Math.min(3, lines.length); i++) {
+    if (!lines[i].trim()) continue;
+    return tryAt(i);
+  }
+  return undefined;
 }
 
 /**
@@ -124,12 +158,14 @@ export function takePrintedNumber(input: string[]): {
 export function splitFootnoteBlock(
   lines: string[],
   expectedNote: number,
-  options: { citationRunOver?: boolean } = {}
+  options: { citationRunOver?: boolean; footnoteGap?: boolean } = {}
 ): { body: string[]; footnotes: string[]; runOver: string[] } {
   const candidates = noteCandidates(lines);
   if (!candidates.length) return { body: lines, footnotes: [], runOver: [] };
 
-  const start = chooseBlockStart(candidates, expectedNote, lines.length);
+  const start =
+    chooseBlockStart(candidates, expectedNote, lines.length) ??
+    (options.footnoteGap ? gappedNoteStart(lines, candidates, expectedNote) : null);
   if (start === null) return { body: lines, footnotes: [], runOver: [] };
 
   const at = start.line;
@@ -142,7 +178,8 @@ export function splitFootnoteBlock(
     };
   }
 
-  const from = runOverStart(lines, at, options.citationRunOver ?? false);
+  let from = runOverStart(lines, at, options.citationRunOver ?? false);
+  if (options.footnoteGap) from = Math.min(from, gappedRunOverStart(lines, at));
   return { body: lines.slice(0, from), footnotes: lines.slice(at), runOver: lines.slice(from, at) };
 }
 
@@ -237,6 +274,62 @@ function runOverStart(lines: string[], at: number, citations: boolean): number {
 
 const RUN_OVER_MIN_GAP = 2;
 
+/** Blank lines that read as a deliberate gap — a chart's space, a note block's separator — not paragraph spacing. */
+const WIDE_GAP = 3;
+
+/** The blank run directly above `line`: how many blank lines, and the index of the text above it (or -1). */
+function gapAbove(lines: string[], line: number): { gap: number; above: number } {
+  let gap = 0;
+  while (line - gap - 1 >= 0 && !lines[line - gap - 1].trim()) gap += 1;
+  return { gap, above: line - gap - 1 };
+}
+
+/**
+ * `footnoteGap`: the note the page is expecting, set low enough in the
+ * text that no later note corroborates it, because an embedded chart's empty
+ * space sits above it (PSI PDF p.456: note 1864 follows a chart placeholder,
+ * and note 1865 is on the next page, so the ordinary plausibility test
+ * refuses it, and the note's text prints in the body).
+ *
+ * Only the exact expected number, in the stacked layout, directly below a
+ * wide gap with text above it.
+ */
+function gappedNoteStart(
+  lines: string[],
+  candidates: Array<{ line: number; note: number }>,
+  expectedNote: number
+): { line: number; note: number } | null {
+  for (const candidate of candidates) {
+    if (candidate.note !== expectedNote) continue;
+    if (!FOOTNOTE_STACKED.test(lines[candidate.line])) continue;
+    const { gap, above } = gapAbove(lines, candidate.line);
+    if (gap >= WIDE_GAP && above >= 0) return candidate;
+  }
+  return null;
+}
+
+/**
+ * `footnoteGap`: where a note's run-over begins, when the body above ends
+ * mid-sentence at a wide gap — the page's own text is plainly unfinished, so
+ * whatever sits below the gap down to the first note is the previous note's
+ * tail, however many paragraphs, quotations and prose-like lines it has
+ * (PSI PDF p.504: two paragraphs and a quotation of note 2095 printed in the
+ * body). Only when the paragraph just under the gap itself reads as
+ * citations, so a chart's caption or a heading is never taken.
+ */
+function gappedRunOverStart(lines: string[], at: number): number {
+  // The nearest wide gap above the note, with text above it.
+  let top = at;
+  while (top > 0 && !(lines[top].trim() && gapAbove(lines, top).gap >= WIDE_GAP)) top -= 1;
+  if (top <= 0) return at;
+  const { above } = gapAbove(lines, top);
+  if (above < 0) return at;
+  if (/[.?!:;"”’)\]]$/.test(lines[above].trim())) return at;
+  let end = top;
+  while (end < at && lines[end].trim()) end += 1;
+  return looksLikeCitation(lines.slice(top, end).join(" ")) ? top : at;
+}
+
 /**
  * A note whose run-over is not one unbroken run but several paragraphs —
  * quotations, their source lines, more prose — none of them double-spaced
@@ -326,11 +419,11 @@ function provenance(page: Page): Pick<SplitPage, "index" | "volume" | "pdfIndex"
 export function splitPage(
   page: Page,
   expectedNote: number,
-  options: { citationRunOver?: boolean } = {}
+  options: { citationRunOver?: boolean; footnoteGap?: boolean; romanFolios?: boolean } = {}
 ): SplitPage {
-  const { printed, lines } = takePrintedNumber(page.lines);
+  const { printed, roman, lines } = takePrintedNumber(page.lines, { roman: options.romanFolios });
   const { body, footnotes, runOver } = splitFootnoteBlock(lines, expectedNote, options);
-  return { ...provenance(page), printed, body, footnotes, ...(runOver.length ? { runOver } : {}) };
+  return { ...provenance(page), printed, ...(roman ? { roman } : {}), body, footnotes, ...(runOver.length ? { runOver } : {}) };
 }
 
 /**
