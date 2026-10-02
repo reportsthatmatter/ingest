@@ -748,8 +748,13 @@ export function contentsHeadings(blocks) {
 export function emptyOutline() {
     return { entries: new Map(), prefixes: new Set() };
 }
-/** An outline label and the title after it: "IV.", "A.", "3.", "c.", "(2)", "(b)", "(iii)". */
-const OUTLINE_LABEL = /^\s*(\((?:\d{1,2}|[a-z]{1,4})\)|(?:[IVXLC]{1,6}|[A-Za-z]|\d{1,2})\.)\s+(\S.*)$/;
+/**
+ * An outline label and the title after it: "IV.", "A.", "3.", "c.", "(2)",
+ * "(b)", "(iii)", and the single letter closing on its bracket alone, "a)"
+ * (the Valukas Report's Repo 105 sections run a) to j) before they turn to
+ * "(1)").
+ */
+const OUTLINE_LABEL = /^\s*(\((?:\d{1,2}|[a-z]{1,4})\)|[a-z]\)|(?:[IVXLC]{1,6}|[A-Za-z]|\d{1,2})\.)\s+(\S.*)$/;
 /**
  * Spaced leaders to a page number, ". . . . 219", ending a contents entry —
  * two dots at the least, where a long title leaves no room for more.
