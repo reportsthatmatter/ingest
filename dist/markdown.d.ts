@@ -54,6 +54,29 @@ export declare function stripNotesSection(markdown: string): string;
  * shared lookup that let one chapter's reference resolve to another's text.
  */
 export declare function collectNotes(markdown: string): Map<string, string[]>;
+/** The labels of the `[^N]:` definitions in document order, repeats included. */
+export declare function collectNoteOrder(markdown: string): string[];
+/**
+ * Which definition each reference opens, when a label is defined more than
+ * once (a numbering that restarts per chapter: 9/11, Leveson, Litvinenko).
+ *
+ * Both the references in the body and the definitions in the notes follow
+ * reading order, so the pairing is a monotone alignment: the longest common
+ * subsequence of the two label sequences, over the repeated labels only. It
+ * replaces "the k-th reference takes the k-th definition", which let one
+ * stray marker (9/11's drop-cap garble "11,[^20] 01" consumed chapter 1's
+ * note 20) hand every later [^20] the previous chapter's note: 148 wrong
+ * notes in one report (reportsthatmatter-apk). Here a stray marker is simply
+ * the one reference left unpaired, and a note nobody cites is the one
+ * definition left unpaired; neither disturbs its neighbours.
+ *
+ * `labels` are the references in document order; `order` is every
+ * definition's label in document order. Returns, per reference, the index of
+ * its definition within that label's list, or null for a reference the
+ * alignment could not pair (the caller falls back to the old positional
+ * rule). A label defined once never needs aligning and always resolves to 0.
+ */
+export declare function resolveNoteReferences(labels: readonly string[], order: readonly string[]): Array<number | null>;
 /**
  * Turns footnote references into sidenotes.
  *
@@ -65,9 +88,10 @@ export declare function collectNotes(markdown: string): Map<string, string[]>;
  * note, so it works without CSS, without JavaScript, and on a narrow screen
  * where there is no margin to put a sidenote in.
  */
-export declare function withSidenotes(html: string, notes: Map<string, string[]>): {
+export declare function withSidenotes(html: string, notes: Map<string, string[]>, order?: readonly string[]): {
     html: string;
     used: Map<string, number>;
+    placed: Map<string, Set<number>>;
 };
 /** Headings get slug ids so a section can be linked as well as a paragraph. */
 export declare function slugify(text: string): string;

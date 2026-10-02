@@ -225,18 +225,21 @@ export function renderMarkdown(markdown) {
         return `${open}<a class="permalink" href="#${id}" aria-label="Link to this paragraph">¶</a>`;
     };
     const notes = collectNotes(content);
-    const { html, used } = withSidenotes(md.render(stripNotesSection(content)), notes);
+    const { html, placed } = withSidenotes(md.render(stripNotesSection(content)), notes, collectNoteOrder(content));
     // Not every note has a reference in the text — footnote recall is
     // imperfect, and a note we cannot place is still evidence. List the
     // remainder rather than dropping it. Per instance, not per number: with a
     // restarting numbering scheme a number can carry several definitions, and
-    // `used` counts only how many of a number's definitions — from the front,
-    // the order withSidenotes consumes them in — were actually resolved, so
-    // one chapter's "20" can be placed while another's goes unreferenced.
+    // `placed` says which of a number's definitions a reference actually
+    // resolved to, so one chapter's "20" can be placed while another's goes
+    // unreferenced.
     const orphans = [];
     for (const [number, texts] of notes) {
-        const resolved = used.get(number) ?? 0;
-        texts.slice(resolved).forEach((text, i) => orphans.push({ number, text, instance: resolved + i }));
+        const resolved = placed.get(number);
+        texts.forEach((text, instance) => {
+            if (!resolved?.has(instance))
+                orphans.push({ number, text, instance });
+        });
     }
     if (!orphans.length)
         return html;
@@ -273,6 +276,81 @@ export function collectNotes(markdown) {
     }
     return notes;
 }
+/** The labels of the `[^N]:` definitions in document order, repeats included. */
+export function collectNoteOrder(markdown) {
+    return [...markdown.matchAll(/^\[\^(\d+(?:-\d+)?)\]:/gm)].map((match) => match[1]);
+}
+/**
+ * Which definition each reference opens, when a label is defined more than
+ * once (a numbering that restarts per chapter: 9/11, Leveson, Litvinenko).
+ *
+ * Both the references in the body and the definitions in the notes follow
+ * reading order, so the pairing is a monotone alignment: the longest common
+ * subsequence of the two label sequences, over the repeated labels only. It
+ * replaces "the k-th reference takes the k-th definition", which let one
+ * stray marker (9/11's drop-cap garble "11,[^20] 01" consumed chapter 1's
+ * note 20) hand every later [^20] the previous chapter's note: 148 wrong
+ * notes in one report (reportsthatmatter-apk). Here a stray marker is simply
+ * the one reference left unpaired, and a note nobody cites is the one
+ * definition left unpaired; neither disturbs its neighbours.
+ *
+ * `labels` are the references in document order; `order` is every
+ * definition's label in document order. Returns, per reference, the index of
+ * its definition within that label's list, or null for a reference the
+ * alignment could not pair (the caller falls back to the old positional
+ * rule). A label defined once never needs aligning and always resolves to 0.
+ */
+export function resolveNoteReferences(labels, order) {
+    const defined = new Map();
+    for (const label of order)
+        defined.set(label, (defined.get(label) ?? 0) + 1);
+    const result = labels.map((label) => (defined.get(label) === 1 ? 0 : null));
+    const refs = [];
+    labels.forEach((label, i) => {
+        if ((defined.get(label) ?? 0) > 1)
+            refs.push(i);
+    });
+    const ordinal = new Map();
+    const defs = [];
+    for (const label of order) {
+        if ((defined.get(label) ?? 0) < 2)
+            continue;
+        const index = ordinal.get(label) ?? 0;
+        ordinal.set(label, index + 1);
+        defs.push({ label, index });
+    }
+    const n = refs.length;
+    const m = defs.length;
+    // Beyond this the table is not worth building; the positional rule stands.
+    if (!n || !m || n * m > 40_000_000)
+        return result;
+    const width = m + 1;
+    const table = new Uint16Array((n + 1) * width);
+    for (let i = n - 1; i >= 0; i--) {
+        for (let j = m - 1; j >= 0; j--) {
+            table[i * width + j] =
+                labels[refs[i]] === defs[j].label
+                    ? Math.min(65535, table[(i + 1) * width + j + 1] + 1)
+                    : Math.max(table[(i + 1) * width + j], table[i * width + j + 1]);
+        }
+    }
+    let i = 0;
+    let j = 0;
+    while (i < n && j < m) {
+        if (labels[refs[i]] === defs[j].label && table[i * width + j] === table[(i + 1) * width + j + 1] + 1) {
+            result[refs[i]] = defs[j].index;
+            i++;
+            j++;
+        }
+        else if (table[(i + 1) * width + j] >= table[i * width + j + 1]) {
+            i++;
+        }
+        else {
+            j++;
+        }
+    }
+    return result;
+}
 /**
  * A note this long floating in the margin runs disproportionately taller
  * than the paragraph it supports, and drags every sidenote after it out of
@@ -294,10 +372,17 @@ const LONG_NOTE_CHARS = 400;
  * note, so it works without CSS, without JavaScript, and on a narrow screen
  * where there is no margin to put a sidenote in.
  */
-export function withSidenotes(html, notes) {
+export function withSidenotes(html, notes, order) {
     const used = new Map();
+    const placed = new Map();
     let counter = 0;
+    // With the definitions' own order the references are paired by alignment
+    // (resolveNoteReferences); without it, positionally, as before.
+    const references = [...html.matchAll(/\[\^(\d+(?:-\d+)?)\]/g)].map((match) => match[1]);
+    const aligned = order ? resolveNoteReferences(references, order) : undefined;
+    let reference = 0;
     const out = html.replace(/\[\^(\d+(?:-\d+)?)\]/g, (whole, label) => {
+        const at = reference++;
         // "3-117" is note 3 under one paragraph (`paragraph-notes.ts`): the
         // label keeps it apart from every other note 3, and 3 is what the reader
         // sees, as printed.
@@ -310,8 +395,12 @@ export function withSidenotes(html, notes) {
         // note genuinely cited twice, or recall missed one) fall back to the
         // last definition rather than losing the note.
         const seen = used.get(label) ?? 0;
-        const note = list[Math.min(seen, list.length - 1)];
+        const index = Math.min(aligned?.[at] ?? seen, list.length - 1);
+        const note = list[index];
         used.set(label, seen + 1);
+        if (!placed.has(label))
+            placed.set(label, new Set());
+        placed.get(label).add(index);
         counter += 1;
         const toggleId = `sn-${label}-${counter}`;
         const long = note.length > LONG_NOTE_CHARS;
@@ -322,7 +411,7 @@ export function withSidenotes(html, notes) {
             (long ? `<label class="sidenote-expand" for="${toggleId}">Show full note</label>` : "") +
             `</span>`);
     });
-    return { html: out, used };
+    return { html: out, used, placed };
 }
 function escapeText(value) {
     return value
