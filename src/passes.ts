@@ -3,6 +3,7 @@ import { bodyIndent } from "./paragraphs";
 import { splitColumns } from "./columns";
 import type { PipelineContext } from "./context";
 import type { Provenance } from "./paragraphs";
+import type { EditionPass } from "./edition";
 import type { PageBreakReferee } from "./pagebreaks";
 
 /**
@@ -79,6 +80,7 @@ export type NumberedHeadingsPass = {
 };
 
 export type Pass =
+  | EditionPass
   | NumberedHeadingsPass
   | PageBreakContinuationsPass
   | LayoutPageJoinsPass

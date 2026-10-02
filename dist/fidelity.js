@@ -99,6 +99,13 @@ export function losslessCheck(sourceText, markdown, extraVocabulary = []) {
         if (stem && stem !== word)
             source.add(stem);
     }
+    // A clean edition (`cleanEdition`) spaces words the PDF's text layer runs
+    // together ("interceptors.The") and closes up words it breaks at a line end
+    // ("team—" / "Suqami", "Yousef" / "’s"). Every such word is in the source,
+    // as a piece of a token or two tokens joined, so it is not invented; a word
+    // that is in neither form still has nothing to match.
+    for (const word of sourcePieces(sourceText))
+        source.add(word);
     const output = words(stripFrontMatter(markdown));
     const foreign = output.filter((word) => !source.has(word));
     const ratio = output.length ? foreign.length / output.length : 1;
@@ -109,6 +116,23 @@ export function losslessCheck(sourceText, markdown, extraVocabulary = []) {
             ? `${output.length} words, all accounted for`
             : `${foreign.length}/${output.length} not in source (e.g. ${foreign.slice(0, 5).join(", ")})`,
     };
+}
+/** Source words split at their own punctuation, and pairs joined across a line-end dash or an apostrophe. */
+function sourcePieces(sourceText) {
+    const out = [];
+    const raw = comparable(sourceText).toLowerCase().split(/\s+/).filter(Boolean);
+    for (let i = 0; i < raw.length; i++) {
+        for (const piece of raw[i].split(/[^a-z0-9]+/))
+            if (piece)
+                out.push(piece);
+        const next = raw[i + 1];
+        if (next && (/[-\u2013\u2014\u00ad]$/.test(raw[i]) || /^[\u2019']/.test(next))) {
+            const joined = (raw[i] + next).replace(STOP_CHARS, "");
+            if (joined)
+                out.push(joined);
+        }
+    }
+    return out;
 }
 /**
  * Layer 0: does the source extraction contain enough digits to be trustworthy

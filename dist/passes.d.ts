@@ -2,6 +2,7 @@ import { takePrintedNumber, splitFootnoteBlock, type SplitPage, type FurnitureOp
 import { bodyIndent } from "./paragraphs.js";
 import type { PipelineContext } from "./context.js";
 import type { Provenance } from "./paragraphs.js";
+import type { EditionPass } from "./edition.js";
 import type { PageBreakReferee } from "./pagebreaks.js";
 /**
  * A pass is one named decision about how to read a source.
@@ -66,7 +67,7 @@ export type NumberedHeadingsPass = {
     readonly stage: "numberedHeadings";
     readonly enabled: boolean;
 };
-export type Pass = NumberedHeadingsPass | PageBreakContinuationsPass | LayoutPageJoinsPass | PagePass | BodyPass | VolumePass | GeometryPass | QuoteInsetPass | AllCapsHeadingsPass;
+export type Pass = EditionPass | NumberedHeadingsPass | PageBreakContinuationsPass | LayoutPageJoinsPass | PagePass | BodyPass | VolumePass | GeometryPass | QuoteInsetPass | AllCapsHeadingsPass;
 /**
  * Takes the printed page number off each page. These documents are cited by
  * page ("Report at 62"), so the printed number is the citation unit readers

@@ -1,5 +1,6 @@
 import type { Pass, VolumePass, BodyPass } from "./passes.js";
 import type { PageBreakOptions } from "./pagebreaks.js";
+import type { EditionPass } from "./edition.js";
 export type Volume = {
     path: string;
     sha256?: string;
@@ -70,6 +71,11 @@ export type ResolvedPasses = {
     numberedHeadings?: boolean;
     bodyPasses: BodyPass[];
     volumePasses: VolumePass[];
+    /**
+     * `cleanEdition`: the report's text and structure come from a clean edition;
+     * the PDF passes still run, as the shadow ingest that supplies printed pages.
+     */
+    edition?: EditionPass;
 };
 /** Validates a report's definition. Throws rather than ingesting nonsense. */
 export declare function pipeline(def: PipelineDef): PipelineDef;

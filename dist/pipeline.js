@@ -6,6 +6,7 @@ import { rejoinHyphenated, vocabulary } from "./hyphens.js";
 import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, spacedContentsBlocks, shortSubheadAt, isIllustrationList, mergeAcrossPages, contentsHeadings, contentsTitles, headingKey, numberedContents, emptyOutline, readContentsOutline, learnOutline, outlineContentsBlocks, divisionContents, bodyIndent, } from "./paragraphs.js";
 import { parseFootnotes, linkInlineMarkers, linkFlushMarkers, renderEndnotes, isNotesChapterHead, parseNotesAppendix, linkFlushMarkersByChapter, } from "./footnotes.js";
 import { autoFix, findSuspects, rankSuspects } from "./ocr.js";
+import { assembleEdition } from "./edition.js";
 /**
  * Whether a heading stays a section under `unlistedHeadingsMinor`: the
  * contents lists it, it is a numbered section or division read from the
@@ -65,6 +66,8 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     bodyPasses: [],
     volumePasses: [],
 }, corrections = [], context = {}) {
+    if (resolved.edition)
+        return ingestEdition(pageGroups, meta, resolved, corrections, context);
     // Volume is assigned here because this is the only place that knows the
     // order the volumes were given in — and that order is semantic: footnote
     // numbering and page indices run continuously across them.
@@ -130,6 +133,12 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     // Which passes run is a declared property of the document, not something
     // inferred from how many arguments were typed on the command line.
     const cleanedGroups = splitGroups.map((group) => resolved.volumePasses.reduce((pages, pass) => pass.run(pages, context), group));
+    // Each page's own text once its furniture is off, for `cleanEdition` to align against.
+    const pageText = cleanedGroups.flat().map((split) => ({
+        volume: split.volume,
+        pdfIndex: split.pdfIndex,
+        lines: [...split.body, ...split.footnotes],
+    }));
     // Measured on the page *body*, never on the raw lines.
     //
     // A footnote block sits at the left edge, and so does page furniture, so
@@ -378,6 +387,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         pages: pages.length,
         blocks: corrected.blocks,
         linkedText,
+        pageText,
     };
 }
 /**
@@ -477,4 +487,51 @@ function frontMatter(fields) {
         .filter(([, value]) => value !== undefined && value !== "")
         .map(([key, value]) => typeof value === "number" ? `${key}: ${value}` : `${key}: ${JSON.stringify(String(value))}`);
     return `---\n${lines.join("\n")}\n---`;
+}
+/**
+ * `cleanEdition`: the text and structure from the edition, the printed pages
+ * from the PDF (see `edition.ts`). The PDF ingest runs in full as the shadow:
+ * its page markers say which PDF page carries which printed number, exactly
+ * as a PDF-sourced build would mark them. Corrections are judgements about
+ * the PDF's text, so they apply to the shadow.
+ */
+function ingestEdition(pageGroups, meta, resolved, corrections, context) {
+    const pass = resolved.edition;
+    const shadow = ingestPageGroups(pageGroups, meta, { ...resolved, edition: undefined }, corrections, context);
+    // the PDF's words page by page, as the shadow read them once their furniture was off
+    const pages = (shadow.pageText ?? []).map((page, i) => ({ index: i + 1, ...page }));
+    const printed = (shadow.blocks ?? []).flatMap((block) => block.kind === "page" && block.at
+        ? [{ volume: block.at.volume, pdfIndex: block.at.pdfIndex, number: block.number, occurrence: block.occurrence }]
+        : []);
+    const edition = pass.read();
+    const assembled = assembleEdition(edition, pages, printed, pass.sources);
+    const footnotes = edition.notes.map((note, i) => ({
+        number: Number.parseInt(note.label, 10) || i + 1,
+        label: note.label,
+        text: note.text,
+        page: 0,
+    }));
+    const markdown = [
+        frontMatter({ ...meta, pages: shadow.pages, footnotes: footnotes.length }),
+        assembled.body,
+        assembled.notes ? `## Notes\n\n${assembled.notes}` : "",
+    ]
+        .filter(Boolean)
+        .join("\n\n")
+        .replace(/\n{4,}/g, "\n\n\n")
+        .trimEnd()
+        .concat("\n");
+    return {
+        markdown,
+        corrections: 0,
+        sourceText: shadow.sourceText,
+        footnotes,
+        suspects: assembled.suspects,
+        autoFixes: 0,
+        pages: shadow.pages,
+        edition: assembled.report,
+        shadow,
+        blocks: assembled.blocks,
+        linkedText: assembled.linkedText,
+    };
 }

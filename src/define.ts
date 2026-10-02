@@ -9,6 +9,7 @@ import type {
   LayoutPageJoinsPass,
 } from "./passes";
 import type { PageBreakOptions } from "./pagebreaks";
+import type { EditionPass } from "./edition";
 
 export type Volume = { path: string; sha256?: string };
 
@@ -79,6 +80,11 @@ export type ResolvedPasses = {
   numberedHeadings?: boolean;
   bodyPasses: BodyPass[];
   volumePasses: VolumePass[];
+  /**
+   * `cleanEdition`: the report's text and structure come from a clean edition;
+   * the PDF passes still run, as the shadow ingest that supplies printed pages.
+   */
+  edition?: EditionPass;
 };
 
 /** Validates a report's definition. Throws rather than ingesting nonsense. */
@@ -102,6 +108,9 @@ export function pipeline(def: PipelineDef): PipelineDef {
   );
   if (geometries.length > 1) {
     throw new Error(`${def.id}: more than one geometry pass declared`);
+  }
+  if ((def.passes ?? []).filter((pass) => pass.stage === "edition").length > 1) {
+    throw new Error(`${def.id}: more than one cleanEdition declared`);
   }
   if ((def.passes ?? []).filter((pass) => pass.stage === "allCapsHeadings").length > 1) {
     throw new Error(`${def.id}: more than one allCapsHeadings pass declared`);
@@ -188,6 +197,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
       )?.enabled ?? true,
     bodyPasses: passes.filter((pass): pass is BodyPass => pass.stage === "body"),
     volumePasses: passes.filter((pass): pass is VolumePass => pass.stage === "volume"),
+    edition: passes.find((pass): pass is EditionPass => pass.stage === "edition"),
   };
 }
 
