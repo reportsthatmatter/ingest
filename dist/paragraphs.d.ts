@@ -31,7 +31,8 @@ export type Block = ({
     page: string;
 } | {
     kind: "page";
-    number: number;
+    /** The printed number, or a roman folio's lowercase numeral (`romanFolios`). */
+    number: number | string;
     /**
      * Which time this printed number has been seen. Absent for the first.
      *
@@ -65,7 +66,7 @@ export declare const DEFAULT_QUOTE_INSET = 5;
  * heading, a block quote and a list item, so they get their own pass.
  */
 export declare function isContentsPage(lines: string[]): boolean;
-export declare function parseContentsPage(lines: string[]): Block[];
+export declare function parseContentsPage(lines: string[], loneLeaders?: boolean): Block[];
 /**
  * The titles a contents page lists, one per line that carries leaders to a
  * page number; nothing from a page with fewer than three such lines. A title
@@ -73,7 +74,7 @@ export declare function parseContentsPage(lines: string[]): Block[];
  * "CASE STUDY OF WASHINGTON MUTUAL BANK. . . 48"), which is also the line
  * the body sets as its heading.
  */
-export declare function contentsTitles(lines: string[]): string[];
+export declare function contentsTitles(lines: string[], recover?: boolean): string[];
 /**
  * What a heading and its contents entry have in common: the title without its
  * marker (a heading is emitted without one), trailing dots, typographic quotes
@@ -112,6 +113,29 @@ export declare function titleLetters(text: string): string;
  * not a page that happens to hold a numbered line.
  */
 export declare function numberedContents(lines: string[]): NumberedContents;
+/** Whether a page is a list of illustrations: three or more entries opening on "p. N". */
+export declare function isIllustrationList(lines: string[]): boolean;
+/**
+ * A contents page whose entries are numbered and set with a plain space before
+ * the page number, laid out as its entries (`contentsEntries`,
+ * reportsthatmatter-5fn): each chapter ("8.") and section ("8.1") with its
+ * title, as the contents spells it, and its page. An entry that wraps runs on
+ * until a line ends in a page number. A title over the entries ("CONTENTS")
+ * stays a heading; a lone roman numeral (the folio) is dropped.
+ */
+export declare function spacedContentsBlocks(lines: string[]): Block[];
+/**
+ * A short title-case line set alone above the paragraph it heads
+ * (`shortSubheads`, reportsthatmatter-5u2): "The Drumbeat Begins" over "In the
+ * spring of 2001, the level of reporting…". Preceded by a blank line (or the
+ * page's first), at most seven words and sixty characters, every word capitalised
+ * bar the small ones, no sentence punctuation or digit at the end, and
+ * followed with no blank by a full line opening a sentence at the same indent.
+ * A short line cannot end a paragraph and still be followed by more of it, so
+ * a short line opening one is a title; the full next line is what separates it
+ * from a figure's label.
+ */
+export declare function shortSubheadAt(lines: string[], i: number): boolean;
 /**
  * The divisions a contents page lists (`listedDivisions`): its parts,
  * chapters and appendices by label and number, and the unlabelled entries
@@ -223,14 +247,7 @@ export declare function learnOutline(outline: Outline, entries: OutlineEntry[]):
 export type FindingCounter = {
     next: number;
 };
-/**
- * Reflows hard-wrapped lines back into paragraphs.
- *
- * The signal is indentation: a line indented past the running left margin opens
- * a new paragraph. Blank lines are a secondary signal, and block quotes (set
- * far to the right) are kept as quotes.
- */
-export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>, numbered?: NumberedContents, findings?: FindingCounter, outline?: Outline, divisions?: ListedDivisions, wrappedHeadings?: boolean, hangingIndents?: boolean, unmarkedHeadings?: boolean): Block[];
+export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>, numbered?: NumberedContents, findings?: FindingCounter, outline?: Outline, divisions?: ListedDivisions, wrappedHeadings?: boolean, hangingIndents?: boolean, unmarkedHeadings?: boolean, numberedOutsideTables?: boolean, recoverListedHeadings?: boolean, letteredItems?: boolean): Block[];
 export declare function endsSentence(text: string): boolean;
 export type MergeOptions = {
     /**
@@ -239,8 +256,34 @@ export type MergeOptions = {
      * carries on a sentence as the rest of that sentence. See the pass.
      */
     continuations?: boolean;
+    /**
+     * `pageBreakContinuations({ quoteTails: true })` (reportsthatmatter-nen): a
+     * quotation's first line left as prose at the foot of a page is joined into
+     * the rest of the quotation on the next. See the pass.
+     */
+    quoteTails?: boolean;
+    /**
+     * The `quoteRunOn` pass (reportsthatmatter-m2y): a paragraph opening a page
+     * in lower case carries on the quotation above when that stops mid-sentence.
+     */
+    quoteRunOn?: boolean;
+    /**
+     * The `photoCredits` pass (reportsthatmatter-xay): a photo credit
+     * ("Mark Wilson/Getty Images") between a paragraph and its continuation is
+     * set aside, and the continuation rejoins the paragraph it continues.
+     */
+    photoCredits?: boolean;
+    /**
+     * `letteredItems`: a block opening on its own item letter ("b. On 4
+     * November…") is the next item, not the lower-case rest of the sentence
+     * above, however the item above ends.
+     */
+    letteredItems?: boolean;
 };
+/** "Mark Wilson/Getty Images", "Patrick Semansky/Associated Press": a short byline with a slash, no sentence. */
+export declare function isPhotoCredit(text: string): boolean;
 export declare function mergeAcrossPages(blocks: Block[], options?: MergeOptions): Block[];
 export declare function blocksToMarkdown(blocks: Block[], options?: {
     escapeNumberedParagraphs?: boolean;
+    escapeLeadingHash?: boolean;
 }): string;

@@ -19,6 +19,8 @@ const LEADERS = /[.·]{4,}\s*(\d{1,4})\s*$/;
  * shreds a paragraph — the same trap that made the first footnote-marker rule
  * corrupt a citation.
  */
+/** A page number after a footnote marker: '…7 March.97' / 'The end of the UN route'. */
+const FOOTNOTE_TAIL = /[.?!"”)\]]\d{1,3}$/;
 const BULLET = /^(\s*)([•·▪◦‣])\s+(\S.*)$/;
 /**
  * A contents page, where entries wrap across several lines and only the last
@@ -28,19 +30,27 @@ const BULLET = /^(\s*)([•·▪◦‣])\s+(\S.*)$/;
 export function isContentsPage(lines) {
     return lines.filter((line) => LEADERS.test(line)).length >= 3;
 }
-export function parseContentsPage(lines) {
+/**
+ * `recoverListedHeadings`: an entry whose title is long enough to squeeze its
+ * leaders down to a single dot — "…as a result of military action in Iraq . 47".
+ * Read as one more entry, rather than as the start of the next one (it ran into
+ * "The UK's relationship with the US", and its "47" was linked as a footnote).
+ */
+const LONE_LEADER = /\s\.\s+(\d{1,4})\s*$/;
+export function parseContentsPage(lines, loneLeaders = false) {
     const blocks = [];
     let buffer = [];
     for (const line of lines) {
         if (!line.trim())
             continue;
         const single = normaliseWhitespace(line);
-        const leaders = single.match(LEADERS);
+        const lone = loneLeaders && !LEADERS.test(single) ? single.match(LONE_LEADER) : null;
+        const leaders = lone ?? single.match(LEADERS);
         if (!leaders) {
             buffer.push(single);
             continue;
         }
-        const text = normaliseWhitespace([...buffer, single.replace(LEADERS, "")].join(" "))
+        const text = normaliseWhitespace([...buffer, single.replace(lone ? LONE_LEADER : LEADERS, "")].join(" "))
             .replace(/[.·\s]+$/, "")
             .trim();
         buffer = [];
@@ -68,10 +78,26 @@ const SPACED_LEADERS = /^(.*?\S)\s*(?:[.·]\s?){4,}\s*\d{1,4}\s*$/;
  * "CASE STUDY OF WASHINGTON MUTUAL BANK. . . 48"), which is also the line
  * the body sets as its heading.
  */
-export function contentsTitles(lines) {
-    const titles = lines
-        .map((line) => line.match(SPACED_LEADERS)?.[1].replace(/\s+/g, " ").trim())
-        .filter((title) => Boolean(title));
+export function contentsTitles(lines, recover = false) {
+    const read = (line) => {
+        const spaced = line.match(SPACED_LEADERS)?.[1];
+        if (spaced || !recover)
+            return spaced?.replace(/\s+/g, " ").trim();
+        const flat = normaliseWhitespace(line);
+        return LONE_LEADER.test(flat) ? flat.replace(LONE_LEADER, "").trim() : undefined;
+    };
+    const titles = [];
+    lines.forEach((line, i) => {
+        const title = read(line);
+        if (!title)
+            return;
+        titles.push(title);
+        // `recoverListedHeadings`: a title that wraps is also listed whole, so a
+        // body that sets it over two lines can be matched against all of it.
+        if (recover && i > 0 && lines[i - 1].trim() && !read(lines[i - 1])) {
+            titles.push(normaliseWhitespace(`${lines[i - 1].trim()} ${title}`));
+        }
+    });
     return titles.length >= 3 ? titles : [];
 }
 /** A heading's number or letter: "I.", "A.", "CC.", "4.", "(3)", "(a)", "(iii)". */
@@ -161,6 +187,122 @@ export function numberedContents(lines) {
     return sections.size >= 3
         ? { sections, chapters, divisions }
         : { sections: new Map(), chapters: new Set(), divisions: new Map() };
+}
+/** A page a contents entry ends on, as a plain number, a roman numeral or a span of either ("xiii–xiv"). */
+const SPACED_PAGE = /\s+((?:\d{1,4}|[ivxlc]{1,7})(?:[–-](?:\d{1,4}|[ivxlc]{1,7}))?)\s*$/;
+/** A list of illustrations' entry: "p. 32–33     Flight paths and timelines". */
+const PAGE_FIRST_ENTRY = /^\s*p\.\s*(\d{1,4}(?:[–-]\d{1,4})?)\s{2,}(\S.*)$/;
+/** Whether a page is a list of illustrations: three or more entries opening on "p. N". */
+export function isIllustrationList(lines) {
+    return lines.filter((line) => PAGE_FIRST_ENTRY.test(line)).length >= 3;
+}
+/**
+ * A contents page whose entries are numbered and set with a plain space before
+ * the page number, laid out as its entries (`contentsEntries`,
+ * reportsthatmatter-5fn): each chapter ("8.") and section ("8.1") with its
+ * title, as the contents spells it, and its page. An entry that wraps runs on
+ * until a line ends in a page number. A title over the entries ("CONTENTS")
+ * stays a heading; a lone roman numeral (the folio) is dropped.
+ */
+export function spacedContentsBlocks(lines) {
+    const blocks = [];
+    let open = [];
+    let sawEntry = false;
+    let lastListed = false;
+    const flush = () => {
+        const text = normaliseWhitespace(open.join(" "));
+        open = [];
+        if (!text)
+            return;
+        if (!sawEntry && text === text.toUpperCase() && /[A-Z]{4}/.test(text)) {
+            blocks.push({ kind: "heading", level: 2, text });
+        }
+        else {
+            blocks.push({ kind: "paragraph", text });
+        }
+    };
+    for (const raw of lines) {
+        const line = raw.trim();
+        if (!line)
+            continue;
+        if (!open.length) {
+            if (/^[ivxlc]{1,7}$/.test(line))
+                continue;
+            if (!sawEntry && line === line.toUpperCase() && /[A-Z]{4}/.test(line) && !SPACED_PAGE.test(line)) {
+                // A title may be set over two lines ("LIST OF ILLUSTRATIONS" / "AND TABLES").
+                const prev = blocks[blocks.length - 1];
+                if (prev?.kind === "heading")
+                    prev.text = normaliseWhitespace(`${prev.text} ${line}`);
+                else
+                    blocks.push({ kind: "heading", level: 2, text: normaliseWhitespace(line) });
+                continue;
+            }
+            const listed = line.match(PAGE_FIRST_ENTRY);
+            if (listed) {
+                blocks.push({ kind: "contents", text: normaliseWhitespace(listed[2]), page: listed[1] });
+                sawEntry = true;
+                lastListed = true;
+                continue;
+            }
+            // The wrapped tail of an illustration entry belongs to the entry above.
+            const last = blocks[blocks.length - 1];
+            if (lastListed && last?.kind === "contents") {
+                last.text = normaliseWhitespace(`${last.text} ${line}`);
+                continue;
+            }
+        }
+        open.push(line);
+        const text = normaliseWhitespace(open.join(" "));
+        const page = text.match(SPACED_PAGE);
+        if (!page || text.length === page[0].length)
+            continue;
+        const title = text.slice(0, text.length - page[0].length).trim();
+        open = [];
+        sawEntry = true;
+        const label = title.match(/^(\d{1,2}\.\d{1,2}|\d{1,2}\.)\s+(\S.*)$/);
+        const shown = label ? `${label[1].replace(/^(\d+)\.$/, "$1\\.")} ${label[2]}` : title;
+        blocks.push({ kind: "contents", text: shown, page: page[1] });
+    }
+    flush();
+    return blocks;
+}
+const SUBHEAD_SMALL_WORDS = new Set([
+    "a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "of", "on", "or", "the", "to", "with", "vs",
+]);
+/**
+ * A short title-case line set alone above the paragraph it heads
+ * (`shortSubheads`, reportsthatmatter-5u2): "The Drumbeat Begins" over "In the
+ * spring of 2001, the level of reporting…". Preceded by a blank line (or the
+ * page's first), at most seven words and sixty characters, every word capitalised
+ * bar the small ones, no sentence punctuation or digit at the end, and
+ * followed with no blank by a full line opening a sentence at the same indent.
+ * A short line cannot end a paragraph and still be followed by more of it, so
+ * a short line opening one is a title; the full next line is what separates it
+ * from a figure's label.
+ */
+export function shortSubheadAt(lines, i) {
+    const text = normaliseWhitespace(lines[i] ?? "");
+    const next = lines[i + 1];
+    if (!text || text.length > 60 || !next?.trim())
+        return false;
+    if (i > 0 && lines[i - 1].trim())
+        return false;
+    if (/[.,;:?!”")\]\d]$/.test(text) || text === text.toUpperCase())
+        return false;
+    const words = text.split(" ");
+    if (words.length > 7)
+        return false;
+    if (!/^[A-Z]/.test(words[0]))
+        return false;
+    for (const word of words) {
+        if (/^[A-Z0-9“"(]/.test(word) || SUBHEAD_SMALL_WORDS.has(word.toLowerCase()))
+            continue;
+        return false;
+    }
+    const follow = normaliseWhitespace(next);
+    if (follow.length < 60 || !/^[A-Z“"(]/.test(follow))
+        return false;
+    return Math.abs(indentOf(next) - indentOf(lines[i])) <= 2;
 }
 /**
  * A body line that opens a section the contents lists: its number, then its
@@ -748,8 +890,13 @@ export function contentsHeadings(blocks) {
 export function emptyOutline() {
     return { entries: new Map(), prefixes: new Set() };
 }
-/** An outline label and the title after it: "IV.", "A.", "3.", "c.", "(2)", "(b)", "(iii)". */
-const OUTLINE_LABEL = /^\s*(\((?:\d{1,2}|[a-z]{1,4})\)|(?:[IVXLC]{1,6}|[A-Za-z]|\d{1,2})\.)\s+(\S.*)$/;
+/**
+ * An outline label and the title after it: "IV.", "A.", "3.", "c.", "(2)",
+ * "(b)", "(iii)", and the single letter closing on its bracket alone, "a)"
+ * (the Valukas Report's Repo 105 sections run a) to j) before they turn to
+ * "(1)").
+ */
+const OUTLINE_LABEL = /^\s*(\((?:\d{1,2}|[a-z]{1,4})\)|[a-z]\)|(?:[IVXLC]{1,6}|[A-Za-z]|\d{1,2})\.)\s+(\S.*)$/;
 /**
  * Spaced leaders to a page number, ". . . . 219", ending a contents entry —
  * two dots at the least, where a long title leaves no room for more.
@@ -911,10 +1058,28 @@ function readFindings(lines, margin, counter, isHeading) {
  * a new paragraph. Blank lines are a secondary signal, and block quotes (set
  * far to the right) are kept as quotes.
  */
-export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false, allCapsHeadings = true, paragraphContents = false, numberedHeadings = true, listed, numbered, findings, outline, divisions, wrappedHeadings = false, hangingIndents = false, unmarkedHeadings = false) {
+/**
+ * A line that opens a quotation which neither it nor the line after it
+ * closes: the first line of a quoted document — a draft clause's title, an
+ * advert's copy, set in capitals ('"GUARANTEE OF MEDIA FREEDOM' / '(1) The
+ * Secretary of State…', Leveson; reportsthatmatter-djy) — never a title of
+ * the report's own. A quoted title that wraps closes on its next line
+ * ('"THE SYSTEM WAS' / 'BLINKING RED"', the 9/11 Commission).
+ */
+function opensUnclosedQuotation(text, lines, at) {
+    const trimmed = text.trim();
+    if (!/^["\u201c\u2018]/.test(trimmed) || /["\u201d\u2019]/.test(trimmed.slice(1)))
+        return false;
+    for (let j = at + 1; j < lines.length; j++) {
+        if (!lines[j].trim())
+            continue;
+        return !/["\u201d\u2019]/.test(lines[j]);
+    }
+    return true;
+}
+export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false, allCapsHeadings = true, paragraphContents = false, numberedHeadings = true, listed, numbered, findings, outline, divisions, wrappedHeadings = false, hangingIndents = false, unmarkedHeadings = false, numberedOutsideTables = false, recoverListedHeadings = false, letteredItems = false) {
     if (paragraphContents)
         lines = joinParagraphContents(lines);
-    const hanging = hangingIndents ? hangingItems(lines) : null;
     // With `listedHeadings`, a would-be heading the contents does not name is
     // text: judged before anything else looks at the line, so a quoted cue line
     // counts as part of its quotation rather than as structure beside it.
@@ -946,15 +1111,55 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
                 continue;
             if (listed?.has(headingKey(normaliseWhitespace(prior))))
                 return true;
-            return /[.:;?!"”)\]]$/.test(prior.trim());
+            return /[.:;?!"”)\]]$/.test(prior.trim()) || (recoverListedHeadings && FOOTNOTE_TAIL.test(prior.trim()));
         }
         return false;
     };
+    // `recoverListedHeadings`: a contents entry may also open the page, where nothing
+    // above it can say whether it starts a block or finishes a sentence from the
+    // page before. It must then look like a title and be followed at once by
+    // what a heading is followed by: a numbered paragraph, or another heading
+    // the contents names. "reconstruction." (the tail of a sentence) fails the
+    // first test; "Negotiation of resolution 1441" / "119. There were…" passes.
+    const opensPageAsHeading = (text, at, span = 1) => {
+        for (let j = at - 1; j >= 0; j--)
+            if (lines[j].trim())
+                return false;
+        if (!/^[A-Z0-9]/.test(text) || /[.,;:]$/.test(text))
+            return false;
+        let seen = 0;
+        for (let j = at + 1; j < lines.length; j++) {
+            const next = lines[j].trim();
+            if (!next)
+                continue;
+            if (++seen < span)
+                continue;
+            return /^\d{1,4}\.\s+\S/.test(next) || Boolean(listed?.has(headingKey(normaliseWhitespace(next))));
+        }
+        return false;
+    };
+    // `recoverListedHeadings`: a contents entry the body sets over two lines
+    // ("The gap between the Permanent Members of the Security Council" /
+    // "widens"). The two physical lines, joined, are the entry letter for
+    // letter; neither is, alone. The first line opens the heading, under the
+    // same guard as any bare heading; the second is read as its continuation
+    // and the usual rejoin makes one heading of them.
+    const joinsWith = (a, b) => a >= 0 && b < lines.length && Boolean(lines[a].trim()) && Boolean(lines[b].trim()) &&
+        Boolean(listed?.has(headingKey(normaliseWhitespace(`${lines[a].trim()} ${lines[b].trim()}`))));
     const isHeading = (text, allowDivisions, at) => {
         if (outlined && (at === undefined || !isCentred(lines[at], width) || runsOn(at)))
             return null;
-        const heading = isHeadingLine(text, allowDivisions, allCapsHeadings, numberedHeadings);
-        if (heading)
+        if (at !== undefined && opensUnclosedQuotation(text, lines, at))
+            return null;
+        // `numberedHeadingsOutsideTables`: a lettered or numbered row of a table or
+        // two-column list ("C. Hobson Bryan   Jill Jonnes") is not a heading.
+        const numberedHere = numberedHeadings && !(numberedOutsideTables && at !== undefined && inTable[at]);
+        const heading = isHeadingLine(text, allowDivisions, allCapsHeadings, numberedHere);
+        // `recoverListedHeadings`: a caps title that ends in a number ("…RESOLUTION
+        // 1483") has the number read as a page number and trimmed, so the heading
+        // found no longer matches the contents. Judge the whole line instead.
+        const trimmedAway = recoverListedHeadings && heading && listed && !listed.has(headingKey(heading.text)) && listed.has(headingKey(text));
+        if (heading && !trimmedAway)
             return listed && !listed.has(headingKey(heading.text)) ? null : heading;
         // `unmarkedHeadings`: the other half of `listedHeadings` — a line with no
         // heading shape of its own (no caps, number or division label) is still
@@ -971,8 +1176,18 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
         // post-conflict" / page break / "reconstruction." — which happens to be
         // a real heading elsewhere in this report). Nothing before it at all, on
         // its page, is unknowable and so unsafe.
-        if (unmarkedHeadings && at !== undefined && listed?.has(headingKey(text)) && priorEndsCleanly(at)) {
-            return { level: 3, text, bare: true };
+        if (unmarkedHeadings && at !== undefined && listed?.has(headingKey(text)) &&
+            (priorEndsCleanly(at) || (recoverListedHeadings && opensPageAsHeading(text, at)))) {
+            return { level: heading?.level ?? 3, text, bare: true };
+        }
+        if (recoverListedHeadings && unmarkedHeadings && at !== undefined && listed) {
+            if (joinsWith(at, at + 1) && !listed.has(headingKey(text)) && (priorEndsCleanly(at) || opensPageAsHeading(text, at, 2))) {
+                return { level: 3, text };
+            }
+            if (joinsWith(at - 1, at) &&
+                (priorEndsCleanly(at - 1) || opensPageAsHeading(lines[at - 1].trim(), at - 1, 2))) {
+                return { level: 3, text };
+            }
         }
         return null;
     };
@@ -980,6 +1195,9 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
     // short page — the last of a section, say — can have too few lines to infer
     // it from, and getting it wrong turns an ordinary paragraph into a quote.
     const margin = documentMargin ?? bodyIndent(lines);
+    const hanging = hangingIndents || letteredItems
+        ? hangingItems(lines, hangingIndents, letteredItems ? margin + quoteInset : 0)
+        : null;
     const blocks = [];
     // A row of a table is not a division. The Jack Smith docket lists "Section 4
     // Filing and an Adjournment of the CIPA Section 5 Deadline" as a filing
@@ -1210,13 +1428,28 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
         const contents = line.match(/^(.*\S)(?:[.·]{4,}\s*|(?<![.,;:])[ \t]{3,})(\d{1,4})\s*$/) ??
             (paragraphContents ? line.match(PARAGRAPH_CONTENTS_ENTRY) : null);
         if (contents && contents[1].trim()) {
+            let text = normaliseWhitespace(contents[1]).replace(/[.·\s]+$/, "").trim();
+            // An entry that wraps carries its page number on its last line only, so
+            // its first line arrives alone and reads as a heading — "Chapter 7:
+            // Conclusions and recommendations for future regulation" / "of the press
+            // 1748" — and a section opens on the contents page (reportsthatmatter-djy).
+            // No entry opens in lower case: the line above is the entry's head.
+            if (/^[a-z]/.test(text)) {
+                const last = blocks[blocks.length - 1];
+                // The head is one line: a paragraph running into a footer-shaped line
+                // ("…heating. Report Volume I August 2003   149", Columbia) is not.
+                if (current.length === 1 && currentKind === "paragraph" && currentFinding === undefined) {
+                    text = normaliseWhitespace([...current, text].join(" "));
+                    current = [];
+                }
+                else if (!current.length && last?.kind === "heading" && !complete.has(last)) {
+                    blocks.pop();
+                    text = normaliseWhitespace(`${last.text} ${text}`);
+                }
+            }
             flush();
             openDivisionIndent = -1;
-            blocks.push({
-                kind: "contents",
-                text: normaliseWhitespace(contents[1]).replace(/[.·\s]+$/, "").trim(),
-                page: contents[2],
-            });
+            blocks.push({ kind: "contents", text, page: contents[2] });
             continue;
         }
         // A heading that wraps onto a line beginning lowercase is not detected as a
@@ -1346,11 +1579,18 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
  * or more spaces before its text; the item is the lines indented to that
  * text, within a character.
  */
-function hangingItems(lines) {
+function hangingItems(lines, numbered = true, letteredBelow = 0) {
     const opens = lines.map(() => false);
     const continues = lines.map(() => false);
     for (let i = 0; i < lines.length; i++) {
-        const label = lines[i].match(/^(\s*)(?=\S*\d)(\S{2,12})( {2,})\S/);
+        let label = numbered ? lines[i].match(/^(\s*)(?=\S*\d)(\S{2,12})( {2,})\S/) : null;
+        // `letteredItems`: a sub-item's own letter ("a.", "(b)", "iv.") over its
+        // wrapped lines, wherever it sits short of a quotation's inset.
+        if (!label && letteredBelow) {
+            label = lines[i].match(/^(\s*)(\(?(?:[a-z]|[ivx]{1,4})[.)])( {2,})\S/);
+            if (label && indentOf(lines[i]) >= letteredBelow)
+                label = null;
+        }
         if (!label)
             continue;
         const column = label[0].length - 1;
@@ -1459,6 +1699,25 @@ export function endsSentence(text) {
         return false;
     return true;
 }
+/** An item's own letter: "b." or "(c)" or "iv.", then its text. */
+const ITEM_LABEL = /^\(?(?:[a-z]|[ivx]{1,4})[.)]\s+\S/;
+/** Opens on a quotation mark, perhaps behind an ellipsis: `"… if Mr Wallis`. */
+const OPENS_QUOTATION = /^(?:\.\.\.\s*|…\s*)?["\u201c\u2018']/;
+/**
+ * Introduces what follows: a finished sentence or a colon, perhaps with the
+ * footnote number the pipeline has not linked yet — "He said:414",
+ * "suggested that:[^605]".
+ */
+function introduces(text) {
+    if (endsSentence(text))
+        return true;
+    return /[.?!:]["'\u201d\u2019)\]]*\s?(?:\d{1,4}|\[\^\d+\])$/.test(text.trim());
+}
+/** "Mark Wilson/Getty Images", "Patrick Semansky/Associated Press": a short byline with a slash, no sentence. */
+export function isPhotoCredit(text) {
+    const t = text.trim();
+    return t.length <= 90 && !endsSentence(t) && /^[A-Z][\w.'’&-]*(?: [\w.'’&-]+){0,5}\/[A-Z]/.test(t) && !/[,;]$/.test(t);
+}
 /** Lower case, or punctuation no sentence opens on. */
 const CONTINUATION = /^[a-z,;]/;
 /**
@@ -1543,12 +1802,83 @@ export function mergeAcrossPages(blocks, options = {}) {
             previous.items[last] = `${previous.items[last]} ${block.text}`;
             continue;
         }
+        // A continuation arriving straight after a photo credit: the credit was
+        // set at the foot or head of the page, between the paragraph and the rest
+        // of its sentence. Look back past it (and the caption or other complete
+        // paragraph beside it) for the paragraph left unfinished.
+        if (options.photoCredits &&
+            block.kind === "paragraph" &&
+            block.finding === undefined &&
+            previous?.kind === "paragraph" &&
+            isPhotoCredit(previous.text) &&
+            /^[a-z,;]/.test(block.text)) {
+            let seen = 0;
+            let target;
+            for (let i = merged.length - 2; i >= 0 && seen < 3; i--) {
+                const candidate = merged[i];
+                if (candidate.kind === "page")
+                    continue;
+                // A caption ("Oiled Sargassum") also ends without a full stop; only a
+                // paragraph of real length is a sentence left unfinished.
+                if (candidate.kind === "paragraph" && !endsSentence(candidate.text) && candidate.text.length >= 120) {
+                    target = candidate;
+                    break;
+                }
+                seen += 1;
+            }
+            if (target && target.kind === "paragraph")
+                target.text = `${target.text} ${block.text}`;
+            else
+                merged.push(block);
+            continue;
+        }
         if (options.continuations &&
             block.kind === "quote" &&
             previous?.kind === "paragraph" &&
             acrossPages &&
             !endsSentence(previous.text) &&
             continuesSentence(block.text, blocks[index + 1])) {
+            const at = markerIndex === -1 ? merged.length - 1 : markerIndex - 1;
+            // What stands above the paragraph. A contents entry there is a stray
+            // page-edge line ("J   204"), and introduces nothing.
+            let above = at - 1;
+            while (above >= 0 && merged[above].kind === "contents")
+                above -= 1;
+            const before = above >= 0 ? merged[above] : undefined;
+            if (options.quoteTails) {
+                // The quotation's first line, read as prose because one line at the
+                // foot of a page cannot show its inset: the paragraph joins the quote.
+                if (OPENS_QUOTATION.test(previous.text) &&
+                    (before === undefined || before.kind !== "paragraph" || introduces(before.text))) {
+                    merged[at] = { kind: "quote", text: `${previous.text} ${block.text}`, at: previous.at };
+                    continue;
+                }
+                // Between a quotation that stops mid-sentence and the rest of it: a
+                // footnote or page-edge line read into the body, not the sentence's
+                // head. Joining here would make the quotation's tail into prose. A
+                // quotation trailing off on an ellipsis is finished, and a numbered
+                // paragraph is a paragraph whatever stands above it.
+                if (before?.kind === "quote" &&
+                    !endsSentence(before.text) &&
+                    !/(?:…|\.\.\.)["'\u201d\u2019]?$/.test(before.text.trim()) &&
+                    !/^\d+(?:\.\d+)+\s/.test(previous.text)) {
+                    merged.push(block);
+                    continue;
+                }
+            }
+            previous.text = `${previous.text} ${block.text}`;
+            continue;
+        }
+        // A quotation that stops mid-sentence at the foot of a page and carries on
+        // as a paragraph on the next: the next page's lines sit at the margin, so
+        // are not read as an inset. Only across a page, and only in lower case.
+        if (options.quoteRunOn &&
+            block.kind === "paragraph" &&
+            block.finding === undefined &&
+            previous?.kind === "quote" &&
+            acrossPages &&
+            !endsSentence(previous.text) &&
+            /^[a-z,;]/.test(block.text)) {
             previous.text = `${previous.text} ${block.text}`;
             continue;
         }
@@ -1558,6 +1888,7 @@ export function mergeAcrossPages(blocks, options = {}) {
             !endsSentence(previous.text) &&
             // A lowercase opening is the usual sign of a continuation. After an
             // abbreviation the next word is often a name, so allow either.
+            !(options.letteredItems && ITEM_LABEL.test(block.text)) &&
             (/^[a-z,;]/.test(block.text) ||
                 ABBREVIATION.test(previous.text) ||
                 INITIAL.test(previous.text))) {
@@ -1582,9 +1913,20 @@ export function blocksToMarkdown(blocks, options = {}) {
                 (options.escapeNumberedParagraphs && /^\d{1,4}\.\s/.test(block.text)))) {
             return block.text.replace(/^(\d+)\./, "$1\\.");
         }
-        return blockToMarkdown(block);
+        const markdown = blockToMarkdown(block);
+        return options.escapeLeadingHash ? escapeHash(block, markdown) : markdown;
     })
         .join("\n\n");
+}
+/** "# x" opens a heading; "\# x" is the text. Headings themselves are left alone. */
+function escapeHash(block, markdown) {
+    if (block.kind === "paragraph")
+        return markdown.replace(/^(#{1,6})(?=\s|$)/, "\\$1");
+    if (block.kind === "quote")
+        return markdown.replace(/^> (#{1,6})(?=\s|$)/, "> \\$1");
+    if (block.kind === "list")
+        return markdown.replace(/^((?:> )?- )(#{1,6})(?=\s|$)/gm, "$1\\$2");
+    return markdown;
 }
 function blockToMarkdown(block) {
     if (block.kind === "heading")

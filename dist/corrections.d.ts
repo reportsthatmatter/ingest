@@ -51,6 +51,12 @@ export declare function parseCorrections(yamlText: string, reportId: string): Co
  * it changes, and what stops a correction from quietly rotting into a lie
  * about what was reviewed.
  *
+ * A `find` containing a blank line ("\n\n") matches across consecutive
+ * paragraphs and quotations, and joins them: an OCR garble that the page's
+ * layout split into a paragraph and a quotation can be repaired as the one
+ * sentence it is, scoped by `where` to the first block's page. Its `replace`
+ * must not contain a blank line.
+ *
  * Footnotes are optional and default to none, so every existing call that
  * only has blocks to correct is unaffected.
  */

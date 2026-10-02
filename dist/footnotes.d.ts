@@ -92,6 +92,21 @@ export declare function parseNotesAppendix(lines: NotesLine[], chapters: Readonl
  * chapter's flush markers unlinked instead (the honest "not linked" list
  * still catches them).
  */
+/**
+ * Links the endnote markers set flush against sentence punctuation rather than
+ * a lower-case word (reportsthatmatter-w1n): after a closing quotation mark
+ * (`descending."37`), a short or capitalised word (`it.44`, `CNN.180`), a
+ * closing bracket (`terrorists).22`), or a number (`7:45.4`).
+ *
+ * `linkFlushMarkers` needs a word of three lower-case letters in front, which
+ * is why about one note in five stayed unlinked. These shapes are looser, so
+ * each candidate must also come in sequence: the notes of a chapter are
+ * numbered in the order they are cited, so a candidate is a marker only if
+ * its number is one of the chapter's and runs on from the last marker read
+ * (within a dozen, since a note can be cited from a table or an unread
+ * figure). A year after a full stop, or a decimal, does not.
+ */
+export declare function linkSequencedMarkers(text: string, plausible: ReadonlySet<number>): string;
 export declare function linkFlushMarkersByChapter(body: string, chapters: ReadonlySet<string>, notesChapters: NotesChapter[]): string;
 export declare function renderEndnotes(notes: Footnote[]): string;
 /**

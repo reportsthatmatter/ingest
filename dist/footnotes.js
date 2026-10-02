@@ -243,6 +243,8 @@ const DOT_LEADER_BEFORE = /(?:\.\s?){5,}$/;
  * the next sentence (US v. Philip Morris; reportsthatmatter-je7) — which may
  * be "Ibid. 113", the next note's whole text (Deepwater Horizon).
  */
+/** "pattern of racketeering activity, 18 U.S.C. § 1961": a statute's title, not a note. */
+const CODE_AFTER = /^\s+(?:U\.S\.C|C\.F\.R)\b/;
 const REPORTER_AFTER = /^\s+(?!(?:Ibid|Id)\.)(?:(?:[A-Z][A-Za-z]{0,5}\.\s?){1,4}\s*\d|[A-Z]{2,6}\s\d{1,4}(?![\d-]))/;
 /**
  * One of a list of numbers — pages, paragraphs, Bates numbers: "RFA Resp. 5,
@@ -256,7 +258,11 @@ const LIST_GOES_ON = /^\s*(?:(?:and|or|to)\s+\d|[-–]\s*\d|\()/;
 /** "2008, 119 years", "At 37 seconds, 45 seconds": a count in a list, not a note. */
 const UNIT_AFTER = /^\s+(?:years?|months?|weeks?|days?|hours?|minutes?|seconds?|percent|per\s?cent|times|million|billion|thousand|hundred)\b/;
 export function linkInlineMarkers(text, known) {
-    return text.replace(/([.,;:!?"'\)])\s+(\d{1,4})(?=\s|$)/g, (whole, punctuation, digits, offset) => {
+    return text.replace(
+    // The gap may wrap a line but never cross a blank line: that is a block
+    // boundary, and a number opening the next block is not a note marker for
+    // the one above (reportsthatmatter-yun).
+    /([.,;:!?"'\)])((?:(?!\n[ \t]*\n)\s)+)(\d{1,4})(?=\s|$)/g, (whole, punctuation, _gap, digits, offset) => {
         const value = Number.parseInt(digits, 10);
         if (!known.has(value))
             return whole;
@@ -286,6 +292,8 @@ export function linkInlineMarkers(text, known) {
         if (REPORTER_AFTER.test(following))
             return whole;
         if (OF_AFTER.test(following))
+            return whole;
+        if (CODE_AFTER.test(following))
             return whole;
         // Only after a comma: '250,000"; 152 days after that' is note 152.
         if (punctuation === "," && UNIT_AFTER.test(following))
@@ -405,6 +413,49 @@ export function parseNotesAppendix(lines, chapters) {
  * chapter's flush markers unlinked instead (the honest "not linked" list
  * still catches them).
  */
+/**
+ * Links the endnote markers set flush against sentence punctuation rather than
+ * a lower-case word (reportsthatmatter-w1n): after a closing quotation mark
+ * (`descending."37`), a short or capitalised word (`it.44`, `CNN.180`), a
+ * closing bracket (`terrorists).22`), or a number (`7:45.4`).
+ *
+ * `linkFlushMarkers` needs a word of three lower-case letters in front, which
+ * is why about one note in five stayed unlinked. These shapes are looser, so
+ * each candidate must also come in sequence: the notes of a chapter are
+ * numbered in the order they are cited, so a candidate is a marker only if
+ * its number is one of the chapter's and runs on from the last marker read
+ * (within a dozen, since a note can be cited from a table or an unread
+ * figure). A year after a full stop, or a decimal, does not.
+ */
+export function linkSequencedMarkers(text, plausible) {
+    const CLOSERS = `[)"”’'\\]]`;
+    const candidate = new RegExp(`\\[\\^(\\d+)\\]|(${CLOSERS}*[.?!,;:]${CLOSERS}*|${CLOSERS}+)([1-9]\\d{0,2})(?=\\s|$)`, "g");
+    let last = 0;
+    return text.replace(candidate, (whole, linked, head, digits, offset) => {
+        if (linked !== undefined) {
+            last = Number.parseInt(linked, 10);
+            return whole;
+        }
+        const value = Number.parseInt(digits, 10);
+        if (!plausible.has(value) || value <= last || value - last > 12)
+            return whole;
+        const before = text[offset - 1];
+        // "3.5 million" and "at 4.30 p.m." are numbers; a digit before the
+        // stop is a marker only when a new sentence follows.
+        if (before !== undefined && /\d/.test(before)) {
+            const after = text.slice(offset + whole.length).match(/^\s*(\S)/);
+            if (after && !/[A-Z"“(]/.test(after[1]))
+                return whole;
+        }
+        if (before === undefined || /\s/.test(before))
+            return whole;
+        // A heading's own number ("### 2.1 A Declaration of War") is not a marker.
+        if (text[text.lastIndexOf("\n", offset - 1) + 1] === "#")
+            return whole;
+        last = value;
+        return `${head}[^${value}]`;
+    });
+}
 export function linkFlushMarkersByChapter(body, chapters, notesChapters) {
     if (!chapters.size || !notesChapters.length)
         return body;
@@ -426,7 +477,10 @@ export function linkFlushMarkersByChapter(body, chapters, notesChapters) {
         // The candidate and the appendix chapter it lines up with must actually
         // be the same chapter — otherwise this segment's own numbers are left
         // exactly as read rather than scoped against the wrong chapter's notes.
-        out += bound.title === bodyChapters[i].title ? linkFlushMarkers(segment, bodyChapters[i].numbers) : segment;
+        out +=
+            bound.title === bodyChapters[i].title
+                ? linkSequencedMarkers(linkFlushMarkers(segment, bodyChapters[i].numbers), bodyChapters[i].numbers)
+                : segment;
     }
     return out;
 }
@@ -468,7 +522,12 @@ export function renderEndnotes(notes) {
 export function linkFlushMarkers(text, plausible) {
     if (!plausible.size)
         return text;
-    return text.replace(/([a-zà-ÿ]{3,}[.,;:!?]?)(\d{1,3})(?=[\s,.;:)\]]|$)/g, (whole, head, digits) => {
+    return text.replace(
+    // The head is a word, or a year with its full stop ("in 2008.2847"), then
+    // any closing quotation marks or bracket the marker sits outside of
+    // (`investors."2860`). Four-digit notes (Valukas Vol. 3) need the lookup
+    // below most: nothing but a note near this page is accepted.
+    /((?:[a-zà-ÿ]{3,}[.,;:!?]?|\b(?:1[89]|20)\d\d[.,;:])["\u201d\u2019')]*)(\d{1,4})(?=[\s,.;:)\]]|$)/g, (whole, head, digits) => {
         const value = Number.parseInt(digits, 10);
         if (!plausible.has(value))
             return whole;

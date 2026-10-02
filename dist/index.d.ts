@@ -11,8 +11,8 @@
  */
 export { pipeline, resolvePasses } from "./define.js";
 export type { PipelineDef, Volume, ResolvedPasses } from "./define.js";
-export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, escapeNumberedParagraphs, paragraphNotes, chapterContents, listedHeadings, unlistedHeadingsMinor, hangingIndents, unmarkedHeadings, endnotes, numberedSections, numberedFindings, doubleSpaced, contentsOutline, listedDivisions, wrappedHeadings, pageBreakContinuations, citationRunOver, runningFurniture, geometry, columns, quoteInset, allCapsHeadings, numberedHeadings, } from "./passes.js";
-export type { Pass, PagePass, BodyPass, VolumePass, GeometryPass, QuoteInsetPass, AllCapsHeadingsPass, NumberedHeadingsPass, } from "./passes.js";
+export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, escapeNumberedParagraphs, escapeLeadingHash, paragraphNotes, chapterContents, listedHeadings, unlistedHeadingsMinor, hangingIndents, letteredItems, unmarkedHeadings, recoverListedHeadings, endnotes, numberedSections, contentsEntries, shortSubheads, shiftedPages, quoteRunOn, numberedFindings, doubleSpaced, contentsOutline, listedDivisions, wrappedHeadings, pageBreakContinuations, citationRunOver, romanFolios, numberedOutsideTables, photoCredits, footnoteGap, runningFurniture, geometry, columns, quoteInset, allCapsHeadings, numberedHeadings, } from "./passes.js";
+export type { Pass, PagePass, PageBreakContinuationsPass, BodyPass, VolumePass, GeometryPass, QuoteInsetPass, AllCapsHeadingsPass, NumberedHeadingsPass, } from "./passes.js";
 export { detectGutter, splitColumns } from "./columns.js";
 export type { Gutter } from "./columns.js";
 export { extractPages, normaliseWhitespace } from "./extract.js";

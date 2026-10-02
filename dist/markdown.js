@@ -21,7 +21,7 @@ export function splitFrontMatter(source) {
     return { data, content: source.slice(match[0].length) };
 }
 /** The ingestion pipeline marks where each printed page of the source begins. */
-const PAGE_MARKER = /^%%page (\d+)(?:#(\d+))?%%$/;
+const PAGE_MARKER = /^%%page (\d+|[ivxlc]+)(?:#(\d+))?%%$/;
 /** Words too common to identify a paragraph by. */
 const STOPWORDS = new Set([
     "the", "a", "an", "and", "or", "but", "of", "to", "in", "on", "at", "by",
@@ -184,7 +184,7 @@ export function renderMarkdown(markdown) {
             const text = tokens[i + 1]?.content ?? "";
             const marker = text.match(PAGE_MARKER);
             if (marker) {
-                page = Number.parseInt(marker[1], 10);
+                page = /^\d+$/.test(marker[1]) ? String(Number.parseInt(marker[1], 10)) : marker[1];
                 // A report's pagination restarts, so the same printed number can
                 // appear more than once. The first keeps the bare anchor, so existing
                 // citations to it stay valid; later ones are suffixed.
