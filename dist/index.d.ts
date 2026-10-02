@@ -36,7 +36,7 @@ export type { Footnote } from "./footnotes.js";
 export type { Suspect } from "./ocr.js";
 export { renderArtifacts } from "./render.js";
 export type { RenderedArtifacts, ReportMeta, SectionSummary } from "./render.js";
-export { renderMarkdown, paragraphId, slugify, PARAGRAPH_ID_CHARS } from "./markdown.js";
+export { renderMarkdown, paragraphId, slugify, PARAGRAPH_ID_CHARS, resolveNoteReferences, collectNoteOrder } from "./markdown.js";
 export { splitSections, sectionFor, paragraphIndex } from "./sections.js";
 export type { Section } from "./sections.js";
 export { extractPassages } from "./passages.js";

@@ -5,6 +5,8 @@ import {
   slugify,
   paragraphId,
   collectNotes,
+  collectNoteOrder,
+  resolveNoteReferences,
   withSidenotes,
 } from "../src/markdown";
 
@@ -317,6 +319,46 @@ describe("sidenotes", () => {
     const spans = [...html.matchAll(/<span class="sidenote">.*?<\/span>/g)];
     expect(spans).toHaveLength(3);
     for (const span of spans) expect(span[0]).toContain("only note");
+  });
+});
+
+// reportsthatmatter-apk: 9/11 restarts its notes every chapter. One stray
+// marker in chapter 1's opening ("11,[^20] 01") took chapter 1's note 20 under
+// the positional rule, and every later [^20] opened the note before it.
+describe("repeated note labels resolve by alignment, not by count", () => {
+  const notes = [
+    "[^1]: c1 n1.", "[^2]: c1 n2.", "[^20]: c1 n20.",
+    "[^1]: c2 n1.", "[^2]: c2 n2.", "[^20]: c2 n20.",
+    "[^1]: c3 n1.", "[^20]: c3 n20.",
+  ].join("\n\n");
+  const render = (body: string) => renderMarkdown(`${body}\n\n## Notes\n\n${notes}`);
+  const opened = (html: string) => [...html.matchAll(/<span class="sidenote(?: long)?"><sup>\d+<\/sup> ([^<]*?)<\/span>/g)].map((m) => m[1]);
+
+  it("keeps every later note right when a chapter opens with a stray marker", () => {
+    const html = render(
+      "Tuesday, September 11,[^20] 01, dawned.\n\nOne.[^1] Two.[^2] Twenty.[^20]\n\n" +
+        "## Two\n\nOne.[^1] Two.[^2] Twenty.[^20]\n\n## Three\n\nOne.[^1] Twenty.[^20]"
+    );
+    // The stray marker is the reference left unpaired and falls back to the
+    // first definition; everything after it is where it belongs.
+    expect(opened(html)).toEqual([
+      "c1 n20.", "c1 n1.", "c1 n2.", "c1 n20.", "c2 n1.", "c2 n2.", "c2 n20.", "c3 n1.", "c3 n20.",
+    ]);
+    expect(html).not.toContain("Notes not linked in the text");
+  });
+
+  it("skips a definition nobody cites, and lists it as unplaced", () => {
+    const html = render("## One\n\nOne.[^1] Twenty.[^20]\n\n## Two\n\nOne.[^1] Two.[^2] Twenty.[^20]\n\n## Three\n\nOne.[^1] Twenty.[^20]");
+    expect(opened(html)).toEqual(["c1 n1.", "c1 n20.", "c2 n1.", "c2 n2.", "c2 n20.", "c3 n1.", "c3 n20."]);
+    expect(html).toContain("Notes not linked in the text");
+    expect(html.match(/c1 n2\./g)).toHaveLength(1);
+  });
+
+  it("resolveNoteReferences pairs only repeated labels and leaves the rest to the caller", () => {
+    expect(resolveNoteReferences(["7", "1", "1"], ["7", "1", "1"])).toEqual([0, 0, 1]);
+    expect(resolveNoteReferences(["1", "1", "1"], ["1", "1"])).toEqual([0, 1, null]);
+    expect(resolveNoteReferences(["9"], ["1", "1"])).toEqual([null]);
+    expect(collectNoteOrder("[^1]: a\n\n[^2]: b\n\n[^1]: c")).toEqual(["1", "2", "1"]);
   });
 });
 
