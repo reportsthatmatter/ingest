@@ -1,4 +1,5 @@
 import type { Layout } from "./layout.js";
+import { type PageBreakOptions } from "./pagebreaks.js";
 /**
  * Where a block came from in the source. Carried so a fidelity note or an OCR
  * suspect can say "Volume II, PDF page 412, printed 380" rather than a flat
@@ -252,8 +253,8 @@ export declare function toBlocks(lines: string[], documentMargin?: number, quote
 export declare function endsSentence(text: string): boolean;
 export type MergeOptions = {
     /**
-     * The PDF's line layout, when the host supplied one. Nothing reads it yet;
-     * it is here so a layout-gated join can, without another signature change.
+     * The PDF's line layout, when the host supplied one. Read by `layoutJoins`
+     * (the `layoutPageJoins` pass); nothing else here looks at it.
      */
     layout?: Layout;
     /**
@@ -292,6 +293,12 @@ export type MergeOptions = {
      * second opens in lower case, on no label of its own. Text only.
      */
     quoteListRunOns?: boolean;
+    /**
+     * The `layoutPageJoins` pass (reportsthatmatter-38s.10): a paragraph the
+     * text rules leave split at a page break joins the one above when the
+     * layout says it runs on (rules R1 and R2; see the pass). Needs `layout`.
+     */
+    layoutJoins?: PageBreakOptions;
 };
 /** "Mark Wilson/Getty Images", "Patrick Semansky/Associated Press": a short byline with a slash, no sentence. */
 export declare function isPhotoCredit(text: string): boolean;

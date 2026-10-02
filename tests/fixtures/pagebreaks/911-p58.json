@@ -1,0 +1,16 @@
+{
+ "source": "us-911-commission PDF pages 57-58",
+ "at": {
+  "volume": 1,
+  "pdfIndex": 58
+ },
+ "prev": "We believe this call would have taken place sometime before 10:10 to 10:15.",
+ "next": "Among the sources that reflect other important events of that morning, there is no documentary evidence for this call, but the relevant sources are incom- plete. Others nearby who were taking notes, such as the Vice President's chief of staff, Scooter Libby, who sat next to him, and Mrs. Cheney, did",
+ "decided": {
+  "join": true,
+  "rule": "R2",
+  "reason": "finished, but a full justified line and a flush next line",
+  "indentEm": 0,
+  "ambiguous": true
+ }
+}

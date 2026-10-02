@@ -11,7 +11,7 @@
  */
 // — What a report declares —
 export { pipeline, resolvePasses } from "./define.js";
-export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, escapeNumberedParagraphs, escapeLeadingHash, paragraphNotes, chapterContents, listedHeadings, unlistedHeadingsMinor, hangingIndents, letteredItems, unmarkedHeadings, recoverListedHeadings, endnotes, numberedSections, contentsEntries, shortSubheads, shiftedPages, quoteRunOn, quoteListRunOns, numberedFindings, doubleSpaced, contentsOutline, listedDivisions, wrappedHeadings, pageBreakContinuations, citationRunOver, romanFolios, numberedOutsideTables, photoCredits, footnoteGap, runningFurniture, geometry, columns, quoteInset, allCapsHeadings, numberedHeadings, } from "./passes.js";
+export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, escapeNumberedParagraphs, escapeLeadingHash, paragraphNotes, chapterContents, listedHeadings, unlistedHeadingsMinor, hangingIndents, letteredItems, unmarkedHeadings, recoverListedHeadings, endnotes, numberedSections, contentsEntries, shortSubheads, shiftedPages, quoteRunOn, quoteListRunOns, layoutPageJoins, numberedFindings, doubleSpaced, contentsOutline, listedDivisions, wrappedHeadings, pageBreakContinuations, citationRunOver, romanFolios, numberedOutsideTables, photoCredits, footnoteGap, runningFurniture, geometry, columns, quoteInset, allCapsHeadings, numberedHeadings, } from "./passes.js";
 export { detectGutter, splitColumns } from "./columns.js";
 // — Running a build —
 export { extractPages, normaliseWhitespace } from "./extract.js";
@@ -21,6 +21,7 @@ export { resolveVolume, checkVolume, fileChecksum } from "./volumes.js";
 export { runChecks, structuralChecks, losslessCheck, retentionCheck, severedSentenceCheck, pageBreakSplits, digitDensityCheck, } from "./fidelity.js";
 export { computeBaseline, diffBaselines } from "./baseline.js";
 export { openLayout, buildLayout, parseLayoutXml, layoutXml, indentVersus } from "./layout.js";
+export { decidePageBreak, findPageBreakLines, layoutJoins, pageBreakKey, isJustified, sameFace, letters } from "./pagebreaks.js";
 export { measureLayout, ORACLE_SIGNALS, ORACLE } from "./oracle.js";
 export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler.js";
 // — Human corrections —

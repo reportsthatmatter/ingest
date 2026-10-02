@@ -1,0 +1,16 @@
+{
+ "source": "challenger-accident PDF pages 35-36",
+ "at": {
+  "volume": 1,
+  "pdfIndex": 36
+ },
+ "prev": " NASA has had significant decreases in manpower. A disproportionate reduction may have occurred in the safety, reliability and quality assurance staff at NASA headquar- ters and at the Marshall Space Flight Center. Additionally during the period preceding the Challenger accident, the Office of Space",
+ "next": "Flight also suffered a decline in staff. The decreases may have lim- ited the ability of those offices to perform their review functions.",
+ "decided": {
+  "join": true,
+  "rule": "R1",
+  "reason": "unfinished, next line flush",
+  "indentEm": 0,
+  "ambiguous": false
+ }
+}

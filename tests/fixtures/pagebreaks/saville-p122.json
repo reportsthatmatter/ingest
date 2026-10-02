@@ -1,0 +1,15 @@
+{
+ "source": "uk-saville-inquiry PDF pages 121-122",
+ "at": {
+  "volume": 1,
+  "pdfIndex": 122
+ },
+ "prev": "ioting continued into the following day.[^1-27] Lord Cameron attributed these later disturbances to \"Hooligan elements wholly unassociated with the Civil Rights demonstrators\", who had taken advantage of a minor clash between the police and the marchers over the removal of a political banner.[^2-27]",
+ "next": "7.44 In total, 11 policemen and 77 civilians were injured, the great majority of the latter having bruises and lacerations, mainly to the head.[^1-28] In his report, Lord Cameron criticised the organisation and stewarding of the march, and noted that some extremist and hooligan elements had sought t",
+ "decided": {
+  "join": false,
+  "rule": "split",
+  "reason": "next opens on a label",
+  "ambiguous": false
+ }
+}

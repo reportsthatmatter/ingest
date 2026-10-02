@@ -62,6 +62,7 @@ export function resolvePasses(def) {
         shiftedPages: passes.some((pass) => pass.name === "shiftedPages"),
         quoteRunOn: passes.some((pass) => pass.name === "quoteRunOn"),
         quoteListRunOns: passes.some((pass) => pass.name === "quoteListRunOns"),
+        layoutPageJoins: layoutPageJoinsOf(passes),
         unlistedHeadingsMinor: passes.some((pass) => pass.name === "unlistedHeadingsMinor"),
         hangingIndents: passes.some((pass) => pass.name === "hangingIndents"),
         letteredItems: passes.some((pass) => pass.name === "letteredItems"),
@@ -82,5 +83,14 @@ export function resolvePasses(def) {
         numberedHeadings: passes.find((pass) => pass.stage === "numberedHeadings")?.enabled ?? true,
         bodyPasses: passes.filter((pass) => pass.stage === "body"),
         volumePasses: passes.filter((pass) => pass.stage === "volume"),
+    };
+}
+function layoutPageJoinsOf(passes) {
+    const pass = passes.find((p) => p.name === "layoutPageJoins");
+    if (!pass)
+        return undefined;
+    return {
+        ...(pass.scanned ? { scanned: true } : {}),
+        ...(pass.referee ? { referee: pass.referee } : {}),
     };
 }

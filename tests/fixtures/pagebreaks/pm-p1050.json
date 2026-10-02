@@ -1,0 +1,16 @@
+{
+ "source": "us-v-philip-morris PDF pages 1049-1050",
+ "at": {
+  "volume": 1,
+  "pdfIndex": 1050
+ },
+ "prev": "2751. An April 5, 1988 letter from Elizabeth H. Reiman, a Leo Burnett (Philip Morris's advertising agency) employee, addressed to Nancy Brennan Lund, now Senior Vice President for",
+ "next": "Marketing at Philip Morris, provided \"details regarding the upcoming Camel qualitative study\" and stated that \"[r]ecent strong Camel performance, especially among the young male target, has resulted in an effort to explain that success and determine the potential threat to Marlboro.\" The letter indi",
+ "decided": {
+  "join": true,
+  "rule": "R1",
+  "reason": "unfinished, next line flush",
+  "indentEm": 0,
+  "ambiguous": false
+ }
+}

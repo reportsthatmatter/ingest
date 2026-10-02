@@ -1,0 +1,16 @@
+{
+ "source": "us-deepwater-horizon PDF pages 386-387",
+ "at": {
+  "volume": 1,
+  "pdfIndex": 387
+ },
+ "prev": ", Mark, 176 dolphins. See marine mammals Dominion Exploration & Production, 225 Drake, Edwin, 296 Dresser Industries, 44 drilling terminology, definitions of, 91 drill pipe, 74, 91; in Macondo well, 4, 5, 6–7, 92–93, 104-08, 110-14, 111, 113, 120–21 Duplessis, Bonnie, 209 Duplessis, Clarence R., 209",
+ "next": "East Cameron Partners, 227 economy, effects of Macondo oil spill on, 173–74, 179, 185-91, 200; compensatory damages related to, 174, 179,",
+ "decided": {
+  "join": false,
+  "rule": "split",
+  "reason": "unfinished, but a short last line",
+  "indentEm": 0,
+  "ambiguous": true
+ }
+}

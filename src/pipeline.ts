@@ -407,6 +407,7 @@ export function ingestPageGroups(
     quoteTails: resolved.pageBreakQuoteTails,
     quoteRunOn: resolved.quoteRunOn,
     quoteListRunOns: resolved.quoteListRunOns,
+    layoutJoins: resolved.layoutPageJoins,
     photoCredits: resolved.photoCredits,
     letteredItems: resolved.letteredItems,
     layout: context.layout,
