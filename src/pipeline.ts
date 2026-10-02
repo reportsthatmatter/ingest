@@ -247,7 +247,7 @@ export function ingestPageGroups(
       }
 
       const titles =
-        resolved.listedHeadings || resolved.unlistedHeadingsMinor ? contentsTitles(pageLines) : [];
+        resolved.listedHeadings || resolved.unlistedHeadingsMinor ? contentsTitles(pageLines, resolved.recoverListedHeadings) : [];
       for (const title of titles) listed.add(headingKey(title));
       const gate = resolved.listedHeadings && !titles.length && listed.size ? listed : undefined;
       // The contents pages themselves are laid out as they were before.
@@ -289,13 +289,14 @@ export function ingestPageGroups(
               resolved.wrappedHeadings,
               resolved.hangingIndents,
               resolved.unmarkedHeadings,
-              resolved.numberedOutsideTables
+              resolved.numberedOutsideTables,
+              resolved.recoverListedHeadings
         );
       const blocks = (
         resolved.contentsEntries && (entries?.sections.size || isIllustrationList(pageLines))
           ? spacedContentsBlocks(pageLines)
           : isContentsPage(pageLines)
-          ? parseContentsPage(pageLines)
+          ? parseContentsPage(pageLines, resolved.recoverListedHeadings)
           : outlineEntries.length
             ? outlineContentsBlocks(pageLines, outlineEntries)
           : resolved.shortSubheads

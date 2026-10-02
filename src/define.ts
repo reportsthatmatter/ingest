@@ -46,6 +46,7 @@ export type ResolvedPasses = {
   chapterContents?: boolean;
   listedHeadings?: boolean;
   unmarkedHeadings?: boolean;
+  recoverListedHeadings?: boolean;
   endnotes?: boolean;
   numberedSections?: boolean;
   contentsEntries?: boolean;
@@ -137,6 +138,12 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     chapterContents: passes.some((pass) => pass.name === "chapterContents"),
     listedHeadings: passes.some((pass) => pass.name === "listedHeadings"),
     unmarkedHeadings: passes.some((pass) => pass.name === "unmarkedHeadings"),
+    // Inert without the passes it extends: it widens what a contents-matched
+    // heading may be, so with no contents to match there is nothing to widen.
+    recoverListedHeadings:
+      passes.some((pass) => pass.name === "recoverListedHeadings") &&
+      passes.some((pass) => pass.name === "unmarkedHeadings") &&
+      passes.some((pass) => pass.name === "listedHeadings"),
     endnotes: passes.some((pass) => pass.name === "endnotes"),
     numberedSections: passes.some((pass) => pass.name === "numberedSections"),
     contentsEntries: passes.some((pass) => pass.name === "contentsEntries"),
