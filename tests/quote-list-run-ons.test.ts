@@ -38,6 +38,14 @@ describe("quoteListRunOns (reportsthatmatter-38s.9, cgr)", () => {
     expect(merged).toHaveLength(2);
   });
 
+  it("closes up a word the page break cut (PSI, 'pro-' / 'actively')", () => {
+    const merged = mergeAcrossPages(
+      [quote("the Credit Department will pro-", 1), marker(2), quote("actively review the Strategy.", 2)],
+      on
+    );
+    expect(merged[0]).toMatchObject({ text: "the Credit Department will proactively review the Strategy." });
+  });
+
   it("leaves a finished quotation alone, and a capital opening", () => {
     expect(mergeAcrossPages([quote("It was finished.", 1), marker(2), quote("and then more", 2)], on)).toHaveLength(3);
     expect(mergeAcrossPages([quote("It stopped mid", 1), marker(2), quote("Another quotation", 2)], on)).toHaveLength(3);

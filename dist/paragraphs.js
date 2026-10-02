@@ -1787,7 +1787,10 @@ export function mergeAcrossPages(blocks, options = {}) {
                     !endsSentence(above.text) &&
                     CONTINUATION.test(block.text) &&
                     !ITEM_LABEL.test(block.text)) {
-                    above.text = `${above.text} ${block.text}`;
+                    // "pro-" + "actively": a word the page break cut, as at a paragraph's.
+                    above.text = /[-­‐]$/.test(above.text)
+                        ? above.text.replace(/[-­‐]$/, "") + block.text
+                        : `${above.text} ${block.text}`;
                     continue;
                 }
                 if (block.kind === "list" &&
@@ -1802,7 +1805,9 @@ export function mergeAcrossPages(blocks, options = {}) {
                         !/;\s*(?:and|or)$/.test(last.trim()) &&
                         CONTINUATION.test(first) &&
                         !ITEM_LABEL.test(first)) {
-                        above.items[above.items.length - 1] = `${last} ${first}`;
+                        above.items[above.items.length - 1] = /[-­‐]$/.test(last)
+                            ? last.replace(/[-­‐]$/, "") + first
+                            : `${last} ${first}`;
                         above.items.push(...block.items.slice(1));
                         continue;
                     }
