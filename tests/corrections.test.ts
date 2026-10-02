@@ -169,3 +169,35 @@ describe("a malformed corrections file", () => {
     );
   });
 });
+
+describe("a correction that spans blocks (reportsthatmatter-2dw)", () => {
+  // Jack Smith p.32: the OCR of '"hostages,"' is garbled and the page's layout
+  // cut the sentence into a paragraph, a quotation and a paragraph.
+  const split = (): Block[] => [
+    { kind: "paragraph", text: 'He has called them "patriots"[^135] and "hostaoes', at: at(1, 32) },
+    { kind: "quote", text: `b ' "[^136] reminisced about`, at: at(1, 32) },
+    { kind: "paragraph", text: 'January 6 as a "beautiful day,"[^137]', at: at(1, 32) },
+    { kind: "paragraph", text: "Next.", at: at(1, 32) },
+  ];
+  const FIND = `"hostaoes\n\n> b ' "[^136] reminisced about\n\nJanuary 6`;
+  const spanYaml = (find: string, replace: string, where = "{ volume: 1, printed: 32 }") =>
+    yaml(`  - id: c-0001\n    where: ${where}\n    find: ${JSON.stringify(find)}\n    replace: ${JSON.stringify(replace)}\n`);
+
+  it("joins the blocks into the one sentence", () => {
+    const result = applyCorrections(
+      split(),
+      parseCorrections(spanYaml(FIND, `"hostages,"[^136] reminisced about January 6`), "x"),
+      "x"
+    );
+    expect(result.blocks.map((b) => (b as { text: string }).text)).toEqual([
+      'He has called them "patriots"[^135] and "hostages,"[^136] reminisced about January 6 as a "beautiful day,"[^137]',
+      "Next.",
+    ]);
+  });
+
+  it("still fails loudly when the scope misses", () => {
+    expect(() =>
+      applyCorrections(split(), parseCorrections(spanYaml(FIND, "x", "{ volume: 1, printed: 99 }"), "x"), "x")
+    ).toThrow(/matched 0 times/);
+  });
+});

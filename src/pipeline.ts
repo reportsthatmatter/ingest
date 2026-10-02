@@ -129,7 +129,11 @@ export function ingestPageGroups(
       // as a block at the page foot; endnotes are not read as notes at all.
       const split = resolved.paragraphNotes || resolved.endnotes
         ? splitPageNumberOnly(page)
-        : splitPage(page, expectedNote, { citationRunOver: resolved.citationRunOver });
+        : splitPage(page, expectedNote, {
+            citationRunOver: resolved.citationRunOver,
+            romanFolios: resolved.romanFolios,
+            footnoteGap: resolved.footnoteGap,
+          });
 
       // A note that ran over the page break: its tail opens this page's
       // block, and belongs to the last note read before it.
@@ -265,7 +269,8 @@ export function ingestPageGroups(
               divisionGate,
               resolved.wrappedHeadings,
               resolved.hangingIndents,
-              resolved.unmarkedHeadings
+              resolved.unmarkedHeadings,
+              resolved.numberedOutsideTables
             )
       ).map((block) => ({ ...block, at }));
 
@@ -274,6 +279,8 @@ export function ingestPageGroups(
       // already use — and it can be checked against the original PDF.
       if (split.printed !== null && blocks.length) {
         bodyChunks.push({ kind: "page", number: split.printed, at });
+      } else if (split.roman && blocks.length) {
+        bodyChunks.push({ kind: "page", number: split.roman, at });
       }
       if (resolved.unlistedHeadingsMinor && !titles.length && listed.size) {
         for (const block of blocks) {
@@ -296,7 +303,7 @@ export function ingestPageGroups(
   // A printed number that appears more than once in a report needs telling
   // apart, or every occurrence renders the same anchor and a citation to the
   // second silently lands on the first.
-  const seenPage = new Map<number, number>();
+  const seenPage = new Map<number | string, number>();
   for (const block of bodyChunks) {
     if (block.kind !== "page") continue;
     const count = (seenPage.get(block.number) ?? 0) + 1;
@@ -345,6 +352,7 @@ export function ingestPageGroups(
   // a correction could reach it (reportsthatmatter-3jb).
   const joined = mergeAcrossPages(bodyChunks, {
     continuations: resolved.pageBreakContinuations,
+    photoCredits: resolved.photoCredits,
   });
   const corrected = applyCorrections(
     resolved.chapterContents ? contentsHeadings(joined) : joined,
@@ -354,6 +362,7 @@ export function ingestPageGroups(
   );
   let body = blocksToMarkdown(corrected.blocks, {
     escapeNumberedParagraphs: resolved.escapeNumberedParagraphs,
+    escapeLeadingHash: resolved.escapeLeadingHash,
   });
   const notes = corrected.footnotes;
 

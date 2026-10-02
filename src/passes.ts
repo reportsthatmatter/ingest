@@ -141,6 +141,20 @@ export const escapeNumberedParagraphs = (): PagePass => ({
 });
 
 /**
+ * Escapes a paragraph, quotation or list item whose text opens with a literal
+ * "#" ("# 18-7503-005, March 5, 1999." where a citation wraps after "Project";
+ * a press release's "# # #" end mark), so Markdown does not read it as a
+ * heading and ship it as an h1 (reportsthatmatter-6zo).
+ *
+ * Opt-in: a report whose text has no such line gains nothing, and the shared
+ * default would move every report that does (Columbia, Psi) unannounced.
+ */
+export const escapeLeadingHash = (): PagePass => ({
+  name: "escapeLeadingHash",
+  stage: "page",
+});
+
+/**
  * Reads notes set beneath the paragraph they belong to, numbered afresh for
  * each paragraph, in two columns read down each one (Saville,
  * reportsthatmatter-0rx). Replaces the page-foot footnote reading for the
@@ -284,6 +298,71 @@ export const endnotes = (): PagePass => ({ name: "endnotes", stage: "page" });
  * footnote separator does, with nothing in the whitespace to tell them apart.
  */
 export const citationRunOver = (): PagePass => ({ name: "citationRunOver", stage: "page" });
+
+/**
+ * Reads lowercase roman-numeral folios ("vii", set twice on one line as
+ * "vii   vii" when a spread's folio is repeated) as the printed page number
+ * of front matter, and takes them off the page (reportsthatmatter-cbr).
+ *
+ * `takePrintedNumber` only reads arabic numbers, so a roman folio stayed in
+ * the text ("Fran Ulmer v v") and the page lost its anchor and its page
+ * number. A page read this way gets a `%%page vii%%` marker, rendered as
+ * `id="page-vii"` and `data-page="vii"`; `printed` stays null, so footnote
+ * and correction page scopes are unchanged.
+ *
+ * Opt-in: a lone "i", "v" or "x" is also a plausible stray line, so a report
+ * declares that its front matter is folioed in roman numerals.
+ */
+export const romanFolios = (): PagePass => ({ name: "romanFolios", stage: "page" });
+
+/**
+ * A photo credit set between a paragraph and its continuation does not take
+ * the continuation (reportsthatmatter-xay).
+ *
+ * Deep Water sets a photograph's credit ("Mark Wilson/Getty Images") on a
+ * line of its own beside the caption, at a page's foot or head; the rest of
+ * the sentence the page break split follows it, and `mergeAcrossPages` joined
+ * the continuation to the credit, the nearest unfinished-looking paragraph.
+ * With this pass the continuation rejoins the unfinished paragraph above the
+ * credit (looking back past up to three complete blocks and the page marker),
+ * and the credit stays a paragraph of its own. When no unfinished paragraph
+ * is there, the continuation stays its own paragraph rather than joining the
+ * credit.
+ *
+ * Opt-in: it keys on a credit's shape (a short name/agency byline), which only
+ * a report with set-in photographs needs.
+ */
+/**
+ * A lettered or numbered line inside a table is not a heading
+ * (reportsthatmatter-0ij).
+ *
+ * Deep Water's Appendix D sets its staff in two columns, and a row that opens
+ * with an initial ("C. Hobson Bryan   Jill Jonnes") reads as the lettered
+ * heading "C. ..." — two bogus h3 sections in the middle of a list. A line is
+ * in a table when aligned rows sit on both sides of it (`tabularContext`).
+ * `numberedHeadings(false)` is too blunt for this report: its Chapter 9
+ * recommendations ("A. Improving the Safety of Offshore Operations") are real
+ * lettered headings.
+ *
+ * Opt-in: making this the default moved seven reports, and a lettered heading
+ * set between aligned rows is sometimes real.
+ */
+export const numberedOutsideTables = (): PagePass => ({ name: "numberedOutsideTables", stage: "page" });
+
+export const photoCredits = (): PagePass => ({ name: "photoCredits", stage: "page" });
+
+/**
+ * Reads a footnote block set off by a wide gap, wherever it falls
+ * (reportsthatmatter-74p). Two shapes the ordinary reading misses, both in
+ * PSI around embedded charts: the page's expected note sits below a chart's
+ * empty space with no later note to corroborate it (its text printed in the
+ * body), and a previous note's tail opens the block below a gap while the body
+ * above stops mid-sentence (several paragraphs of it printed in the body).
+ *
+ * Opt-in: a wide gap above a lone number is also how a table or heading sits,
+ * so only a report whose footnotes are checked against it declares this.
+ */
+export const footnoteGap = (): PagePass => ({ name: "footnoteGap", stage: "page" });
 
 /**
  * Reads the report's chapter-and-section numbering from its contents

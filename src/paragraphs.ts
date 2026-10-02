@@ -22,7 +22,8 @@ export type Block = (
   | { kind: "contents"; text: string; page: string }
   | {
       kind: "page";
-      number: number;
+      /** The printed number, or a roman folio's lowercase numeral (`romanFolios`). */
+      number: number | string;
       /**
        * Which time this printed number has been seen. Absent for the first.
        *
@@ -1070,7 +1071,8 @@ export function toBlocks(
   divisions?: ListedDivisions,
   wrappedHeadings = false,
   hangingIndents = false,
-  unmarkedHeadings = false
+  unmarkedHeadings = false,
+  numberedOutsideTables = false
 ): Block[] {
   if (paragraphContents) lines = joinParagraphContents(lines);
   const hanging = hangingIndents ? hangingItems(lines) : null;
@@ -1112,7 +1114,11 @@ export function toBlocks(
     at?: number
   ): { level: number; text: string; bare?: boolean } | null => {
     if (outlined && (at === undefined || !isCentred(lines[at], width) || runsOn(at))) return null;
-    const heading = isHeadingLine(text, allowDivisions, allCapsHeadings, numberedHeadings);
+    // `numberedHeadingsOutsideTables`: a lettered or numbered row of a table or
+    // two-column list ("C. Hobson Bryan   Jill Jonnes") is not a heading.
+    const numberedHere =
+      numberedHeadings && !(numberedOutsideTables && at !== undefined && inTable[at]);
+    const heading = isHeadingLine(text, allowDivisions, allCapsHeadings, numberedHere);
     if (heading) return listed && !listed.has(headingKey(heading.text)) ? null : heading;
     // `unmarkedHeadings`: the other half of `listedHeadings` — a line with no
     // heading shape of its own (no caps, number or division label) is still
@@ -1646,7 +1652,19 @@ export type MergeOptions = {
    * carries on a sentence as the rest of that sentence. See the pass.
    */
   continuations?: boolean;
+  /**
+   * The `photoCredits` pass (reportsthatmatter-xay): a photo credit
+   * ("Mark Wilson/Getty Images") between a paragraph and its continuation is
+   * set aside, and the continuation rejoins the paragraph it continues.
+   */
+  photoCredits?: boolean;
 };
+
+/** "Mark Wilson/Getty Images", "Patrick Semansky/Associated Press": a short byline with a slash, no sentence. */
+export function isPhotoCredit(text: string): boolean {
+  const t = text.trim();
+  return t.length <= 90 && !endsSentence(t) && /^[A-Z][\w.'’&-]*(?: [\w.'’&-]+){0,5}\/[A-Z]/.test(t) && !/[,;]$/.test(t);
+}
 
 /** Lower case, or punctuation no sentence opens on. */
 const CONTINUATION = /^[a-z,;]/;
@@ -1744,6 +1762,36 @@ export function mergeAcrossPages(blocks: Block[], options: MergeOptions = {}): B
       continue;
     }
 
+    // A continuation arriving straight after a photo credit: the credit was
+    // set at the foot or head of the page, between the paragraph and the rest
+    // of its sentence. Look back past it (and the caption or other complete
+    // paragraph beside it) for the paragraph left unfinished.
+    if (
+      options.photoCredits &&
+      block.kind === "paragraph" &&
+      block.finding === undefined &&
+      previous?.kind === "paragraph" &&
+      isPhotoCredit(previous.text) &&
+      /^[a-z,;]/.test(block.text)
+    ) {
+      let seen = 0;
+      let target: Block | undefined;
+      for (let i = merged.length - 2; i >= 0 && seen < 3; i--) {
+        const candidate = merged[i];
+        if (candidate.kind === "page") continue;
+        // A caption ("Oiled Sargassum") also ends without a full stop; only a
+        // paragraph of real length is a sentence left unfinished.
+        if (candidate.kind === "paragraph" && !endsSentence(candidate.text) && candidate.text.length >= 120) {
+          target = candidate;
+          break;
+        }
+        seen += 1;
+      }
+      if (target && target.kind === "paragraph") target.text = `${target.text} ${block.text}`;
+      else merged.push(block);
+      continue;
+    }
+
     if (
       options.continuations &&
       block.kind === "quote" &&
@@ -1778,7 +1826,7 @@ export function mergeAcrossPages(blocks: Block[], options: MergeOptions = {}): B
 
 export function blocksToMarkdown(
   blocks: Block[],
-  options: { escapeNumberedParagraphs?: boolean } = {}
+  options: { escapeNumberedParagraphs?: boolean; escapeLeadingHash?: boolean } = {}
 ): string {
   return blocks
     .map((block) => {
@@ -1795,9 +1843,18 @@ export function blocksToMarkdown(
       ) {
         return block.text.replace(/^(\d+)\./, "$1\\.");
       }
-      return blockToMarkdown(block);
+      const markdown = blockToMarkdown(block);
+      return options.escapeLeadingHash ? escapeHash(block, markdown) : markdown;
     })
     .join("\n\n");
+}
+
+/** "# x" opens a heading; "\# x" is the text. Headings themselves are left alone. */
+function escapeHash(block: Block, markdown: string): string {
+  if (block.kind === "paragraph") return markdown.replace(/^(#{1,6})(?=\s|$)/, "\\$1");
+  if (block.kind === "quote") return markdown.replace(/^> (#{1,6})(?=\s|$)/, "> \\$1");
+  if (block.kind === "list") return markdown.replace(/^((?:> )?- )(#{1,6})(?=\s|$)/gm, "$1\\$2");
+  return markdown;
 }
 
 function blockToMarkdown(block: Block): string {
