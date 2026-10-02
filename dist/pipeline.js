@@ -303,6 +303,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         quoteTails: resolved.pageBreakQuoteTails,
         quoteRunOn: resolved.quoteRunOn,
         quoteListRunOns: resolved.quoteListRunOns,
+        layoutJoins: resolved.layoutPageJoins,
         photoCredits: resolved.photoCredits,
         letteredItems: resolved.letteredItems,
         layout: context.layout,

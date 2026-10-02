@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pdf2xml SYSTEM "pdf2xml.dtd">
+
+<pdf2xml producer="poppler" version="26.08.0">
+<page number="32" position="absolute" top="0" left="0" height="1053" width="756">
+	<fontspec id="0" size="14" family="COEMEM+Bembo" color="#000000"/>
+	<fontspec id="1" size="15" family="EDCGEH+FranklinGothic-Medium" color="#000000"/>
+	<fontspec id="2" size="12" family="COEMEM+Bembo" color="#000000"/>
+	<fontspec id="3" size="17" family="COEMMF+Bembo" color="#000000"/>
+	<fontspec id="4" size="12" family="COEMKD+Courier" color="#000000"/>
+<text top="135" left="289" width="179" height="13" font="0">“WE HAVE SOME PLANES”</text>
+<text top="135" left="598" width="14" height="13" font="0">15</text>
+<text top="255" left="457" width="54" height="13" font="1">BOSTON</text>
+<text top="334" left="406" width="31" height="13" font="1">NEW</text>
+<text top="352" left="404" width="36" height="13" font="1">YORK</text>
+<text top="346" left="493" width="31" height="13" font="1">NEW</text>
+<text top="364" left="491" width="36" height="13" font="1">YORK</text>
+<text top="358" left="300" width="76" height="13" font="1">CLEVELAND</text>
+<text top="425" left="253" width="94" height="13" font="1">INDIANAPOLIS</text>
+<text top="278" left="492" width="38" height="12" font="0">Boston</text>
+<text top="292" left="492" width="37" height="12" font="0">Center</text>
+<text top="679" left="576" width="23" height="11" font="2">Otis </text>
+<text top="693" left="563" width="45" height="11" font="2">Air Force</text>
+<text top="706" left="575" width="21" height="11" font="2">Base</text>
+<text top="739" left="538" width="40" height="11" font="2">Langley </text>
+<text top="752" left="521" width="70" height="11" font="2">Air Force Base</text>
+<text top="633" left="430" width="73" height="12" font="0">Northeast Air</text>
+<text top="647" left="426" width="80" height="12" font="0">Defense Sector</text>
+<text top="660" left="439" width="53" height="12" font="0">(NEADS)</text>
+<text top="688" left="271" width="52" height="12" font="0">NORAD</text>
+<text top="702" left="262" width="71" height="12" font="0">Headquarters</text>
+<text top="827" left="449" width="123" height="12" font="0">Continental Aerospace </text>
+<text top="841" left="449" width="157" height="12" font="0">Command Region (CONR)</text>
+<text top="326" left="333" width="53" height="12" font="0">Cleveland</text>
+<text top="340" left="341" width="37" height="12" font="0">Center</text>
+<text top="400" left="270" width="105" height="12" font="0">Indianapolis Center</text>
+<text top="311" left="450" width="54" height="12" font="0">New York</text>
+<text top="325" left="458" width="37" height="12" font="0">Center</text>
+<text top="531" left="144" width="191" height="15" font="3"><i>FAA Air Traffic Control Centers</i></text>
+<text top="900" left="144" width="288" height="15" font="3"><i>Reporting structure, Northeast Air Defense Sector</i></text>
+<text top="919" left="144" width="144" height="12" font="0">Graphics courtesy of ESRI</text>
+<text top="4" left="86" width="281" height="12" font="4">Final1-4.4pp  7/17/04  9:12 AM  Page 15</text>
+</page>
+<page number="33" position="absolute" top="0" left="0" height="1053" width="756">
+	<fontspec id="5" size="15" family="COEMEM+Bembo" color="#000000"/>
+	<fontspec id="6" size="15" family="COEMMF+Bembo" color="#000000"/>
+	<fontspec id="7" size="11" family="COEMEM+Bembo" color="#000000"/>
+	<fontspec id="8" size="15" family="COEMNH+Bembo" color="#000000"/>
+<text top="171" left="144" width="468" height="14" font="5">Virginia, which oversees daily traffic flow within the entire airspace system.</text>
+<text top="188" left="144" width="468" height="14" font="5">FAA headquarters is ultimately responsible for the management of the</text>
+<text top="205" left="144" width="188" height="14" font="5">National Airspace System.The </text>
+<text top="205" left="333" width="102" height="14" font="6"><i>Operations Center</i></text>
+<text top="205" left="439" width="173" height="14" font="5">located at FAA headquarters</text>
+<text top="222" left="144" width="418" height="14" font="5">receives notifications of incidents, including accidents and hijackings.</text>
+<text top="221" left="562" width="11" height="10" font="7">92</text>
+<text top="238" left="162" width="450" height="14" font="5">FAA Control Centers often receive information and make operational deci-</text>
+<text top="255" left="144" width="468" height="14" font="5">sions independently of one another. On 9/11, the four hijacked aircraft were</text>
+<text top="272" left="144" width="468" height="14" font="5">monitored mainly by the centers in Boston, New York, Cleveland, and Indi-</text>
+<text top="289" left="144" width="468" height="14" font="5">anapolis. Each center thus had part of the knowledge of what was going on</text>
+<text top="306" left="144" width="468" height="14" font="5">across the system.What Boston knew was not necessarily known by centers in</text>
+<text top="323" left="144" width="468" height="14" font="5">New York, Cleveland, or Indianapolis, or for that matter by the Command</text>
+<text top="340" left="144" width="364" height="14" font="5">Center in Herndon or by FAA headquarters in Washington.</text>
+<text top="357" left="162" width="450" height="14" font="5">Controllers track airliners such as the four aircraft hijacked on 9/11 primar-</text>
+<text top="374" left="144" width="468" height="14" font="5">ily by watching the data from a signal emitted by each aircraft’s transponder</text>
+<text top="390" left="144" width="468" height="14" font="5">equipment.Those four planes, like all aircraft traveling above 10,000 feet, were</text>
+<text top="407" left="144" width="364" height="14" font="5">required to emit a unique transponder signal while in flight.</text>
+<text top="407" left="508" width="11" height="10" font="7">93</text>
+<text top="424" left="162" width="450" height="14" font="5">On 9/11, the terrorists turned off the transponders on three of the four</text>
+<text top="441" left="144" width="468" height="14" font="5">hijacked aircraft.With its transponder off, it is possible, though more difficult,</text>
+<text top="458" left="144" width="468" height="14" font="5">to track an aircraft by its primary radar returns. But unlike transponder data,</text>
+<text top="475" left="144" width="468" height="14" font="5">primary radar returns do not show the aircraft’s identity and altitude. Con-</text>
+<text top="492" left="144" width="468" height="14" font="5">trollers at centers rely so heavily on transponder signals that they usually do not</text>
+<text top="509" left="144" width="468" height="14" font="5">display primary radar returns on their radar scopes. But they can change the</text>
+<text top="525" left="144" width="468" height="14" font="5">configuration of their scopes so they can see primary radar returns.They did this</text>
+<text top="542" left="144" width="434" height="14" font="5">on 9/11 when the transponder signals for three of the aircraft disappeared.</text>
+<text top="542" left="578" width="10" height="10" font="7">94</text>
+<text top="559" left="162" width="450" height="14" font="5">Before 9/11, it was not unheard of for a commercial aircraft to deviate</text>
+<text top="576" left="144" width="468" height="14" font="5">slightly from its course, or for an FAA controller to lose radio contact with a</text>
+<text top="593" left="144" width="468" height="14" font="5">pilot for a short period of time. A controller could also briefly lose a commer-</text>
+<text top="610" left="144" width="468" height="14" font="5">cial aircraft’s transponder signal, although this happened much less frequently.</text>
+<text top="627" left="144" width="468" height="14" font="5">However, the simultaneous loss of radio and transponder signal would be a rare</text>
+<text top="644" left="144" width="468" height="14" font="5">and alarming occurrence, and would normally indicate a catastrophic system</text>
+<text top="660" left="144" width="468" height="14" font="5">failure or an aircraft crash. In all of these instances, the job of the controller was</text>
+<text top="677" left="144" width="468" height="14" font="5">to reach out to the aircraft, the parent company of the aircraft, and other planes</text>
+<text top="694" left="144" width="468" height="14" font="5">in the vicinity in an attempt to reestablish communications and set the aircraft</text>
+<text top="711" left="144" width="468" height="14" font="5">back on course.Alarm bells would not start ringing until these efforts—which</text>
+<text top="728" left="144" width="364" height="14" font="5">could take five minutes or more—were tried and had failed.</text>
+<text top="728" left="508" width="11" height="10" font="7">95</text>
+<text top="762" left="144" width="219" height="14" font="8"><b>NORAD Mission and Structure.</b></text>
+<text top="762" left="365" width="247" height="14" font="5">NORAD is a binational command estab-</text>
+<text top="778" left="144" width="468" height="14" font="5">lished in 1958 between the United States and Canada. Its mission was, and is,</text>
+<text top="795" left="144" width="468" height="14" font="5">to defend the airspace of North America and protect the continent.That mis-</text>
+<text top="812" left="144" width="468" height="14" font="5">sion does not distinguish between internal and external threats; but because</text>
+<text top="829" left="144" width="468" height="14" font="5">NORAD was created to counter the Soviet threat, it came to define its job as</text>
+<text top="846" left="144" width="207" height="14" font="5">defending against external attacks.</text>
+<text top="846" left="351" width="11" height="10" font="7">96</text>
+<text top="863" left="162" width="450" height="14" font="5">The threat of Soviet bombers diminished significantly as the Cold War</text>
+<text top="880" left="144" width="468" height="14" font="5">ended, and the number of NORAD alert sites was reduced from its Cold War</text>
+<text top="897" left="144" width="468" height="14" font="5">high of 26. Some within the Pentagon argued in the 1990s that the alert sites</text>
+<text top="135" left="144" width="14" height="13" font="0">16</text>
+<text top="135" left="266" width="223" height="13" font="0">THE 9/11 COMMISSION REPORT</text>
+<text top="4" left="86" width="281" height="12" font="4">Final1-4.4pp  7/17/04  9:12 AM  Page 16</text>
+</page>
+</pdf2xml>

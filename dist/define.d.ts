@@ -1,4 +1,5 @@
 import type { Pass, VolumePass, BodyPass } from "./passes.js";
+import type { PageBreakOptions } from "./pagebreaks.js";
 export type Volume = {
     path: string;
     sha256?: string;
@@ -46,6 +47,8 @@ export type ResolvedPasses = {
     shiftedPages?: boolean;
     quoteRunOn?: boolean;
     quoteListRunOns?: boolean;
+    /** `layoutPageJoins`: on, with its options. */
+    layoutPageJoins?: PageBreakOptions;
     unlistedHeadingsMinor?: boolean;
     hangingIndents?: boolean;
     letteredItems?: boolean;

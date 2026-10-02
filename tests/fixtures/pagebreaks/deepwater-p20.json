@@ -1,0 +1,16 @@
+{
+ "source": "us-deepwater-horizon PDF pages 19-20",
+ "at": {
+  "volume": 1,
+  "pdfIndex": 20
+ },
+ "prev": "ussed the good news that the final cement job at the bottom of the Macondo well had gone fine.20 To ensure the job did not have problems, a three-man Schlumberger team was scheduled to fly out to the rig later that day, able to perform a suite of tests to examine the well's new bottom cement seal.21",
+ "next": "According to the BP team's plan, if the cementing went smoothly, as it had, they could skip Schlumberger's cement evaluation. Generally, the completion rig would perform this test when it reopened the well to produce the oil the exploratory drilling had discovered. The decision was made to send the ",
+ "decided": {
+  "join": false,
+  "rule": "split",
+  "reason": "finished",
+  "indentEm": 0,
+  "ambiguous": false
+ }
+}

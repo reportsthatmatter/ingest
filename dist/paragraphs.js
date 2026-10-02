@@ -1,3 +1,4 @@
+import { layoutJoins } from "./pagebreaks.js";
 import { normaliseWhitespace } from "./extract.js";
 import { COLUMN_BREAK } from "./columns.js";
 const HEADING_MAX_WORDS = 14;
@@ -1739,6 +1740,25 @@ function continuesSentence(quote, next) {
         next?.kind === "paragraph" &&
         CONTINUATION.test(next.text));
 }
+/**
+ * Whether `blocks[index]` is the first block read from its page: what stands
+ * before it in the page-by-page reading is a page marker or another page's
+ * block. A paragraph that only *started* on an earlier page (it was joined
+ * over the break already) does not make the next block on this page a page
+ * break.
+ */
+function opensPage(blocks, index) {
+    const block = blocks[index];
+    for (let i = index - 1; i >= 0; i--) {
+        const before = blocks[i];
+        if (before.kind === "page")
+            return true;
+        if (before.at === undefined || block.at === undefined)
+            return false;
+        return before.at.pdfIndex !== block.at.pdfIndex || before.at.volume !== block.at.volume;
+    }
+    return false;
+}
 export function mergeAcrossPages(blocks, options = {}) {
     const merged = [];
     for (const [index, block] of blocks.entries()) {
@@ -1940,6 +1960,22 @@ export function mergeAcrossPages(blocks, options = {}) {
             (/^[a-z,;]/.test(block.text) ||
                 ABBREVIATION.test(previous.text) ||
                 INITIAL.test(previous.text))) {
+            previous.text = `${previous.text} ${block.text}`;
+            continue;
+        }
+        // What text alone cannot see: a run-on opening on a capital, a digit or a
+        // bracket, or one past a sentence that ends a full justified last line.
+        // The layout decides (`layoutPageJoins`); never into a label or a finding.
+        if (options.layoutJoins &&
+            options.layout &&
+            block.kind === "paragraph" &&
+            block.finding === undefined &&
+            previous?.kind === "paragraph" &&
+            acrossPages &&
+            block.at !== undefined &&
+            opensPage(blocks, index) &&
+            !(options.letteredItems && ITEM_LABEL.test(block.text)) &&
+            layoutJoins(options.layout, previous.text, block.text, block.at, options.layoutJoins)) {
             previous.text = `${previous.text} ${block.text}`;
             continue;
         }

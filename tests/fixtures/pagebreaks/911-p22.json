@@ -1,0 +1,16 @@
+{
+ "source": "us-911-commission PDF pages 21-22",
+ "at": {
+  "volume": 1,
+  "pdfIndex": 22
+ },
+ "prev": "center in Boston. Sixteen seconds after that transmis- sion,ATC instructed the aircraft's pilots to climb to 35,000 feet.That message and all subsequent attempts to contact the flight were not acknowledged. From this and other evidence, we believe the hijacking began at 8:14 or shortly thereafter.24",
+ "next": "Reports from two flight attendants in the coach cabin, Betty Ong and Madeline \"Amy\" Sweeney, tell us most of what we know about how the hijacking happened. As it began, some of the hijackers—most likely Wail al Shehri and Waleed al Shehri, who were seated in row 2 in first class—stabbed the two unar",
+ "decided": {
+  "join": false,
+  "rule": "split",
+  "reason": "finished",
+  "indentEm": 1.2,
+  "ambiguous": false
+ }
+}

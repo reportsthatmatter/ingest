@@ -1,0 +1,15 @@
+{
+ "source": "us-911-commission PDF pages 32-33",
+ "at": {
+  "volume": 1,
+  "pdfIndex": 33
+ },
+ "prev": "Reporting structure, Northeast Air Defense Sector Graphics courtesy of ESRI",
+ "next": "Virginia, which oversees daily traffic flow within the entire airspace system. FAA headquarters is ultimately responsible for the management of the National Airspace System.The Operations Center located at FAA headquarters receives notifications of incidents, including accidents and hijackings.92",
+ "decided": {
+  "join": false,
+  "rule": "split",
+  "reason": "font changes across the break",
+  "ambiguous": false
+ }
+}

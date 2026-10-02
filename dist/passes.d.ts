@@ -2,6 +2,7 @@ import { takePrintedNumber, splitFootnoteBlock, type SplitPage, type FurnitureOp
 import { bodyIndent } from "./paragraphs.js";
 import type { PipelineContext } from "./context.js";
 import type { Provenance } from "./paragraphs.js";
+import type { PageBreakReferee } from "./pagebreaks.js";
 /**
  * A pass is one named decision about how to read a source.
  *
@@ -27,6 +28,13 @@ export type PageBreakContinuationsPass = {
     readonly name: "pageBreakContinuations";
     readonly stage: "page";
     readonly quoteTails: boolean;
+};
+/** `layoutPageJoins`, with its optional referee for low-margin calls. */
+export type LayoutPageJoinsPass = {
+    readonly name: "layoutPageJoins";
+    readonly stage: "page";
+    readonly scanned?: boolean;
+    readonly referee?: PageBreakReferee;
 };
 /** Runs over one volume's pages together. */
 export type VolumePass = {
@@ -58,7 +66,7 @@ export type NumberedHeadingsPass = {
     readonly stage: "numberedHeadings";
     readonly enabled: boolean;
 };
-export type Pass = NumberedHeadingsPass | PageBreakContinuationsPass | PagePass | BodyPass | VolumePass | GeometryPass | QuoteInsetPass | AllCapsHeadingsPass;
+export type Pass = NumberedHeadingsPass | PageBreakContinuationsPass | LayoutPageJoinsPass | PagePass | BodyPass | VolumePass | GeometryPass | QuoteInsetPass | AllCapsHeadingsPass;
 /**
  * Takes the printed page number off each page. These documents are cited by
  * page ("Report at 62"), so the printed number is the citation unit readers
@@ -574,6 +582,41 @@ export declare const pageBreakContinuations: (options?: {
  * OCR noise or two separate quotations (`pnpm score` shows which).
  */
 export declare const quoteListRunOns: () => PagePass;
+/**
+ * Joins a paragraph that runs over a page break when the PDF's layout says it
+ * does, where text alone cannot (reportsthatmatter-38s.10, rules R1 and R2 of
+ * the 38s.8 aligned-pair study): a continuation opening on a capital, a digit,
+ * a bracket or a quotation mark ("…now Senior Vice President for" /
+ * "Marketing at Philip Morris…"), and on a justified page a paragraph running
+ * on past a sentence that ends a full last line.
+ *
+ * R1: the paragraph at the page foot stops mid-sentence and the new page's
+ * first line is flush with the line under it (no first-line indent, within
+ * 0.6 em), not a label ("57.", "(b)", "9.88", "•"), in the same font. R2: it
+ * ends a sentence, but the page is justified, its last line runs to the right
+ * margin, and the next is flush, unlabelled, same font, more than four words.
+ * Paragraph and paragraph only; a numbered finding never joins.
+ *
+ * Needs the layout (`openLayout`, on the pipeline context); without it, does
+ * nothing. Opt-in: declare it for a report whose paragraphs are marked by a
+ * first-line indent or a gap that the layout shows (`pnpm score` and reading
+ * joins against the page say whether they are). Not for a report whose new
+ * paragraphs start flush with no indent and whose pages end on whole
+ * paragraphs: R1 cannot tell those apart.
+ *
+ * `scanned`: the PDF is a scan read through its OCR text layer, which sizes
+ * each line from its own glyphs, so a line may be a point bigger or smaller
+ * than the one before it without changing face (Jack Smith, Challenger).
+ *
+ * `referee`: an optional, deterministic second opinion on the low-margin
+ * calls (an indent near the threshold, an R2 join, no line under the first
+ * line to compare with) — in practice a lookup in a committed cache keyed by
+ * `PageBreakCase.key` (38s.11). An `undefined` answer leaves the rules' call.
+ */
+export declare const layoutPageJoins: (options?: {
+    scanned?: boolean;
+    referee?: PageBreakReferee;
+}) => LayoutPageJoinsPass;
 /**
  * Whether a numbered or lettered line ("1. Withdrawing the Army", "C. The
  * Scarman Inquiry") may be read as a heading. On by default — Jack Smith's

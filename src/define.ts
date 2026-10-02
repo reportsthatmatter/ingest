@@ -6,7 +6,9 @@ import type {
   QuoteInsetPass,
   AllCapsHeadingsPass,
   NumberedHeadingsPass,
+  LayoutPageJoinsPass,
 } from "./passes";
+import type { PageBreakOptions } from "./pagebreaks";
 
 export type Volume = { path: string; sha256?: string };
 
@@ -54,6 +56,8 @@ export type ResolvedPasses = {
   shiftedPages?: boolean;
   quoteRunOn?: boolean;
   quoteListRunOns?: boolean;
+  /** `layoutPageJoins`: on, with its options. */
+  layoutPageJoins?: PageBreakOptions;
   unlistedHeadingsMinor?: boolean;
   hangingIndents?: boolean;
   letteredItems?: boolean;
@@ -153,6 +157,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     shiftedPages: passes.some((pass) => pass.name === "shiftedPages"),
     quoteRunOn: passes.some((pass) => pass.name === "quoteRunOn"),
     quoteListRunOns: passes.some((pass) => pass.name === "quoteListRunOns"),
+    layoutPageJoins: layoutPageJoinsOf(passes),
     unlistedHeadingsMinor: passes.some((pass) => pass.name === "unlistedHeadingsMinor"),
     hangingIndents: passes.some((pass) => pass.name === "hangingIndents"),
     letteredItems: passes.some((pass) => pass.name === "letteredItems"),
@@ -183,5 +188,14 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
       )?.enabled ?? true,
     bodyPasses: passes.filter((pass): pass is BodyPass => pass.stage === "body"),
     volumePasses: passes.filter((pass): pass is VolumePass => pass.stage === "volume"),
+  };
+}
+
+function layoutPageJoinsOf(passes: Pass[]): PageBreakOptions | undefined {
+  const pass = passes.find((p): p is LayoutPageJoinsPass => p.name === "layoutPageJoins");
+  if (!pass) return undefined;
+  return {
+    ...(pass.scanned ? { scanned: true } : {}),
+    ...(pass.referee ? { referee: pass.referee } : {}),
   };
 }

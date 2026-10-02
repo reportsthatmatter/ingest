@@ -1,4 +1,5 @@
 import type { Layout } from "./layout";
+import { layoutJoins, type PageBreakOptions } from "./pagebreaks";
 import { normaliseWhitespace } from "./extract";
 import { COLUMN_BREAK } from "./columns";
 
@@ -1879,8 +1880,8 @@ export function endsSentence(text: string): boolean {
 
 export type MergeOptions = {
   /**
-   * The PDF's line layout, when the host supplied one. Nothing reads it yet;
-   * it is here so a layout-gated join can, without another signature change.
+   * The PDF's line layout, when the host supplied one. Read by `layoutJoins`
+   * (the `layoutPageJoins` pass); nothing else here looks at it.
    */
   layout?: Layout;
   /**
@@ -1919,6 +1920,12 @@ export type MergeOptions = {
    * second opens in lower case, on no label of its own. Text only.
    */
   quoteListRunOns?: boolean;
+  /**
+   * The `layoutPageJoins` pass (reportsthatmatter-38s.10): a paragraph the
+   * text rules leave split at a page break joins the one above when the
+   * layout says it runs on (rules R1 and R2; see the pass). Needs `layout`.
+   */
+  layoutJoins?: PageBreakOptions;
 };
 
 /** An item's own letter: "b." or "(c)" or "iv.", then its text. */
@@ -1964,6 +1971,24 @@ function continuesSentence(quote: string, next: Block | undefined): boolean {
     next?.kind === "paragraph" &&
     CONTINUATION.test(next.text)
   );
+}
+
+/**
+ * Whether `blocks[index]` is the first block read from its page: what stands
+ * before it in the page-by-page reading is a page marker or another page's
+ * block. A paragraph that only *started* on an earlier page (it was joined
+ * over the break already) does not make the next block on this page a page
+ * break.
+ */
+function opensPage(blocks: Block[], index: number): boolean {
+  const block = blocks[index];
+  for (let i = index - 1; i >= 0; i--) {
+    const before = blocks[i];
+    if (before.kind === "page") return true;
+    if (before.at === undefined || block.at === undefined) return false;
+    return before.at.pdfIndex !== block.at.pdfIndex || before.at.volume !== block.at.volume;
+  }
+  return false;
 }
 
 export function mergeAcrossPages(blocks: Block[], options: MergeOptions = {}): Block[] {
@@ -2194,6 +2219,25 @@ export function mergeAcrossPages(blocks: Block[], options: MergeOptions = {}): B
       (/^[a-z,;]/.test(block.text) ||
         ABBREVIATION.test(previous.text) ||
         INITIAL.test(previous.text))
+    ) {
+      previous.text = `${previous.text} ${block.text}`;
+      continue;
+    }
+
+    // What text alone cannot see: a run-on opening on a capital, a digit or a
+    // bracket, or one past a sentence that ends a full justified last line.
+    // The layout decides (`layoutPageJoins`); never into a label or a finding.
+    if (
+      options.layoutJoins &&
+      options.layout &&
+      block.kind === "paragraph" &&
+      block.finding === undefined &&
+      previous?.kind === "paragraph" &&
+      acrossPages &&
+      block.at !== undefined &&
+      opensPage(blocks, index) &&
+      !(options.letteredItems && ITEM_LABEL.test(block.text)) &&
+      layoutJoins(options.layout, previous.text, block.text, block.at, options.layoutJoins)
     ) {
       previous.text = `${previous.text} ${block.text}`;
       continue;

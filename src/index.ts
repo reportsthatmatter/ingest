@@ -35,6 +35,7 @@ export {
   shiftedPages,
   quoteRunOn,
   quoteListRunOns,
+  layoutPageJoins,
   numberedFindings,
   doubleSpaced,
   contentsOutline,
@@ -56,6 +57,7 @@ export {
 export type {
   Pass,
   PagePass,
+  LayoutPageJoinsPass,
   PageBreakContinuationsPass,
   BodyPass,
   VolumePass,
@@ -89,6 +91,8 @@ export { computeBaseline, diffBaselines } from "./baseline";
 export type { Baseline } from "./baseline";
 export { openLayout, buildLayout, parseLayoutXml, layoutXml, indentVersus } from "./layout";
 export type { Layout, LayoutLine, PageLayout, BodyFont, RaisedRun } from "./layout";
+export { decidePageBreak, findPageBreakLines, layoutJoins, pageBreakKey, isJustified, sameFace, letters } from "./pagebreaks";
+export type { PageBreakLines, PageBreakDecision, PageBreakCase, PageBreakReferee, PageBreakOptions } from "./pagebreaks";
 export type { PipelineContext } from "./context";
 export { measureLayout, ORACLE_SIGNALS, ORACLE } from "./oracle";
 export type { OracleReport, OracleSignal, OracleFinding, PageCounts } from "./oracle";
