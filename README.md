@@ -90,6 +90,16 @@ A host passes it to the pipeline as `ingestPageGroups(groups, meta, resolved, co
 
 `measureLayout(layout, result.blocks, result.footnotes)` is the layout oracle (`src/oracle.ts`): per page, the headings, footnote markers, paragraph starts and quotations the layout implies, set against what the pipeline produced, as eight counts (`headings-missed`, `headings-spurious`, `markers-unlinked`, `markers-spurious`, `paragraphs-oversplit`, `paragraphs-merged`, `quotes-spurious`, `quotes-missed`). It only measures. Its thresholds are `ORACLE`; its precision per signal is in the site's `docs/quality-harness.md`.
 
+## Golden pages and the page kit
+
+A signal says "this looks wrong"; a **golden page** says "this page is right". Each report repo carries a `golden.yaml`: PDF pages whose true structure was read off the page image and recorded with who and when: the blocks that start on the page in order (type, heading text, how a paragraph opens and ends, the notes linked in it), the notes defined and the markers referenced there, and `must_contain` / `must_read` / `must_be_quote` / `must_not_be_quote` / `must_not_contain` / `separate` runs for the facts a block list cannot say (a table's rows, a quotation, furniture). `parseGolden(text)` reads one; `checkGoldenPage(page, finalBlocks(result), result.footnotes, { relink: !result.linkedText })` checks a page against a regeneration and returns the problems, the kinds of assertion that failed (`ASSERTION_KINDS`) and what each oracle signal should read there; `scoreOracle(rows)` is the oracle's precision and recall against those. The format is documented at the top of `src/golden.ts`.
+
+A page the pipeline is known to get wrong carries `xfail: <bead>` and `xfail_only: [kinds]`: those assertions may fail, the rest must still pass, so a page that is red for a known reason still catches a new regression, and a fix that makes the known failure pass fails the check until the xfail comes off.
+
+`finalBlocks(result)` is `result.blocks` with each block's text replaced by what the reader gets (`IngestResult.linkedText`): markers linked as `[^N]` (for an endnotes report that happens only on the serialised text), hyphens rejoined, OCR fixed. Compare block text with the page through it.
+
+The page kit prints one page's layout lines beside the blocks made from it, so writing an entry takes minutes: `renderPage(id, layout, blocks, footnotes, volume, pdfIndex)`; `draftGolden(...)` is a first draft of the entry from what the pipeline made (the pipeline's reading, to be corrected against the image); `pageFixture(source, xml, blocks, footnotes, volume, pdfIndex)` cuts a `tests/fixtures/oracle/*.json` fixture. The site's `pnpm ingest page <id> <volume> <pdfPage> [--draft] [--fixture <name>]` runs them.
+
 ## Rendering and publishing
 
 `full.md` is the ingestion pipeline's output and a report repo's own

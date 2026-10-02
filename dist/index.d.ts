@@ -31,6 +31,10 @@ export type { PageBreakLines, PageBreakDecision, PageBreakCase, PageBreakReferee
 export type { PipelineContext } from "./context.js";
 export { measureLayout, ORACLE_SIGNALS, ORACLE } from "./oracle.js";
 export type { OracleReport, OracleSignal, OracleFinding, PageCounts } from "./oracle.js";
+export { parseGolden, checkGoldenPage, scoreOracle, finalBlocks } from "./golden.js";
+export { ASSERTION_KINDS } from "./golden.js";
+export type { Golden, GoldenPage, GoldenBlock, GoldenResult, SignalScore, AssertionKind } from "./golden.js";
+export { renderPage, draftGolden, pageFixture, pageBlocks, pageFootnotes } from "./pageview.js";
 export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler.js";
 export { parseCorrections, parseDismissals, applyCorrections, correctionVocabulary, } from "./corrections.js";
 export { rejoinHyphenated, vocabulary } from "./hyphens.js";

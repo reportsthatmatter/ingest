@@ -19,6 +19,14 @@ export type IngestResult = {
      * provenance is on `at`; footnote markers are not yet linked in `text`.
      */
     blocks?: Block[];
+    /**
+     * Each block's final markdown, parallel to `blocks`: after the hyphen
+     * rejoin, the OCR autofix and every marker-linking step (`[^N]`), which
+     * for an endnotes report happens only on the serialised text. What a reader
+     * sees, per block, with the block's own prefix (`> `, `- `, `## `). Absent
+     * if the serialised text does not split into one chunk per block.
+     */
+    linkedText?: Array<string | undefined>;
 };
 export type Metadata = {
     title: string;
