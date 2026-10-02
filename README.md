@@ -72,6 +72,22 @@ shared one, not to accept the fork.
 If you are writing a correction to undo something the parser did, you needed a
 different pass or a bug fix.
 
+## The PDF's layout
+
+`pdftotext -layout` gives the pipeline each line's text and leading spaces. The PDF also knows each line's position, font, size and colour; `pdftohtml -xml` (the same poppler) reports them. `openLayout(pdfPaths, cacheDir)` reads that once per PDF, caches the XML at `<cacheDir>/layout-<sha256 of the PDF>.xml` (the host passes `<report-repo>/.cache`, which gets a `.gitignore` of `*` inside it), and returns a `Layout`:
+
+```ts
+layout.lines(volume, pdfIndex)   // LayoutLine[], in reading order; the same volume and pdfIndex as a Page or a block's `at`
+layout.page(volume, pdfIndex)    // margin, right edge, line pitch, body font of the page
+layout.bodyFont                  // the document's body font
+```
+
+Each `LayoutLine` carries `top`, `left`, `width`, `height`, `right`, `family`, `size`, `color`, `bold`, `italic`, a `font` key, `body` (set in the body font), `raised` (small raised digit runs: marker shapes), `label` (opens on "57." "(b)" "9.88" a bullet), `indentEm` (left minus the page margin, in ems; negative for a hanging number), `rightGapEm` and `reachesRight` (the line runs to the right margin). `indentVersus(line, next)` is the first-line indent against the line under it, in ems.
+
+A host passes it to the pipeline as `ingestPageGroups(groups, meta, resolved, corrections, { layout })`; volume and body passes receive it as `run(pages, context)` / `run(lines, context, at)`, and `mergeAcrossPages` as `options.layout`. It is lazy: a pipeline that never reads a line never runs `pdftohtml`. Nothing in the library reads it yet, so passing it changes no output. `IngestResult.blocks` carries the final blocks (with `at`).
+
+`measureLayout(layout, result.blocks, result.footnotes)` is the layout oracle (`src/oracle.ts`): per page, the headings, footnote markers, paragraph starts and quotations the layout implies, set against what the pipeline produced, as eight counts (`headings-missed`, `headings-spurious`, `markers-unlinked`, `markers-spurious`, `paragraphs-oversplit`, `paragraphs-merged`, `quotes-spurious`, `quotes-missed`). It only measures. Its thresholds are `ORACLE`; its precision per signal is in the site's `docs/quality-harness.md`.
+
 ## Rendering and publishing
 
 `full.md` is the ingestion pipeline's output and a report repo's own

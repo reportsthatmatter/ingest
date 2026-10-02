@@ -20,6 +20,8 @@ export { resolveVolume, checkVolume, fileChecksum } from "./volumes.js";
 // — Checking a build —
 export { runChecks, structuralChecks, losslessCheck, retentionCheck, severedSentenceCheck, pageBreakSplits, digitDensityCheck, } from "./fidelity.js";
 export { computeBaseline, diffBaselines } from "./baseline.js";
+export { openLayout, buildLayout, parseLayoutXml, layoutXml, indentVersus } from "./layout.js";
+export { measureLayout, ORACLE_SIGNALS, ORACLE } from "./oracle.js";
 export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler.js";
 // — Human corrections —
 export { parseCorrections, parseDismissals, applyCorrections, correctionVocabulary, } from "./corrections.js";

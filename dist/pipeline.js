@@ -64,7 +64,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     allCapsHeadings: true,
     bodyPasses: [],
     volumePasses: [],
-}, corrections = []) {
+}, corrections = [], context = {}) {
     // Volume is assigned here because this is the only place that knows the
     // order the volumes were given in — and that order is semantic: footnote
     // numbering and page indices run continuously across them.
@@ -116,7 +116,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         }
         // Body passes rewrite the page's own lines once its furniture is off:
         // reading two columns in order, for instance.
-        split.body = resolved.bodyPasses.reduce((lines, pass) => pass.run(lines), split.body);
+        split.body = resolved.bodyPasses.reduce((lines, pass) => pass.run(lines, context, { volume: split.volume, pdfIndex: split.pdfIndex, printed: split.printed }), split.body);
         return split;
     }));
     if (resolved.paragraphNotes) {
@@ -129,7 +129,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     }
     // Which passes run is a declared property of the document, not something
     // inferred from how many arguments were typed on the command line.
-    const cleanedGroups = splitGroups.map((group) => resolved.volumePasses.reduce((pages, pass) => pass.run(pages), group));
+    const cleanedGroups = splitGroups.map((group) => resolved.volumePasses.reduce((pages, pass) => pass.run(pages, context), group));
     // Measured on the page *body*, never on the raw lines.
     //
     // A footnote block sits at the left edge, and so does page furniture, so
@@ -304,6 +304,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         quoteRunOn: resolved.quoteRunOn,
         photoCredits: resolved.photoCredits,
         letteredItems: resolved.letteredItems,
+        layout: context.layout,
     });
     const corrected = applyCorrections(resolved.chapterContents ? contentsHeadings(joined) : joined, corrections, meta.title, footnotes);
     let body = blocksToMarkdown(corrected.blocks, {
@@ -370,6 +371,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         autoFixes: fixed.applied + noteFixes,
         corrections: corrected.applied,
         pages: pages.length,
+        blocks: corrected.blocks,
     };
 }
 /**

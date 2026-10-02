@@ -1,3 +1,4 @@
+import type { Layout } from "./layout.js";
 /**
  * Where a block came from in the source. Carried so a fidelity note or an OCR
  * suspect can say "Volume II, PDF page 412, printed 380" rather than a flat
@@ -250,6 +251,11 @@ export type FindingCounter = {
 export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>, numbered?: NumberedContents, findings?: FindingCounter, outline?: Outline, divisions?: ListedDivisions, wrappedHeadings?: boolean, hangingIndents?: boolean, unmarkedHeadings?: boolean, numberedOutsideTables?: boolean, recoverListedHeadings?: boolean, letteredItems?: boolean): Block[];
 export declare function endsSentence(text: string): boolean;
 export type MergeOptions = {
+    /**
+     * The PDF's line layout, when the host supplied one. Nothing reads it yet;
+     * it is here so a layout-gated join can, without another signature change.
+     */
+    layout?: Layout;
     /**
      * The `pageBreakContinuations` pass (reportsthatmatter-ca3, -kb4): look past
      * every page marker, not just one, and read a page-opening quotation that

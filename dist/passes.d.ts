@@ -1,5 +1,7 @@
 import { takePrintedNumber, splitFootnoteBlock, type SplitPage, type FurnitureOptions } from "./clean.js";
 import { bodyIndent } from "./paragraphs.js";
+import type { PipelineContext } from "./context.js";
+import type { Provenance } from "./paragraphs.js";
 /**
  * A pass is one named decision about how to read a source.
  *
@@ -18,7 +20,7 @@ export type PagePass = {
 export type BodyPass = {
     readonly name: string;
     readonly stage: "body";
-    run(lines: string[]): string[];
+    run(lines: string[], context?: PipelineContext, at?: Provenance): string[];
 };
 /** `pageBreakContinuations`, with the Leveson quotation-tail mode. */
 export type PageBreakContinuationsPass = {
@@ -30,7 +32,7 @@ export type PageBreakContinuationsPass = {
 export type VolumePass = {
     readonly name: string;
     readonly stage: "volume";
-    run(pages: SplitPage[]): SplitPage[];
+    run(pages: SplitPage[], context?: PipelineContext): SplitPage[];
 };
 /** Decides the document geometry the block parser measures against. */
 export type GeometryPass = {
