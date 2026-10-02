@@ -141,6 +141,20 @@ export const escapeNumberedParagraphs = (): PagePass => ({
 });
 
 /**
+ * Escapes a paragraph, quotation or list item whose text opens with a literal
+ * "#" ("# 18-7503-005, March 5, 1999." where a citation wraps after "Project";
+ * a press release's "# # #" end mark), so Markdown does not read it as a
+ * heading and ship it as an h1 (reportsthatmatter-6zo).
+ *
+ * Opt-in: a report whose text has no such line gains nothing, and the shared
+ * default would move every report that does (Columbia, Psi) unannounced.
+ */
+export const escapeLeadingHash = (): PagePass => ({
+  name: "escapeLeadingHash",
+  stage: "page",
+});
+
+/**
  * Reads notes set beneath the paragraph they belong to, numbered afresh for
  * each paragraph, in two columns read down each one (Saville,
  * reportsthatmatter-0rx). Replaces the page-foot footnote reading for the

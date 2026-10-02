@@ -41,6 +41,7 @@ export type ResolvedPasses = {
   flushFootnoteMarkers: boolean;
   numberedParagraphs: boolean;
   escapeNumberedParagraphs?: boolean;
+  escapeLeadingHash?: boolean;
   paragraphNotes?: boolean;
   chapterContents?: boolean;
   listedHeadings?: boolean;
@@ -115,6 +116,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     flushFootnoteMarkers: passes.some((pass) => pass.name === "flushFootnoteMarkers"),
     numberedParagraphs: passes.some((pass) => pass.name === "numberedParagraphs"),
     escapeNumberedParagraphs: passes.some((pass) => pass.name === "escapeNumberedParagraphs"),
+    escapeLeadingHash: passes.some((pass) => pass.name === "escapeLeadingHash"),
     paragraphNotes: passes.some((pass) => pass.name === "paragraphNotes"),
     chapterContents: passes.some((pass) => pass.name === "chapterContents"),
     listedHeadings: passes.some((pass) => pass.name === "listedHeadings"),
