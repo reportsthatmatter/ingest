@@ -1168,6 +1168,24 @@ function readFindings(
  * a new paragraph. Blank lines are a secondary signal, and block quotes (set
  * far to the right) are kept as quotes.
  */
+/**
+ * A line that opens a quotation which neither it nor the line after it
+ * closes: the first line of a quoted document — a draft clause's title, an
+ * advert's copy, set in capitals ('"GUARANTEE OF MEDIA FREEDOM' / '(1) The
+ * Secretary of State…', Leveson; reportsthatmatter-djy) — never a title of
+ * the report's own. A quoted title that wraps closes on its next line
+ * ('"THE SYSTEM WAS' / 'BLINKING RED"', the 9/11 Commission).
+ */
+function opensUnclosedQuotation(text: string, lines: string[], at: number): boolean {
+  const trimmed = text.trim();
+  if (!/^["\u201c\u2018]/.test(trimmed) || /["\u201d\u2019]/.test(trimmed.slice(1))) return false;
+  for (let j = at + 1; j < lines.length; j++) {
+    if (!lines[j].trim()) continue;
+    return !/["\u201d\u2019]/.test(lines[j]);
+  }
+  return true;
+}
+
 export function toBlocks(
   lines: string[],
   documentMargin?: number,
@@ -1226,6 +1244,7 @@ export function toBlocks(
     at?: number
   ): { level: number; text: string; bare?: boolean } | null => {
     if (outlined && (at === undefined || !isCentred(lines[at], width) || runsOn(at))) return null;
+    if (at !== undefined && opensUnclosedQuotation(text, lines, at)) return null;
     // `numberedHeadingsOutsideTables`: a lettered or numbered row of a table or
     // two-column list ("C. Hobson Bryan   Jill Jonnes") is not a heading.
     const numberedHere =
@@ -1499,13 +1518,27 @@ export function toBlocks(
       line.match(/^(.*\S)(?:[.·]{4,}\s*|(?<![.,;:])[ \t]{3,})(\d{1,4})\s*$/) ??
       (paragraphContents ? line.match(PARAGRAPH_CONTENTS_ENTRY) : null);
     if (contents && contents[1].trim()) {
+      let text = normaliseWhitespace(contents[1]).replace(/[.·\s]+$/, "").trim();
+      // An entry that wraps carries its page number on its last line only, so
+      // its first line arrives alone and reads as a heading — "Chapter 7:
+      // Conclusions and recommendations for future regulation" / "of the press
+      // 1748" — and a section opens on the contents page (reportsthatmatter-djy).
+      // No entry opens in lower case: the line above is the entry's head.
+      if (/^[a-z]/.test(text)) {
+        const last = blocks[blocks.length - 1];
+        // The head is one line: a paragraph running into a footer-shaped line
+        // ("…heating. Report Volume I August 2003   149", Columbia) is not.
+        if (current.length === 1 && currentKind === "paragraph" && currentFinding === undefined) {
+          text = normaliseWhitespace([...current, text].join(" "));
+          current = [];
+        } else if (!current.length && last?.kind === "heading" && !complete.has(last)) {
+          blocks.pop();
+          text = normaliseWhitespace(`${last.text} ${text}`);
+        }
+      }
       flush();
       openDivisionIndent = -1;
-      blocks.push({
-        kind: "contents",
-        text: normaliseWhitespace(contents[1]).replace(/[.·\s]+$/, "").trim(),
-        page: contents[2],
-      });
+      blocks.push({ kind: "contents", text, page: contents[2] });
       continue;
     }
 
@@ -1765,6 +1798,12 @@ export type MergeOptions = {
    */
   continuations?: boolean;
   /**
+   * `pageBreakContinuations({ quoteTails: true })` (reportsthatmatter-nen): a
+   * quotation's first line left as prose at the foot of a page is joined into
+   * the rest of the quotation on the next. See the pass.
+   */
+  quoteTails?: boolean;
+  /**
    * The `quoteRunOn` pass (reportsthatmatter-m2y): a paragraph opening a page
    * in lower case carries on the quotation above when that stops mid-sentence.
    */
@@ -1776,6 +1815,19 @@ export type MergeOptions = {
    */
   photoCredits?: boolean;
 };
+
+/** Opens on a quotation mark, perhaps behind an ellipsis: `"… if Mr Wallis`. */
+const OPENS_QUOTATION = /^(?:\.\.\.\s*|…\s*)?["\u201c\u2018']/;
+
+/**
+ * Introduces what follows: a finished sentence or a colon, perhaps with the
+ * footnote number the pipeline has not linked yet — "He said:414",
+ * "suggested that:[^605]".
+ */
+function introduces(text: string): boolean {
+  if (endsSentence(text)) return true;
+  return /[.?!:]["'\u201d\u2019)\]]*\s?(?:\d{1,4}|\[\^\d+\])$/.test(text.trim());
+}
 
 /** "Mark Wilson/Getty Images", "Patrick Semansky/Associated Press": a short byline with a slash, no sentence. */
 export function isPhotoCredit(text: string): boolean {
@@ -1917,6 +1969,37 @@ export function mergeAcrossPages(blocks: Block[], options: MergeOptions = {}): B
       !endsSentence(previous.text) &&
       continuesSentence(block.text, blocks[index + 1])
     ) {
+      const at = markerIndex === -1 ? merged.length - 1 : markerIndex - 1;
+      // What stands above the paragraph. A contents entry there is a stray
+      // page-edge line ("J   204"), and introduces nothing.
+      let above = at - 1;
+      while (above >= 0 && merged[above].kind === "contents") above -= 1;
+      const before = above >= 0 ? merged[above] : undefined;
+      if (options.quoteTails) {
+        // The quotation's first line, read as prose because one line at the
+        // foot of a page cannot show its inset: the paragraph joins the quote.
+        if (
+          OPENS_QUOTATION.test(previous.text) &&
+          (before === undefined || before.kind !== "paragraph" || introduces(before.text))
+        ) {
+          merged[at] = { kind: "quote", text: `${previous.text} ${block.text}`, at: previous.at };
+          continue;
+        }
+        // Between a quotation that stops mid-sentence and the rest of it: a
+        // footnote or page-edge line read into the body, not the sentence's
+        // head. Joining here would make the quotation's tail into prose. A
+        // quotation trailing off on an ellipsis is finished, and a numbered
+        // paragraph is a paragraph whatever stands above it.
+        if (
+          before?.kind === "quote" &&
+          !endsSentence(before.text) &&
+          !/(?:…|\.\.\.)["'\u201d\u2019]?$/.test(before.text.trim()) &&
+          !/^\d+(?:\.\d+)+\s/.test(previous.text)
+        ) {
+          merged.push(block);
+          continue;
+        }
+      }
       previous.text = `${previous.text} ${block.text}`;
       continue;
     }

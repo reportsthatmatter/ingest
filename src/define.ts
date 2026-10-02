@@ -60,6 +60,8 @@ export type ResolvedPasses = {
   listedDivisions?: boolean;
   wrappedHeadings?: boolean;
   pageBreakContinuations?: boolean;
+  /** `pageBreakContinuations({ quoteTails: true })`. */
+  pageBreakQuoteTails?: boolean;
   citationRunOver?: boolean;
   romanFolios?: boolean;
   numberedOutsideTables?: boolean;
@@ -149,6 +151,9 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     listedDivisions: passes.some((pass) => pass.name === "listedDivisions"),
     wrappedHeadings: passes.some((pass) => pass.name === "wrappedHeadings"),
     pageBreakContinuations: passes.some((pass) => pass.name === "pageBreakContinuations"),
+    pageBreakQuoteTails: passes.some(
+      (pass) => pass.name === "pageBreakContinuations" && "quoteTails" in pass && pass.quoteTails === true
+    ),
     citationRunOver: passes.some((pass) => pass.name === "citationRunOver"),
     romanFolios: passes.some((pass) => pass.name === "romanFolios"),
     numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),

@@ -40,7 +40,9 @@ describe("listedHeadings (reportsthatmatter-h0l)", () => {
   it("reads quoted exhibits and run-in titles as headings without the pass (the defect)", () => {
     const found = headings(run([]));
     expect(found.some((h) => h.startsWith("## WALK-UP MUSIC FOR DAVID SCHNEIDER"))).toBe(true);
-    expect(found.some((h) => h.includes("PRIVILEGED AND CONFIDENTIAL"))).toBe(true);
+    // The quoted S&P banner opens a quotation it does not close, so it is no
+    // longer a heading even without the pass (reportsthatmatter-djy).
+    expect(found.some((h) => h.includes("PRIVILEGED AND CONFIDENTIAL"))).toBe(false);
     expect(found.some((h) => h.includes("Customer Satisfaction (Total HL)"))).toBe(true);
     expect(found.some((h) => h.startsWith("### Conflict Between Client Interests"))).toBe(true);
   });

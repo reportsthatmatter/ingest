@@ -393,6 +393,7 @@ export function ingestPageGroups(
   // a correction could reach it (reportsthatmatter-3jb).
   const joined = mergeAcrossPages(bodyChunks, {
     continuations: resolved.pageBreakContinuations,
+    quoteTails: resolved.pageBreakQuoteTails,
     quoteRunOn: resolved.quoteRunOn,
     photoCredits: resolved.photoCredits,
   });
