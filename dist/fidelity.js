@@ -8,6 +8,9 @@
  */
 import { autoFix } from "./ocr.js";
 import { endsSentence } from "./paragraphs.js";
+const PAGE_MARKER = /^%%page [^%]+%%$/;
+/** Headings per 100 pages a report normally has; reported, not gated. */
+const HEADINGS_PER_100_PAGES = [3, 60];
 const STOP_CHARS = /[^a-z0-9]/g;
 /** Front matter is metadata we added, not content extracted from the source. */
 function stripFrontMatter(markdown) {
@@ -51,11 +54,17 @@ export function structuralChecks(markdown) {
         ok: missing.length === 0,
         detail: missing.length ? `${missing.length} orphaned (e.g. ${missing[0]})` : "all resolved",
     });
+    // Informational: the gate is the site budget on heading plausibility.
     const headings = lines.filter((line) => /^#{1,6}\s/.test(line));
+    const pages = lines.filter((line) => PAGE_MARKER.test(line.trim())).length;
+    const per100 = pages ? (headings.length / pages) * 100 : null;
     checks.push({
         name: "document has headings",
-        ok: headings.length > 0,
-        detail: `${headings.length} headings`,
+        ok: true,
+        info: true,
+        detail: per100 === null
+            ? `${headings.length} headings (no page markers to rate them by)`
+            : `${headings.length} headings, ${per100.toFixed(1)} per 100 pages (expected ${HEADINGS_PER_100_PAGES[0]}-${HEADINGS_PER_100_PAGES[1]}${per100 < HEADINGS_PER_100_PAGES[0] || per100 > HEADINGS_PER_100_PAGES[1] ? "; OUTSIDE" : ""})`,
     });
     checks.push({
         name: "no runs of blank lines",
@@ -171,7 +180,6 @@ export function retentionCheck(sourceText, markdown) {
  * Measured over the corpus: the broken report scored 0.47, and every report
  * as published scores between 0.0004 and 0.07.
  */
-const SEVERED_LIMIT = 0.2;
 export function severedSentenceCheck(markdown) {
     const blocks = stripFrontMatter(markdown)
         .split("\n\n")
@@ -197,14 +205,16 @@ export function severedSentenceCheck(markdown) {
     const rate = paragraphs ? severed / paragraphs : 0;
     return {
         name: "sentences are not severed into quotations",
-        ok: rate < SEVERED_LIMIT,
+        // Informational: the count is gated per report by the site's
+        // severed-into-quote budget, which catches a report far below 20%.
+        ok: true,
+        info: true,
         detail: severed
             ? `${severed}/${paragraphs} paragraphs run straight into a quote (${(rate * 100).toFixed(1)}%)`
             : "none",
     };
 }
 const PROSE = (block) => !/^(#|>|-|%%|\[\^|\|)/.test(block);
-const PAGE_MARKER = /^%%page [^%]+%%$/;
 /** Lower case, or punctuation no sentence opens on. */
 const CONTINUES = /^[a-zà-ÿ,;]/;
 /** Without the footnote markers a sentence's full stop sits in front of. */

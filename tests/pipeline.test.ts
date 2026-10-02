@@ -555,6 +555,16 @@ describe("fidelity", () => {
     expect(() => runChecks(markdown, markdown)).toThrow(/against itself/i);
   });
 
+  it("reports headings per 100 pages without gating on them", () => {
+    const pages = Array.from({ length: 10 }, (_, i) => `%%page ${i + 1}%%\n\nBody ${i}.`).join("\n\n");
+    const none = structuralChecks(pages).find((c) => c.name === "document has headings");
+    expect(none?.ok).toBe(true);
+    expect(none?.info).toBe(true);
+    expect(none?.detail).toMatch(/0 headings, 0\.0 per 100 pages.*OUTSIDE/);
+    const some = structuralChecks(`# H\n\n${pages}`).find((c) => c.name === "document has headings");
+    expect(some?.detail).toMatch(/1 headings, 10\.0 per 100 pages \(expected 3-60\)/);
+  });
+
   it("flags a stranded page number", () => {
     const checks = structuralChecks("Body.\n\n22\n\nMore.");
     expect(checks.find((c) => c.name === "no bare page-number lines")?.ok).toBe(false);
