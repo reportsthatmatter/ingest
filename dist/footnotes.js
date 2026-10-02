@@ -243,6 +243,8 @@ const DOT_LEADER_BEFORE = /(?:\.\s?){5,}$/;
  * the next sentence (US v. Philip Morris; reportsthatmatter-je7) — which may
  * be "Ibid. 113", the next note's whole text (Deepwater Horizon).
  */
+/** "pattern of racketeering activity, 18 U.S.C. § 1961": a statute's title, not a note. */
+const CODE_AFTER = /^\s+(?:U\.S\.C|C\.F\.R)\b/;
 const REPORTER_AFTER = /^\s+(?!(?:Ibid|Id)\.)(?:(?:[A-Z][A-Za-z]{0,5}\.\s?){1,4}\s*\d|[A-Z]{2,6}\s\d{1,4}(?![\d-]))/;
 /**
  * One of a list of numbers — pages, paragraphs, Bates numbers: "RFA Resp. 5,
@@ -290,6 +292,8 @@ export function linkInlineMarkers(text, known) {
         if (REPORTER_AFTER.test(following))
             return whole;
         if (OF_AFTER.test(following))
+            return whole;
+        if (CODE_AFTER.test(following))
             return whole;
         // Only after a comma: '250,000"; 152 days after that' is note 152.
         if (punctuation === "," && UNIT_AFTER.test(following))

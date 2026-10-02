@@ -185,10 +185,15 @@ describe("numbers that are not footnote markers (PSI)", () => {
     expect(linkInlineMarkers('he said it "would . . . . 7 In fact,', new Set([7]))).toContain("[^7]");
   });
 
+  it("does not link the title of a statute", () => {
+    const text = "To establish a pattern of racketeering activity, 18 U.S.C. §§ 1961(5) and 1962(c) require";
+    expect(linkInlineMarkers(text, new Set([18]))).toBe(text);
+  });
+
   it("does not link a number across a blank line (reportsthatmatter-yun)", () => {
     const text = "## VIII. DEFENDANTS HAVE VIOLATED 18 U.S.C. §1962(d).\n\n18 U.S.C. § 1962(d) provides that it is unlawful";
     expect(linkInlineMarkers(text, new Set([18]))).toBe(text);
-    expect(linkInlineMarkers("it ended.\n 18 U.S.C. wraps", new Set([18]))).toContain("[^18]");
+    expect(linkInlineMarkers("it ended.\n 18 wraps", new Set([18]))).toContain("[^18]");
   });
 });
 
