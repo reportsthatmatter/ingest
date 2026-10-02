@@ -57,6 +57,10 @@ export type ResolvedPasses = {
   wrappedHeadings?: boolean;
   pageBreakContinuations?: boolean;
   citationRunOver?: boolean;
+  romanFolios?: boolean;
+  numberedOutsideTables?: boolean;
+  photoCredits?: boolean;
+  footnoteGap?: boolean;
   quoteInset?: number;
   allCapsHeadings: boolean;
   numberedHeadings?: boolean;
@@ -132,6 +136,10 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     wrappedHeadings: passes.some((pass) => pass.name === "wrappedHeadings"),
     pageBreakContinuations: passes.some((pass) => pass.name === "pageBreakContinuations"),
     citationRunOver: passes.some((pass) => pass.name === "citationRunOver"),
+    romanFolios: passes.some((pass) => pass.name === "romanFolios"),
+    numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),
+    photoCredits: passes.some((pass) => pass.name === "photoCredits"),
+    footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
     quoteInset: passes.find(
       (pass): pass is QuoteInsetPass => pass.stage === "quoteInset"
     )?.columns,
