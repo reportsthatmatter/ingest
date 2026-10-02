@@ -20,6 +20,12 @@ export type BodyPass = {
     readonly stage: "body";
     run(lines: string[]): string[];
 };
+/** `pageBreakContinuations`, with the Leveson quotation-tail mode. */
+export type PageBreakContinuationsPass = {
+    readonly name: "pageBreakContinuations";
+    readonly stage: "page";
+    readonly quoteTails: boolean;
+};
 /** Runs over one volume's pages together. */
 export type VolumePass = {
     readonly name: string;
@@ -50,7 +56,7 @@ export type NumberedHeadingsPass = {
     readonly stage: "numberedHeadings";
     readonly enabled: boolean;
 };
-export type Pass = NumberedHeadingsPass | PagePass | BodyPass | VolumePass | GeometryPass | QuoteInsetPass | AllCapsHeadingsPass;
+export type Pass = NumberedHeadingsPass | PageBreakContinuationsPass | PagePass | BodyPass | VolumePass | GeometryPass | QuoteInsetPass | AllCapsHeadingsPass;
 /**
  * Takes the printed page number off each page. These documents are cited by
  * page ("Report at 62"), so the printed number is the citation unit readers
@@ -368,8 +374,21 @@ export declare const contentsOutline: () => PagePass;
  * read as prose (Leveson), or OCR noise (Challenger), and joining them would
  * turn a quotation into the reporter's own words. `pageBreakSplits` in the
  * fidelity checks counts what is left for a report to judge by.
+ *
+ * `quoteTails` (reportsthatmatter-nen) is for that Leveson shape. A quotation
+ * whose first line is the last line of a page is read as prose — one line
+ * cannot show its inset — and the rest of it, on the next page, as a
+ * quotation. When the paragraph left at the foot of the page opens on a
+ * quotation mark and was introduced by a finished sentence or a colon ("He
+ * said:"), the paragraph is the head of the quotation: it is joined *into*
+ * the quotation rather than the quotation into it. And a paragraph that sits
+ * between a quotation stopping mid-sentence and its page-opening rest (a
+ * footnote or page-edge line read into the body) is not taken for the head
+ * of the sentence, so nothing is joined onto it.
  */
-export declare const pageBreakContinuations: () => PagePass;
+export declare const pageBreakContinuations: (options?: {
+    quoteTails?: boolean;
+}) => PageBreakContinuationsPass;
 /**
  * Whether a numbered or lettered line ("1. Withdrawing the Army", "C. The
  * Scarman Inquiry") may be read as a heading. On by default — Jack Smith's

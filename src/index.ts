@@ -44,6 +44,7 @@ export {
 export type {
   Pass,
   PagePass,
+  PageBreakContinuationsPass,
   BodyPass,
   VolumePass,
   GeometryPass,

@@ -223,13 +223,6 @@ export declare function learnOutline(outline: Outline, entries: OutlineEntry[]):
 export type FindingCounter = {
     next: number;
 };
-/**
- * Reflows hard-wrapped lines back into paragraphs.
- *
- * The signal is indentation: a line indented past the running left margin opens
- * a new paragraph. Blank lines are a secondary signal, and block quotes (set
- * far to the right) are kept as quotes.
- */
 export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>, numbered?: NumberedContents, findings?: FindingCounter, outline?: Outline, divisions?: ListedDivisions, wrappedHeadings?: boolean, hangingIndents?: boolean, unmarkedHeadings?: boolean): Block[];
 export declare function endsSentence(text: string): boolean;
 export type MergeOptions = {
@@ -239,6 +232,12 @@ export type MergeOptions = {
      * carries on a sentence as the rest of that sentence. See the pass.
      */
     continuations?: boolean;
+    /**
+     * `pageBreakContinuations({ quoteTails: true })` (reportsthatmatter-nen): a
+     * quotation's first line left as prose at the foot of a page is joined into
+     * the rest of the quotation on the next. See the pass.
+     */
+    quoteTails?: boolean;
 };
 export declare function mergeAcrossPages(blocks: Block[], options?: MergeOptions): Block[];
 export declare function blocksToMarkdown(blocks: Block[], options?: {

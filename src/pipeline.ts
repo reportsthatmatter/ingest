@@ -345,6 +345,7 @@ export function ingestPageGroups(
   // a correction could reach it (reportsthatmatter-3jb).
   const joined = mergeAcrossPages(bodyChunks, {
     continuations: resolved.pageBreakContinuations,
+    quoteTails: resolved.pageBreakQuoteTails,
   });
   const corrected = applyCorrections(
     resolved.chapterContents ? contentsHeadings(joined) : joined,

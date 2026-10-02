@@ -47,6 +47,8 @@ export type ResolvedPasses = {
     listedDivisions?: boolean;
     wrappedHeadings?: boolean;
     pageBreakContinuations?: boolean;
+    /** `pageBreakContinuations({ quoteTails: true })`. */
+    pageBreakQuoteTails?: boolean;
     citationRunOver?: boolean;
     quoteInset?: number;
     allCapsHeadings: boolean;

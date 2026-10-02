@@ -55,6 +55,8 @@ export type ResolvedPasses = {
   listedDivisions?: boolean;
   wrappedHeadings?: boolean;
   pageBreakContinuations?: boolean;
+  /** `pageBreakContinuations({ quoteTails: true })`. */
+  pageBreakQuoteTails?: boolean;
   citationRunOver?: boolean;
   quoteInset?: number;
   allCapsHeadings: boolean;
@@ -129,6 +131,9 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     listedDivisions: passes.some((pass) => pass.name === "listedDivisions"),
     wrappedHeadings: passes.some((pass) => pass.name === "wrappedHeadings"),
     pageBreakContinuations: passes.some((pass) => pass.name === "pageBreakContinuations"),
+    pageBreakQuoteTails: passes.some(
+      (pass) => pass.name === "pageBreakContinuations" && "quoteTails" in pass && pass.quoteTails === true
+    ),
     citationRunOver: passes.some((pass) => pass.name === "citationRunOver"),
     quoteInset: passes.find(
       (pass): pass is QuoteInsetPass => pass.stage === "quoteInset"
