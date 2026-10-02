@@ -468,12 +468,7 @@ export function renderEndnotes(notes) {
 export function linkFlushMarkers(text, plausible) {
     if (!plausible.size)
         return text;
-    return text.replace(
-    // The head is a word, or a year with its full stop ("in 2008.2847"), then
-    // any closing quotation marks or bracket the marker sits outside of
-    // (`investors."2860`). Four-digit notes (Valukas Vol. 3) need the lookup
-    // below most: nothing but a note near this page is accepted.
-    /((?:[a-zà-ÿ]{3,}[.,;:!?]?|\b(?:1[89]|20)\d\d[.,;:])["\u201d\u2019')]*)(\d{1,4})(?=[\s,.;:)\]]|$)/g, (whole, head, digits) => {
+    return text.replace(/([a-zà-ÿ]{3,}[.,;:!?]?)(\d{1,3})(?=[\s,.;:)\]]|$)/g, (whole, head, digits) => {
         const value = Number.parseInt(digits, 10);
         if (!plausible.has(value))
             return whole;
