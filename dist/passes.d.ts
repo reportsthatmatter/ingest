@@ -187,19 +187,6 @@ export declare const unlistedHeadingsMinor: () => PagePass;
  */
 export declare const unmarkedHeadings: () => PagePass;
 /**
- * Lets `unmarkedHeadings` also read a contents entry that opens a page.
- *
- * `unmarkedHeadings` needs a line above the candidate, on the same page, that
- * ends cleanly, so a sentence carried over from the page before is never
- * mistaken for a heading. A heading at the very top of a page has no such
- * line. With this pass it still stands when it matches a contents entry
- * letter for letter, opens with a capital or digit, ends on no stop, comma,
- * semicolon or colon, and the next line is a numbered paragraph or another
- * contents-listed heading (Chilcot's "Negotiation of resolution 1441" over
- * "119. There were…"). Opt-in, and inert without `unmarkedHeadings`.
- */
-export declare const recoverListedHeadings: () => PagePass;
-/**
  * Reads an item set with a hanging indent under a short numbered label —
  * Columbia's "F6.3-1", "R6.4-1", "O10.7-1" findings, recommendations and
  * observations — as one paragraph, label and all (reportsthatmatter-tk8).

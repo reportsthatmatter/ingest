@@ -65,7 +65,7 @@ export declare const DEFAULT_QUOTE_INSET = 5;
  * heading, a block quote and a list item, so they get their own pass.
  */
 export declare function isContentsPage(lines: string[]): boolean;
-export declare function parseContentsPage(lines: string[], loneLeaders?: boolean): Block[];
+export declare function parseContentsPage(lines: string[]): Block[];
 /**
  * The titles a contents page lists, one per line that carries leaders to a
  * page number; nothing from a page with fewer than three such lines. A title
@@ -73,7 +73,7 @@ export declare function parseContentsPage(lines: string[], loneLeaders?: boolean
  * "CASE STUDY OF WASHINGTON MUTUAL BANK. . . 48"), which is also the line
  * the body sets as its heading.
  */
-export declare function contentsTitles(lines: string[], recover?: boolean): string[];
+export declare function contentsTitles(lines: string[]): string[];
 /**
  * What a heading and its contents entry have in common: the title without its
  * marker (a heading is emitted without one), trailing dots, typographic quotes
@@ -230,7 +230,7 @@ export type FindingCounter = {
  * a new paragraph. Blank lines are a secondary signal, and block quotes (set
  * far to the right) are kept as quotes.
  */
-export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>, numbered?: NumberedContents, findings?: FindingCounter, outline?: Outline, divisions?: ListedDivisions, wrappedHeadings?: boolean, hangingIndents?: boolean, unmarkedHeadings?: boolean, recoverListedHeadings?: boolean): Block[];
+export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>, numbered?: NumberedContents, findings?: FindingCounter, outline?: Outline, divisions?: ListedDivisions, wrappedHeadings?: boolean, hangingIndents?: boolean, unmarkedHeadings?: boolean): Block[];
 export declare function endsSentence(text: string): boolean;
 export type MergeOptions = {
     /**
