@@ -10,7 +10,16 @@
 import { autoFix } from "./ocr";
 import { endsSentence } from "./paragraphs";
 
-export type Check = { name: string; ok: boolean; detail: string };
+/**
+ * `info` checks are measurements, not gates: `ok` is always true and the CLI
+ * prints them without a pass/fail mark. Their gate, where there is one, is the
+ * site's per-report budget (`pnpm quality check`, reports/quality-budget.yaml).
+ */
+export type Check = { name: string; ok: boolean; detail: string; info?: boolean };
+
+const PAGE_MARKER = /^%%page [^%]+%%$/;
+/** Headings per 100 pages a report normally has; reported, not gated. */
+const HEADINGS_PER_100_PAGES = [3, 60] as const;
 
 const STOP_CHARS = /[^a-z0-9]/g;
 
@@ -65,11 +74,20 @@ export function structuralChecks(markdown: string): Check[] {
     detail: missing.length ? `${missing.length} orphaned (e.g. ${missing[0]})` : "all resolved",
   });
 
+  // Informational: the gate is the site budget on heading plausibility.
   const headings = lines.filter((line) => /^#{1,6}\s/.test(line));
+  const pages = lines.filter((line) => PAGE_MARKER.test(line.trim())).length;
+  const per100 = pages ? (headings.length / pages) * 100 : null;
   checks.push({
     name: "document has headings",
-    ok: headings.length > 0,
-    detail: `${headings.length} headings`,
+    ok: true,
+    info: true,
+    detail:
+      per100 === null
+        ? `${headings.length} headings (no page markers to rate them by)`
+        : `${headings.length} headings, ${per100.toFixed(1)} per 100 pages (expected ${HEADINGS_PER_100_PAGES[0]}-${HEADINGS_PER_100_PAGES[1]}${
+            per100 < HEADINGS_PER_100_PAGES[0] || per100 > HEADINGS_PER_100_PAGES[1] ? "; OUTSIDE" : ""
+          })`,
   });
 
   checks.push({
@@ -202,7 +220,6 @@ export function retentionCheck(sourceText: string, markdown: string): Check {
  * Measured over the corpus: the broken report scored 0.47, and every report
  * as published scores between 0.0004 and 0.07.
  */
-const SEVERED_LIMIT = 0.2;
 
 export function severedSentenceCheck(markdown: string): Check {
   const blocks = stripFrontMatter(markdown)
@@ -228,7 +245,10 @@ export function severedSentenceCheck(markdown: string): Check {
   const rate = paragraphs ? severed / paragraphs : 0;
   return {
     name: "sentences are not severed into quotations",
-    ok: rate < SEVERED_LIMIT,
+    // Informational: the count is gated per report by the site's
+    // severed-into-quote budget, which catches a report far below 20%.
+    ok: true,
+    info: true,
     detail: severed
       ? `${severed}/${paragraphs} paragraphs run straight into a quote (${(rate * 100).toFixed(1)}%)`
       : "none",
@@ -255,7 +275,6 @@ export type PageBreakSplit = {
 };
 
 const PROSE = (block: string) => !/^(#|>|-|%%|\[\^|\|)/.test(block);
-const PAGE_MARKER = /^%%page [^%]+%%$/;
 /** Lower case, or punctuation no sentence opens on. */
 const CONTINUES = /^[a-zà-ÿ,;]/;
 

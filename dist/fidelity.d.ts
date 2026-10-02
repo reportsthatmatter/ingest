@@ -6,10 +6,16 @@
  * decidable. They deliberately do not try to answer "is this faithful to the
  * source?", which is not.
  */
+/**
+ * `info` checks are measurements, not gates: `ok` is always true and the CLI
+ * prints them without a pass/fail mark. Their gate, where there is one, is the
+ * site's per-report budget (`pnpm quality check`, reports/quality-budget.yaml).
+ */
 export type Check = {
     name: string;
     ok: boolean;
     detail: string;
+    info?: boolean;
 };
 export declare function structuralChecks(markdown: string): Check[];
 /**
@@ -21,6 +27,32 @@ export declare function losslessCheck(sourceText: string, markdown: string, extr
 export declare function digitDensityCheck(sourceText: string): Check;
 /** Layer 3: the output must not have lost a meaningful share of the source. */
 export declare function retentionCheck(sourceText: string, markdown: string): Check;
+/**
+ * Layers 1-3 together.
+ *
+ * `sourceText` must be the text extracted from the source PDF. Passing the
+ * markdown itself makes layers 2 and 3 tautologies that report 100% for any
+ * input — which is exactly what `ingest verify` silently did for every report
+ * until #118, because no report had a `source.pdf` to compare against.
+ */
+/**
+ * Layer 4: are sentences intact?
+ *
+ * Layers 2 and 3 count words. They cannot see a paragraph severed in the
+ * middle and its tail relabelled as a quotation — the words are all still
+ * there, in the same document, in the wrong order and the wrong voice. That
+ * is how 865 of Litvinenko's 1,089 paragraphs shipped cut in half
+ * (uk-litvinenko-inquiry#1), passing every gate.
+ *
+ * The signature is precise: a paragraph that stops without terminal
+ * punctuation, immediately followed by a block quote that opens on a
+ * lower-case word — the rest of the same sentence, wearing quotation marks it
+ * never had. A genuine quotation is introduced ("as follows:") or opens with
+ * a quotation mark, so neither is counted.
+ *
+ * Measured over the corpus: the broken report scored 0.47, and every report
+ * as published scores between 0.0004 and 0.07.
+ */
 export declare function severedSentenceCheck(markdown: string): Check;
 /**
  * One sentence broken across a page break (reportsthatmatter-ca3, -kb4).

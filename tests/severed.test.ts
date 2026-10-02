@@ -4,7 +4,7 @@ import { severedSentenceCheck } from "../src/fidelity";
 const doc = (...blocks: string[]) => `---\ntitle: "t"\n---\n\n${blocks.join("\n\n")}\n`;
 
 describe("severedSentenceCheck", () => {
-  it("catches a paragraph whose tail was relabelled as a quotation", () => {
+  it("counts a paragraph whose tail was relabelled as a quotation", () => {
     // The defect that shipped: 865 of Litvinenko's paragraphs cut in half,
     // the remainder quoted. Every word is still present, so the lossless and
     // retention layers see nothing wrong.
@@ -14,9 +14,12 @@ describe("severedSentenceCheck", () => {
         "> leave Russia was based in part on a fear of what would follow.",
       ]).flat()
     );
+    // Informational since the site's per-report budget took over the gate
+    // (reportsthatmatter-b78.3): it still counts the defect, but never fails.
     const check = severedSentenceCheck(severed);
-    expect(check.ok).toBe(false);
-    expect(check.detail).toMatch(/run straight into a quote/);
+    expect(check.info).toBe(true);
+    expect(check.ok).toBe(true);
+    expect(check.detail).toMatch(/5\/5 paragraphs run straight into a quote/);
   });
 
   it("passes a document whose quotations are properly introduced", () => {
