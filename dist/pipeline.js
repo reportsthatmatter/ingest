@@ -146,7 +146,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
                     continue;
                 }
             }
-            const titles = resolved.listedHeadings || resolved.unlistedHeadingsMinor ? contentsTitles(pageLines) : [];
+            const titles = resolved.listedHeadings || resolved.unlistedHeadingsMinor ? contentsTitles(pageLines, resolved.recoverListedHeadings) : [];
             for (const title of titles)
                 listed.add(headingKey(title));
             const gate = resolved.listedHeadings && !titles.length && listed.size ? listed : undefined;
@@ -171,12 +171,12 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
             if (outline)
                 learnOutline(outline, outlineEntries);
             const blocks = (isContentsPage(pageLines)
-                ? parseContentsPage(pageLines)
+                ? parseContentsPage(pageLines, resolved.recoverListedHeadings)
                 : outlineEntries.length
                     ? outlineContentsBlocks(pageLines, outlineEntries)
                     : toBlocks(pageLines, resolved.geometry === "per-page"
                         ? pageMargin(split.body, margins[0])
-                        : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings, resolved.hangingIndents, resolved.unmarkedHeadings)).map((block) => ({ ...block, at }));
+                        : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings, resolved.hangingIndents, resolved.unmarkedHeadings, resolved.recoverListedHeadings)).map((block) => ({ ...block, at }));
             // Record where each printed page begins. These documents are cited by page
             // ("Report at 62"), so the printed number is the citation unit readers
             // already use — and it can be checked against the original PDF.

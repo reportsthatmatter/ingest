@@ -222,7 +222,7 @@ export function ingestPageGroups(
       }
 
       const titles =
-        resolved.listedHeadings || resolved.unlistedHeadingsMinor ? contentsTitles(pageLines) : [];
+        resolved.listedHeadings || resolved.unlistedHeadingsMinor ? contentsTitles(pageLines, resolved.recoverListedHeadings) : [];
       for (const title of titles) listed.add(headingKey(title));
       const gate = resolved.listedHeadings && !titles.length && listed.size ? listed : undefined;
       // The contents pages themselves are laid out as they were before.
@@ -245,7 +245,7 @@ export function ingestPageGroups(
       if (outline) learnOutline(outline, outlineEntries);
       const blocks = (
         isContentsPage(pageLines)
-          ? parseContentsPage(pageLines)
+          ? parseContentsPage(pageLines, resolved.recoverListedHeadings)
           : outlineEntries.length
             ? outlineContentsBlocks(pageLines, outlineEntries)
           : toBlocks(
@@ -265,7 +265,8 @@ export function ingestPageGroups(
               divisionGate,
               resolved.wrappedHeadings,
               resolved.hangingIndents,
-              resolved.unmarkedHeadings
+              resolved.unmarkedHeadings,
+              resolved.recoverListedHeadings
             )
       ).map((block) => ({ ...block, at }));
 

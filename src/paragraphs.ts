@@ -66,6 +66,9 @@ const LEADERS = /[.·]{4,}\s*(\d{1,4})\s*$/;
  * shreds a paragraph — the same trap that made the first footnote-marker rule
  * corrupt a citation.
  */
+/** A page number after a footnote marker: '…7 March.97' / 'The end of the UN route'. */
+const FOOTNOTE_TAIL = /[.?!"”)\]]\d{1,3}$/;
+
 const BULLET = /^(\s*)([•·▪◦‣])\s+(\S.*)$/;
 
 /**
@@ -77,14 +80,23 @@ export function isContentsPage(lines: string[]): boolean {
   return lines.filter((line) => LEADERS.test(line)).length >= 3;
 }
 
-export function parseContentsPage(lines: string[]): Block[] {
+/**
+ * `recoverListedHeadings`: an entry whose title is long enough to squeeze its
+ * leaders down to a single dot — "…as a result of military action in Iraq . 47".
+ * Read as one more entry, rather than as the start of the next one (it ran into
+ * "The UK's relationship with the US", and its "47" was linked as a footnote).
+ */
+const LONE_LEADER = /\s\.\s+(\d{1,4})\s*$/;
+
+export function parseContentsPage(lines: string[], loneLeaders = false): Block[] {
   const blocks: Block[] = [];
   let buffer: string[] = [];
 
   for (const line of lines) {
     if (!line.trim()) continue;
     const single = normaliseWhitespace(line);
-    const leaders = single.match(LEADERS);
+    const lone = loneLeaders && !LEADERS.test(single) ? single.match(LONE_LEADER) : null;
+    const leaders = lone ?? single.match(LEADERS);
 
     if (!leaders) {
       buffer.push(single);
@@ -92,7 +104,7 @@ export function parseContentsPage(lines: string[]): Block[] {
     }
 
     const text = normaliseWhitespace(
-      [...buffer, single.replace(LEADERS, "")].join(" ")
+      [...buffer, single.replace(lone ? LONE_LEADER : LEADERS, "")].join(" ")
     )
       .replace(/[.·\s]+$/, "")
       .trim();
@@ -123,10 +135,24 @@ const SPACED_LEADERS = /^(.*?\S)\s*(?:[.·]\s?){4,}\s*\d{1,4}\s*$/;
  * "CASE STUDY OF WASHINGTON MUTUAL BANK. . . 48"), which is also the line
  * the body sets as its heading.
  */
-export function contentsTitles(lines: string[]): string[] {
-  const titles = lines
-    .map((line) => line.match(SPACED_LEADERS)?.[1].replace(/\s+/g, " ").trim())
-    .filter((title): title is string => Boolean(title));
+export function contentsTitles(lines: string[], recover = false): string[] {
+  const read = (line: string): string | undefined => {
+    const spaced = line.match(SPACED_LEADERS)?.[1];
+    if (spaced || !recover) return spaced?.replace(/\s+/g, " ").trim();
+    const flat = normaliseWhitespace(line);
+    return LONE_LEADER.test(flat) ? flat.replace(LONE_LEADER, "").trim() : undefined;
+  };
+  const titles: string[] = [];
+  lines.forEach((line, i) => {
+    const title = read(line);
+    if (!title) return;
+    titles.push(title);
+    // `recoverListedHeadings`: a title that wraps is also listed whole, so a
+    // body that sets it over two lines can be matched against all of it.
+    if (recover && i > 0 && lines[i - 1].trim() && !read(lines[i - 1])) {
+      titles.push(normaliseWhitespace(`${lines[i - 1].trim()} ${title}`));
+    }
+  });
   return titles.length >= 3 ? titles : [];
 }
 
@@ -1070,7 +1096,8 @@ export function toBlocks(
   divisions?: ListedDivisions,
   wrappedHeadings = false,
   hangingIndents = false,
-  unmarkedHeadings = false
+  unmarkedHeadings = false,
+  recoverListedHeadings = false
 ): Block[] {
   if (paragraphContents) lines = joinParagraphContents(lines);
   const hanging = hangingIndents ? hangingItems(lines) : null;
@@ -1102,10 +1129,37 @@ export function toBlocks(
       const prior = lines[j];
       if (!prior.trim()) continue;
       if (listed?.has(headingKey(normaliseWhitespace(prior)))) return true;
-      return /[.:;?!"”)\]]$/.test(prior.trim());
+      return /[.:;?!"”)\]]$/.test(prior.trim()) || (recoverListedHeadings && FOOTNOTE_TAIL.test(prior.trim()));
     }
     return false;
   };
+  // `recoverListedHeadings`: a contents entry may also open the page, where nothing
+  // above it can say whether it starts a block or finishes a sentence from the
+  // page before. It must then look like a title and be followed at once by
+  // what a heading is followed by: a numbered paragraph, or another heading
+  // the contents names. "reconstruction." (the tail of a sentence) fails the
+  // first test; "Negotiation of resolution 1441" / "119. There were…" passes.
+  const opensPageAsHeading = (text: string, at: number, span = 1): boolean => {
+    for (let j = at - 1; j >= 0; j--) if (lines[j].trim()) return false;
+    if (!/^[A-Z0-9]/.test(text) || /[.,;:]$/.test(text)) return false;
+    let seen = 0;
+    for (let j = at + 1; j < lines.length; j++) {
+      const next = lines[j].trim();
+      if (!next) continue;
+      if (++seen < span) continue;
+      return /^\d{1,4}\.\s+\S/.test(next) || Boolean(listed?.has(headingKey(normaliseWhitespace(next))));
+    }
+    return false;
+  };
+  // `recoverListedHeadings`: a contents entry the body sets over two lines
+  // ("The gap between the Permanent Members of the Security Council" /
+  // "widens"). The two physical lines, joined, are the entry letter for
+  // letter; neither is, alone. The first line opens the heading, under the
+  // same guard as any bare heading; the second is read as its continuation
+  // and the usual rejoin makes one heading of them.
+  const joinsWith = (a: number, b: number): boolean =>
+    a >= 0 && b < lines.length && Boolean(lines[a].trim()) && Boolean(lines[b].trim()) &&
+    Boolean(listed?.has(headingKey(normaliseWhitespace(`${lines[a].trim()} ${lines[b].trim()}`))));
   const isHeading = (
     text: string,
     allowDivisions: boolean,
@@ -1113,7 +1167,12 @@ export function toBlocks(
   ): { level: number; text: string; bare?: boolean } | null => {
     if (outlined && (at === undefined || !isCentred(lines[at], width) || runsOn(at))) return null;
     const heading = isHeadingLine(text, allowDivisions, allCapsHeadings, numberedHeadings);
-    if (heading) return listed && !listed.has(headingKey(heading.text)) ? null : heading;
+    // `recoverListedHeadings`: a caps title that ends in a number ("…RESOLUTION
+    // 1483") has the number read as a page number and trimmed, so the heading
+    // found no longer matches the contents. Judge the whole line instead.
+    const trimmedAway =
+      recoverListedHeadings && heading && listed && !listed.has(headingKey(heading.text)) && listed.has(headingKey(text));
+    if (heading && !trimmedAway) return listed && !listed.has(headingKey(heading.text)) ? null : heading;
     // `unmarkedHeadings`: the other half of `listedHeadings` — a line with no
     // heading shape of its own (no caps, number or division label) is still
     // the heading the contents names, when it matches one letter for letter.
@@ -1129,8 +1188,21 @@ export function toBlocks(
     // post-conflict" / page break / "reconstruction." — which happens to be
     // a real heading elsewhere in this report). Nothing before it at all, on
     // its page, is unknowable and so unsafe.
-    if (unmarkedHeadings && at !== undefined && listed?.has(headingKey(text)) && priorEndsCleanly(at)) {
-      return { level: 3, text, bare: true as const };
+    if (unmarkedHeadings && at !== undefined && listed?.has(headingKey(text)) &&
+      (priorEndsCleanly(at) || (recoverListedHeadings && opensPageAsHeading(text, at)))
+    ) {
+      return { level: heading?.level ?? 3, text, bare: true as const };
+    }
+    if (recoverListedHeadings && unmarkedHeadings && at !== undefined && listed) {
+      if (joinsWith(at, at + 1) && !listed.has(headingKey(text)) && (priorEndsCleanly(at) || opensPageAsHeading(text, at, 2))) {
+        return { level: 3, text };
+      }
+      if (
+        joinsWith(at - 1, at) &&
+        (priorEndsCleanly(at - 1) || opensPageAsHeading(lines[at - 1].trim(), at - 1, 2))
+      ) {
+        return { level: 3, text };
+      }
     }
     return null;
   };
