@@ -1,0 +1,55 @@
+                                                          497
+
+        The CDO valuation project undertaken in May provided clear notice to Goldman senior
+management at the highest levels that its CDO assets had fallen sharply in value, and that despite
+their lower value, the Mortgage Department planned to aggressively market them to customers. In
+an earlier draft of the presentation, the Mortgage Department had also stated that it expected
+Goldman’s CDO and CDO2 securities “to underperform”:
+
+         “The complexity of the CDO^2 product and the poor demand for CDOs in general has made
+         this risk difficult to sell and the desk expects it to underperform.”2096
+
+Mr. Sparks reviewed that draft language and made comments about other items on the same page,
+but did not change the phrase, “the desk expects it to underperform.”2097 The same phrase appeared
+
+
+
+011057632 (mortgage credit business shared with SPG Trading Desk “a fairly lengthy list of accounts that are
+considered to be ‘key’”). In December 2006, the Correlation Trading Desk drew up a list of target customers for
+2007: the “proposed top 20 correlation customer list.” 12/29/2006 email from Fabrice Tourre, “Last call–any other
+comments on the proposed top 20 correlation customer list,” GS MBS-E-002527843, Hearing Exhibit 4/27-61.
+Mr. Tourre issued a “last call” for comments on the list and suggested focusing on “buy-and-hold rating-base buyers”
+who might be more profitable for the desk than more sophisticated and demanding hedge fund customers:
+
+         “[T]his list might be a little skewed towards sophisticated hedge funds with which we should not expect to
+         make too much money since (a) most of the time they will be on the same side of the trade as we will, and
+         (b) they know exactly how things work and will not let us work for too much $$$, vs. buy-and-hold rating-
+         based buyers who we should be focused on a lot more to make incremental $$$ next year.”
+
+The proposed top 20 list identified a number of European accounts, as well as customers who had purchased asset
+backed security products from Goldman in the past.
+
+          The reference to “buy and hold, ratings-based buyers” was to conservative financial institutions, often
+insurance companies or pension funds, that tended to hold their investments indefinitely or until maturity, some of
+which were limited to holding investments with AAA or other investment grade credit ratings. Many of these buyers
+tended to rely on the AAA rating as a “seal of approval” signaling that the rated instrument offered predictable, safe
+returns. Many viewed the AAA rating as, in effect, all these buyers thought they needed to know about the CDO
+securities they were purchasing. See, e.g.,11/13/2007 Goldman email, GS MBS-E-010023525 (attachment,
+11/14/2007 “Tri-Lateral Combined Comments,” GS MBS-E-010135693-715 at 713) (“Investors in subprime related
+securities, especially higher rated bonds, have historically relied significantly on bond ratings particularly when
+securities are purchased by structured investing vehicles.”). But as one press article explained: “CDO ratings may
+mislead investors because they can obscure the risk of default, especially compared with similar ratings for bonds,
+says Darrell Duffie, a professor of finance at Stanford Graduate School of Business in California, who’s paid by
+Moody’s to advise the company on credit risk. ‘You can’t compare these CDO ratings with corporate bond ratings,’
+Duffie says. ‘These ratings mean something else – entirely.’” See 5/31/2007 email to David Lehman and others,
+“CDO Boom Masks Subprime Losses,” GS MBS-E-001865723 at 733. The article pointed out that the lowest grade
+of corporate bonds rated by Moody’s had a default rate of 2.2%, while the default rate for CDOs with the same rating
+was 24%. Id.
+2096
+     5/19/2007 Goldman presentation, “Mortgages CDO Origination – Retained Positions & W arehouse Collateral,
+May 2007,” GS MBS-E-010951926.
+2097
+     5/19/2007 email from Daniel Sparks, “Mortgages CDO Origination Presentation,” GS M BS-E-010973174 (Mr.
+Sparks: “p. 5 again ‘marked to securitization exit’ [re marked to model language] ... some A and BBB were sold on
+the deals [re demand only for the supersenior tranche language]”).
+

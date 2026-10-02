@@ -144,5 +144,15 @@ pnpm check-dist   # dist/ is committed — fails if it is behind src/
 **`dist/` is committed deliberately.** Consumers install this by git URL, and a
 `prepare` script would make every one of them approve a build step keyed by a
 content hash that changes on each release. Shipping the compiled output makes
-the dependency plain files. Run `pnpm check-dist` before tagging; it fails if
-`dist/` is behind `src/`.
+the dependency plain files. `pnpm check-dist` fails if `dist/` is behind `src/`.
+
+### Releasing
+
+Merge the PR first (including any `dist/` rebuild), then, from an up-to-date `main`:
+
+```bash
+pnpm release 0.15.0 --dry-run   # run every check and the build, change nothing
+pnpm release 0.15.0             # for real
+```
+
+`pnpm release <version>` refuses unless you are on `main`, level with `origin/main`, with a clean tree and no existing `vX.Y.Z` tag (local or on origin). It then runs `pnpm build`, fails if that changed `dist/` (land a `chore: rebuild dist` PR first), runs the tests, bumps `package.json`, commits `chore: release vX.Y.Z`, tags it, and pushes the commit and the tag. Never tag a PR branch: a squash-merge leaves that tag unreachable from `main`.

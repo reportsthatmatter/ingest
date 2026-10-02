@@ -41,6 +41,7 @@ export type ResolvedPasses = {
   flushFootnoteMarkers: boolean;
   numberedParagraphs: boolean;
   escapeNumberedParagraphs?: boolean;
+  escapeLeadingHash?: boolean;
   paragraphNotes?: boolean;
   chapterContents?: boolean;
   listedHeadings?: boolean;
@@ -56,6 +57,10 @@ export type ResolvedPasses = {
   wrappedHeadings?: boolean;
   pageBreakContinuations?: boolean;
   citationRunOver?: boolean;
+  romanFolios?: boolean;
+  numberedOutsideTables?: boolean;
+  photoCredits?: boolean;
+  footnoteGap?: boolean;
   quoteInset?: number;
   allCapsHeadings: boolean;
   numberedHeadings?: boolean;
@@ -115,6 +120,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     flushFootnoteMarkers: passes.some((pass) => pass.name === "flushFootnoteMarkers"),
     numberedParagraphs: passes.some((pass) => pass.name === "numberedParagraphs"),
     escapeNumberedParagraphs: passes.some((pass) => pass.name === "escapeNumberedParagraphs"),
+    escapeLeadingHash: passes.some((pass) => pass.name === "escapeLeadingHash"),
     paragraphNotes: passes.some((pass) => pass.name === "paragraphNotes"),
     chapterContents: passes.some((pass) => pass.name === "chapterContents"),
     listedHeadings: passes.some((pass) => pass.name === "listedHeadings"),
@@ -130,6 +136,10 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     wrappedHeadings: passes.some((pass) => pass.name === "wrappedHeadings"),
     pageBreakContinuations: passes.some((pass) => pass.name === "pageBreakContinuations"),
     citationRunOver: passes.some((pass) => pass.name === "citationRunOver"),
+    romanFolios: passes.some((pass) => pass.name === "romanFolios"),
+    numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),
+    photoCredits: passes.some((pass) => pass.name === "photoCredits"),
+    footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
     quoteInset: passes.find(
       (pass): pass is QuoteInsetPass => pass.stage === "quoteInset"
     )?.columns,

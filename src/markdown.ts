@@ -29,7 +29,7 @@ export function splitFrontMatter(source: string): {
 }
 
 /** The ingestion pipeline marks where each printed page of the source begins. */
-const PAGE_MARKER = /^%%page (\d+)(?:#(\d+))?%%$/;
+const PAGE_MARKER = /^%%page (\d+|[ivxlc]+)(?:#(\d+))?%%$/;
 
 /** Words too common to identify a paragraph by. */
 const STOPWORDS = new Set([
@@ -157,7 +157,7 @@ export function renderMarkdown(markdown: string): string {
   md.core.ruler.push("rtm_anchors", (state) => {
     const tokens = state.tokens;
     const taken = new Set<string>();
-    let page: number | null = null;
+    let page: string | null = null;
 
     for (let i = 0; i < tokens.length; i++) {
       const token = tokens[i];
@@ -203,7 +203,7 @@ export function renderMarkdown(markdown: string): string {
 
       const marker = text.match(PAGE_MARKER);
       if (marker) {
-        page = Number.parseInt(marker[1], 10);
+        page = /^\d+$/.test(marker[1]) ? String(Number.parseInt(marker[1], 10)) : marker[1];
         // A report's pagination restarts, so the same printed number can
         // appear more than once. The first keeps the bare anchor, so existing
         // citations to it stay valid; later ones are suffixed.
