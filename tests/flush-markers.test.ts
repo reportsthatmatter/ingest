@@ -16,6 +16,22 @@ describe("linkFlushMarkers", () => {
     );
   });
 
+  it("links a four-digit note, Valukas Volume 3 (reportsthatmatter-dnv)", () => {
+    expect(linkFlushMarkers("its Repo 105 program.2847 Repo 105 transactions", notes(2847))).toBe(
+      "its Repo 105 program.[^2847] Repo 105 transactions"
+    );
+  });
+
+  it("links a marker after a year and its full stop, or outside a closing quotation mark", () => {
+    expect(linkFlushMarkers("in January 1985.5 His daughter", notes(5))).toBe("in January 1985.[^5] His daughter");
+    expect(linkFlushMarkers("and investors.\u201d2860 In mid", notes(2860))).toBe("and investors.\u201d[^2860] In mid");
+  });
+
+  it("still leaves a year alone when no note has that number", () => {
+    expect(linkFlushMarkers("in January 1985.5 His daughter", notes(9))).toBe("in January 1985.5 His daughter");
+    expect(linkFlushMarkers("born in 19852 and", notes(2))).toBe("born in 19852 and");
+  });
+
   it("leaves a number alone when no note near this page has it", () => {
     // The guard that makes this safe: a lookup, not a typographic guess.
     expect(linkFlushMarkers("severe diarrhoea112 followed", notes(9))).toBe(
