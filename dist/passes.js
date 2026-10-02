@@ -363,22 +363,10 @@ export const contentsOutline = () => ({
  * read as prose (Leveson), or OCR noise (Challenger), and joining them would
  * turn a quotation into the reporter's own words. `pageBreakSplits` in the
  * fidelity checks counts what is left for a report to judge by.
- *
- * `quoteTails` (reportsthatmatter-nen) is for that Leveson shape. A quotation
- * whose first line is the last line of a page is read as prose — one line
- * cannot show its inset — and the rest of it, on the next page, as a
- * quotation. When the paragraph left at the foot of the page opens on a
- * quotation mark and was introduced by a finished sentence or a colon ("He
- * said:"), the paragraph is the head of the quotation: it is joined *into*
- * the quotation rather than the quotation into it. And a paragraph that sits
- * between a quotation stopping mid-sentence and its page-opening rest (a
- * footnote or page-edge line read into the body) is not taken for the head
- * of the sentence, so nothing is joined onto it.
  */
-export const pageBreakContinuations = (options = {}) => ({
+export const pageBreakContinuations = () => ({
     name: "pageBreakContinuations",
     stage: "page",
-    quoteTails: options.quoteTails ?? false,
 });
 /**
  * Whether a numbered or lettered line ("1. Withdrawing the Army", "C. The
