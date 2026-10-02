@@ -566,6 +566,22 @@ export const pageBreakContinuations = (options = {}) => ({
     quoteTails: options.quoteTails ?? false,
 });
 /**
+ * Joins a block quotation, or a list item, that runs over the foot of a page
+ * (reportsthatmatter-38s.9, from the 38s.8 aligned-pair study; cgr). Each page
+ * is parsed on its own, so the rest arrives as a second quotation (or list):
+ * "This group will be" / "> known as TOBACCO INDUSTRY RESEARCH COMMITTEE".
+ * Quote and quote, or list and list, across a page marker, when the first
+ * stops mid-sentence and the second opens in lower case (or on `,` `;`) with
+ * no label of its own ("b. On 4 November", "(c) the"). A list item that ends
+ * "; and" is finished. Text only, no layout; independent of
+ * `pageBreakContinuations`, which it does not need.
+ *
+ * Opt-in because it joins into a quotation: declare it for a report whose
+ * page-opening lower-case quotations are the rest of the one above, not
+ * OCR noise or two separate quotations (`pnpm score` shows which).
+ */
+export const quoteListRunOns = () => ({ name: "quoteListRunOns", stage: "page" });
+/**
  * Whether a numbered or lettered line ("1. Withdrawing the Army", "C. The
  * Scarman Inquiry") may be read as a heading. On by default — Jack Smith's
  * report is structured that way. A report whose structure comes from its

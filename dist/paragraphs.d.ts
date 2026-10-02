@@ -279,6 +279,13 @@ export type MergeOptions = {
      * above, however the item above ends.
      */
     letteredItems?: boolean;
+    /**
+     * The `quoteListRunOns` pass (reportsthatmatter-38s.9): a block quotation
+     * or list item running over a page arrives as two quotations or two lists.
+     * The second joins the first when the first stops mid-sentence and the
+     * second opens in lower case, on no label of its own. Text only.
+     */
+    quoteListRunOns?: boolean;
 };
 /** "Mark Wilson/Getty Images", "Patrick Semansky/Associated Press": a short byline with a slash, no sentence. */
 export declare function isPhotoCredit(text: string): boolean;

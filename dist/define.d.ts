@@ -45,6 +45,7 @@ export type ResolvedPasses = {
     shortSubheads?: boolean;
     shiftedPages?: boolean;
     quoteRunOn?: boolean;
+    quoteListRunOns?: boolean;
     unlistedHeadingsMinor?: boolean;
     hangingIndents?: boolean;
     letteredItems?: boolean;

@@ -1906,6 +1906,13 @@ export type MergeOptions = {
    * above, however the item above ends.
    */
   letteredItems?: boolean;
+  /**
+   * The `quoteListRunOns` pass (reportsthatmatter-38s.9): a block quotation
+   * or list item running over a page arrives as two quotations or two lists.
+   * The second joins the first when the first stops mid-sentence and the
+   * second opens in lower case, on no label of its own. Text only.
+   */
+  quoteListRunOns?: boolean;
 };
 
 /** An item's own letter: "b." or "(c)" or "iv.", then its text. */
@@ -1984,6 +1991,56 @@ export function mergeAcrossPages(blocks: Block[], options: MergeOptions = {}): B
       previous?.at === undefined ||
       block.at === undefined ||
       previous.at.pdfIndex !== block.at.pdfIndex;
+
+    // A block quotation or a list item that runs over the foot of a page: the
+    // next page is parsed on its own, so the rest arrives as a second quotation
+    // (or list). Join only a lower-case opening that is not an item's own
+    // label ("b. On 4 November", "(c) the"), after a block that stops
+    // mid-sentence, across a page, and look past every page marker, leaving
+    // them after the joined block.
+    if (options.quoteListRunOns && (block.kind === "quote" || block.kind === "list")) {
+      let tail = merged.length - 1;
+      while (tail >= 0 && merged[tail].kind === "page") tail -= 1;
+      const above = tail >= 0 ? merged[tail] : undefined;
+      const overPage =
+        tail < merged.length - 1 &&
+        (above?.at === undefined ||
+          block.at === undefined ||
+          above.at.pdfIndex !== block.at.pdfIndex);
+      if (!above?.hardBreak && overPage) {
+        if (
+          block.kind === "quote" &&
+          above?.kind === "quote" &&
+          !endsSentence(above.text) &&
+          CONTINUATION.test(block.text) &&
+          !ITEM_LABEL.test(block.text)
+        ) {
+          above.text = `${above.text} ${block.text}`;
+          continue;
+        }
+        if (
+          block.kind === "list" &&
+          above?.kind === "list" &&
+          above.quoted === block.quoted &&
+          above.items.length > 0 &&
+          block.items.length > 0
+        ) {
+          const last = above.items[above.items.length - 1];
+          const first = block.items[0];
+          // "…; and" ends its item: the next one is a new item, whatever its case.
+          if (
+            !endsSentence(last) &&
+            !/;\s*(?:and|or)$/.test(last.trim()) &&
+            CONTINUATION.test(first) &&
+            !ITEM_LABEL.test(first)
+          ) {
+            above.items[above.items.length - 1] = `${last} ${first}`;
+            above.items.push(...block.items.slice(1));
+            continue;
+          }
+        }
+      }
+    }
 
     if (
       block.kind === "paragraph" &&
