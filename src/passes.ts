@@ -389,6 +389,89 @@ export const numberedSections = (): PagePass => ({
 });
 
 /**
+ * Lays out the contents pages `numberedSections` reads as their entries
+ * (reportsthatmatter-5fn).
+ *
+ * The 9/11 Commission Report's contents sets a plain space before each page
+ * number, with no leaders and no wide gap, so no contents-page test fired:
+ * each chapter entry became a heading ('## 8. "THE SYSTEM WAS BLINKING RED"')
+ * and each chapter's sections one run-together quotation. With this, a page
+ * on which the contents lists numbered sections is laid out as contents
+ * entries, "8.1 The Summer of Threat — 254", chapter numbers kept, a wrapped
+ * title joined, a list of illustrations ("p. 32–33   Flight paths") likewise.
+ *
+ * Opt-in, and only with `numberedSections`, whose reading of the contents it
+ * borrows: elsewhere a page of "N.N title page" lines may be something else.
+ */
+export const contentsEntries = (): PagePass => ({
+  name: "contentsEntries",
+  stage: "page",
+});
+
+/**
+ * Reads a short title-case line set alone above a paragraph as that
+ * paragraph's subheading (reportsthatmatter-5u2).
+ *
+ * The 9/11 Commission Report breaks its sections with unnumbered, mixed-case
+ * subheads ("The Drumbeat Begins", "Moving to Departure Positions") that no
+ * heading rule reads: not capitals, not numbered, not in the contents. They
+ * ran into the paragraph below ("The Drumbeat Begins In the spring of
+ * 2001, the level of reporting…"). Each becomes a level-4 heading, under the
+ * numbered section's level 3. See `shortSubheadAt` for the shape.
+ *
+ * Opt-in: in a report that sets a short title-case line over a full one for
+ * any other reason (a byline over its first paragraph, a speaker's name) it
+ * would invent a heading.
+ */
+export const shortSubheads = (): PagePass => ({
+  name: "shortSubheads",
+  stage: "page",
+});
+
+/**
+ * Measures the margin of a page the scan has shifted sideways
+ * (reportsthatmatter-m2y).
+ *
+ * The Challenger scan sets a few pages three to six columns in from the rest
+ * (printed p. 5 of the Committee's conclusions, whose body sits at 3 where
+ * the document's is 0). Measured against the document's margin every line of
+ * such a page opens a paragraph, and the paragraphs that follow a line
+ * ending mid-sentence join only where they begin in lower case: "…in the
+ * Solid" / "Rocket Booster joints." stayed in two, as did "Rather," / "NASA
+ * chose…". See `shiftedPageMargin` for the test; a page that does not pass it
+ * takes the document's margin, so quotations and exhibits are untouched.
+ * Not `geometry("per-page")`: read that way a page that is mostly testimony
+ * takes the quotation's indent for its margin, and 160 of Challenger's
+ * quotations became prose.
+ *
+ * Opt-in, for a report with such pages.
+ */
+export const shiftedPages = (): PagePass => ({
+  name: "shiftedPages",
+  stage: "page",
+});
+
+/**
+ * A quotation that stops mid-sentence at the foot of a page and carries on, in
+ * lower case, as the first paragraph of the next is one quotation
+ * (reportsthatmatter-m2y).
+ *
+ * Challenger's Conclusions set the Committee's departure from the Rogers
+ * Commission as an inset passage, "…poor technical decision-making over a
+ * period of several years by top NASA" at the foot of printed p. 4 and "and
+ * contractor personnel, who failed to act decisively…" at the head of p. 5,
+ * where the page's lines sit at the margin and read as prose. The sentence
+ * could not be quoted whole. `pageBreakContinuations` joins the other
+ * direction (a page-opening quotation into the paragraph above); the two do
+ * not overlap. Opt-in, for the reason that pass is: elsewhere a lower-case
+ * paragraph after a quotation can be the reporter's own words.
+ */
+export const quoteRunOn = (): PagePass => ({
+  name: "quoteRunOn",
+  stage: "page",
+});
+
+/**
  * Reads the report's run of numbered paragraphs — a court's Findings of Fact,
  * "3437. Projects recommended by this Advisory Group…", numbered 1 to 4,088
  * straight through the opinion — as paragraphs (reportsthatmatter-9ek).

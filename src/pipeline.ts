@@ -9,6 +9,9 @@ import {
   blocksToMarkdown,
   isContentsPage,
   parseContentsPage,
+  spacedContentsBlocks,
+  shortSubheadAt,
+  isIllustrationList,
   mergeAcrossPages,
   contentsHeadings,
   contentsTitles,
@@ -66,8 +69,26 @@ function keepsSection(text: string, listed: Set<string>, numbered: NumberedConte
   if (listed.has(headingKey(text))) return true;
   if (/^(?:Part|Chapter|Appendix) [^:]+: /.test(text)) return true;
   if (/^(?:[A-Z]|\d{1,2})\.\d{1,2}\s/.test(text)) return true;
+  if (/^appendix [a-z]\b/i.test(text)) return true;
   if (/\b(?:part|chapter|appendix)\s+(?:\d{1,2}|[a-z])$/i.test(text)) return true;
   return [...numbered.divisions.values()].some((title) => headingKey(title) === headingKey(text));
+}
+
+/**
+ * Reads a page in the stretches between its short subheads
+ * (`shortSubheads`), each subhead a level-4 heading of its own.
+ */
+function readWithSubheads(lines: string[], read: (lines: string[]) => Block[]): Block[] {
+  const blocks: Block[] = [];
+  let from = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (!shortSubheadAt(lines, i)) continue;
+    blocks.push(...read(lines.slice(from, i)));
+    blocks.push({ kind: "heading", level: 4, text: lines[i].replace(/\s+/g, " ").trim() });
+    from = i + 1;
+  }
+  blocks.push(...read(lines.slice(from)));
+  return blocks;
 }
 
 /**
@@ -247,16 +268,14 @@ export function ingestPageGroups(
       const at = { volume: split.volume, pdfIndex: split.pdfIndex, printed: split.printed };
       const outlineEntries = outline ? readContentsOutline(pageLines) : [];
       if (outline) learnOutline(outline, outlineEntries);
-      const blocks = (
-        isContentsPage(pageLines)
-          ? parseContentsPage(pageLines)
-          : outlineEntries.length
-            ? outlineContentsBlocks(pageLines, outlineEntries)
-          : toBlocks(
-              pageLines,
+      const readBody = (lines: string[]): Block[] =>
+        toBlocks(
+              lines,
               resolved.geometry === "per-page"
                 ? pageMargin(split.body, margins[0])
-                : margins[resolved.geometry === "per-volume" ? groupIndex : 0],
+                : resolved.shiftedPages
+                  ? shiftedPageMargin(split.body, margins[resolved.geometry === "per-volume" ? groupIndex : 0])
+                  : margins[resolved.geometry === "per-volume" ? groupIndex : 0],
               resolved.quoteInset,
               resolved.numberedParagraphs,
               resolved.allCapsHeadings,
@@ -271,7 +290,17 @@ export function ingestPageGroups(
               resolved.hangingIndents,
               resolved.unmarkedHeadings,
               resolved.numberedOutsideTables
-            )
+        );
+      const blocks = (
+        resolved.contentsEntries && (entries?.sections.size || isIllustrationList(pageLines))
+          ? spacedContentsBlocks(pageLines)
+          : isContentsPage(pageLines)
+          ? parseContentsPage(pageLines)
+          : outlineEntries.length
+            ? outlineContentsBlocks(pageLines, outlineEntries)
+          : resolved.shortSubheads
+            ? readWithSubheads(pageLines, readBody)
+            : readBody(pageLines)
       ).map((block) => ({ ...block, at }));
 
       // Record where each printed page begins. These documents are cited by page
@@ -282,7 +311,19 @@ export function ingestPageGroups(
       } else if (split.roman && blocks.length) {
         bodyChunks.push({ kind: "page", number: split.roman, at });
       }
-      if (resolved.unlistedHeadingsMinor && !titles.length && listed.size) {
+      // `contentsEntries` read the contents as entries: whatever it names —
+      // chapters, appendices, "Preface" — is a heading the report lists, as
+      // leaders would have said (`unlistedHeadingsMinor`).
+      const readEntries = Boolean(
+        resolved.contentsEntries && (entries?.sections.size || isIllustrationList(pageLines))
+      );
+      if (readEntries && resolved.unlistedHeadingsMinor) {
+        for (const block of blocks) {
+          if (block.kind !== "contents") continue;
+          listed.add(headingKey(block.text.replace(/\\/g, "").replace(/^\d{1,2}\.\d{1,2}\s+/, "")));
+        }
+      }
+      if (resolved.unlistedHeadingsMinor && !titles.length && !readEntries && listed.size) {
         for (const block of blocks) {
           if (block.kind === "heading" && !keepsSection(block.text, listed, numbered)) {
             block.level = 4;
@@ -352,6 +393,7 @@ export function ingestPageGroups(
   // a correction could reach it (reportsthatmatter-3jb).
   const joined = mergeAcrossPages(bodyChunks, {
     continuations: resolved.pageBreakContinuations,
+    quoteRunOn: resolved.quoteRunOn,
     photoCredits: resolved.photoCredits,
   });
   const corrected = applyCorrections(
@@ -459,6 +501,30 @@ function pageMargin(body: string[], fallback: number): number {
   const lines = body.filter((line) => line.trim());
   return lines.length >= PAGE_MARGIN_MIN_LINES ? bodyIndent(lines) : fallback;
 }
+/**
+ * The left margin of a page the scan has shifted (`shiftedPages`,
+ * reportsthatmatter-m2y): every line of its body sits in from the document's
+ * margin by the same few columns. Only a page whose commonest indent is also
+ * its least, over at least fifteen lines of prose, is taken to be shifted, and
+ * only by two to six columns: a page that is mostly quotation has the same
+ * commonest indent, but carries lines of its own prose at the margin, and a
+ * table or an exhibit sits further in. Any other page takes the document's.
+ */
+function shiftedPageMargin(body: string[], fallback: number): number {
+  const lines = body.filter((line) => normaliseWhitespace(line).split(" ").length > 3);
+  if (lines.length < SHIFTED_PAGE_MIN_LINES) return fallback;
+  const counts = new Map<number, number>();
+  for (const line of lines) {
+    const indent = line.length - line.trimStart().length;
+    counts.set(indent, (counts.get(indent) ?? 0) + 1);
+  }
+  const least = Math.min(...counts.keys());
+  const commonest = [...counts].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0];
+  const shift = least - fallback;
+  return commonest === least && shift >= 2 && shift <= 6 ? least : fallback;
+}
+const SHIFTED_PAGE_MIN_LINES = 15;
+
 /** "9.165   " up to where its text starts; the glyph after it may be unmapped. */
 const NUMBERED_OPENER = /^\s{0,8}\d{1,2}\.\d{1,3}[ \uFFFD]{2,}(?=\S)/;
 const PAGE_MARGIN_MIN_LINES = 8;
