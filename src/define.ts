@@ -53,6 +53,7 @@ export type ResolvedPasses = {
   shortSubheads?: boolean;
   shiftedPages?: boolean;
   quoteRunOn?: boolean;
+  quoteListRunOns?: boolean;
   unlistedHeadingsMinor?: boolean;
   hangingIndents?: boolean;
   letteredItems?: boolean;
@@ -151,6 +152,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     shortSubheads: passes.some((pass) => pass.name === "shortSubheads"),
     shiftedPages: passes.some((pass) => pass.name === "shiftedPages"),
     quoteRunOn: passes.some((pass) => pass.name === "quoteRunOn"),
+    quoteListRunOns: passes.some((pass) => pass.name === "quoteListRunOns"),
     unlistedHeadingsMinor: passes.some((pass) => pass.name === "unlistedHeadingsMinor"),
     hangingIndents: passes.some((pass) => pass.name === "hangingIndents"),
     letteredItems: passes.some((pass) => pass.name === "letteredItems"),

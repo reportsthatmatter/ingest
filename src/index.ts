@@ -34,6 +34,7 @@ export {
   shortSubheads,
   shiftedPages,
   quoteRunOn,
+  quoteListRunOns,
   numberedFindings,
   doubleSpaced,
   contentsOutline,

@@ -61,6 +61,7 @@ export function resolvePasses(def) {
         shortSubheads: passes.some((pass) => pass.name === "shortSubheads"),
         shiftedPages: passes.some((pass) => pass.name === "shiftedPages"),
         quoteRunOn: passes.some((pass) => pass.name === "quoteRunOn"),
+        quoteListRunOns: passes.some((pass) => pass.name === "quoteListRunOns"),
         unlistedHeadingsMinor: passes.some((pass) => pass.name === "unlistedHeadingsMinor"),
         hangingIndents: passes.some((pass) => pass.name === "hangingIndents"),
         letteredItems: passes.some((pass) => pass.name === "letteredItems"),

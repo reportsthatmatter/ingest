@@ -397,6 +397,7 @@ export function ingestPageGroups(
     continuations: resolved.pageBreakContinuations,
     quoteTails: resolved.pageBreakQuoteTails,
     quoteRunOn: resolved.quoteRunOn,
+    quoteListRunOns: resolved.quoteListRunOns,
     photoCredits: resolved.photoCredits,
     letteredItems: resolved.letteredItems,
   });
