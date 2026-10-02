@@ -365,6 +365,9 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         .replace(/\n{4,}/g, "\n\n\n")
         .trimEnd()
         .concat("\n");
+    // Blocks are joined with one blank line and none holds one, so the final body splits back into them,
+    // except where the hyphen rejoin closed a paragraph into the next ("fol-" / "lowing").
+    const linkedText = alignChunks(corrected.blocks, body.split("\n\n"));
     return {
         markdown,
         sourceText,
@@ -374,7 +377,38 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         corrections: corrected.applied,
         pages: pages.length,
         blocks: corrected.blocks,
+        linkedText,
     };
+}
+/**
+ * Pairs each block with its chunk of the final text. A block the hyphen rejoin
+ * closed into the one before it has no chunk of its own (`undefined`). Gives up
+ * (`undefined`) if the chunks cannot be accounted for by the blocks in order.
+ */
+function alignChunks(blocks, chunks) {
+    if (chunks.length === blocks.length)
+        return chunks;
+    const head = (text) => text.replace(/^(?:> )?(?:- |#{1,6} )?/, "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "").slice(0, 10);
+    // (a contents entry's chunk carries its page number after the text, so compare as far as the shorter goes)
+    const startsLike = (a, b) => {
+        const n = Math.min(6, a.length, b.length);
+        return n > 0 ? a.slice(0, n) === b.slice(0, n) : a === b;
+    };
+    const own = (b) => b.kind === "list" ? (b.items[0] ?? "") : b.kind === "page" ? "page" : b.kind === "contents" ? b.text : b.text;
+    const out = [];
+    let j = 0;
+    for (const b of blocks) {
+        const c = chunks[j];
+        const matches = c !== undefined &&
+            (b.kind === "page" ? c.startsWith("%%page") : startsLike(head(b.kind === "contents" ? c.replace(/ — [^ ]*$/, "") : c), head(own(b))));
+        if (matches) {
+            out.push(c);
+            j++;
+        }
+        else
+            out.push(undefined);
+    }
+    return j === chunks.length ? out : undefined;
 }
 /**
  * One page's own left margin, for a document whose margin moves from page to

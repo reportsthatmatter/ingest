@@ -96,6 +96,10 @@ export type { PageBreakLines, PageBreakDecision, PageBreakCase, PageBreakReferee
 export type { PipelineContext } from "./context";
 export { measureLayout, ORACLE_SIGNALS, ORACLE } from "./oracle";
 export type { OracleReport, OracleSignal, OracleFinding, PageCounts } from "./oracle";
+export { parseGolden, checkGoldenPage, scoreOracle, finalBlocks } from "./golden";
+export { ASSERTION_KINDS } from "./golden";
+export type { Golden, GoldenPage, GoldenBlock, GoldenResult, SignalScore, AssertionKind } from "./golden";
+export { renderPage, draftGolden, pageFixture, pageBlocks, pageFootnotes } from "./pageview";
 export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler";
 
 // — Human corrections —

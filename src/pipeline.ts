@@ -58,6 +58,14 @@ export type IngestResult = {
    * provenance is on `at`; footnote markers are not yet linked in `text`.
    */
   blocks?: Block[];
+  /**
+   * Each block's final markdown, parallel to `blocks`: after the hyphen
+   * rejoin, the OCR autofix and every marker-linking step (`[^N]`), which
+   * for an endnotes report happens only on the serialised text. What a reader
+   * sees, per block, with the block's own prefix (`> `, `- `, `## `). Absent
+   * if the serialised text does not split into one chunk per block.
+   */
+  linkedText?: Array<string | undefined>;
 };
 
 export type Metadata = {
@@ -485,6 +493,10 @@ export function ingestPageGroups(
     .trimEnd()
     .concat("\n");
 
+  // Blocks are joined with one blank line and none holds one, so the final body splits back into them,
+  // except where the hyphen rejoin closed a paragraph into the next ("fol-" / "lowing").
+  const linkedText = alignChunks(corrected.blocks, body.split("\n\n"));
+
   return {
     markdown,
     sourceText,
@@ -494,7 +506,39 @@ export function ingestPageGroups(
     corrections: corrected.applied,
     pages: pages.length,
     blocks: corrected.blocks,
+    linkedText,
   };
+}
+
+/**
+ * Pairs each block with its chunk of the final text. A block the hyphen rejoin
+ * closed into the one before it has no chunk of its own (`undefined`). Gives up
+ * (`undefined`) if the chunks cannot be accounted for by the blocks in order.
+ */
+function alignChunks(blocks: Block[], chunks: string[]): Array<string | undefined> | undefined {
+  if (chunks.length === blocks.length) return chunks;
+  const head = (text: string) =>
+    text.replace(/^(?:> )?(?:- |#{1,6} )?/, "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "").slice(0, 10);
+  // (a contents entry's chunk carries its page number after the text, so compare as far as the shorter goes)
+  const startsLike = (a: string, b: string) => {
+    const n = Math.min(6, a.length, b.length);
+    return n > 0 ? a.slice(0, n) === b.slice(0, n) : a === b;
+  };
+  const own = (b: Block) =>
+    b.kind === "list" ? (b.items[0] ?? "") : b.kind === "page" ? "page" : b.kind === "contents" ? b.text : b.text;
+  const out: Array<string | undefined> = [];
+  let j = 0;
+  for (const b of blocks) {
+    const c = chunks[j];
+    const matches =
+      c !== undefined &&
+      (b.kind === "page" ? c.startsWith("%%page") : startsLike(head(b.kind === "contents" ? c.replace(/ — [^ ]*$/, "") : c), head(own(b))));
+    if (matches) {
+      out.push(c);
+      j++;
+    } else out.push(undefined);
+  }
+  return j === chunks.length ? out : undefined;
 }
 
 /**
