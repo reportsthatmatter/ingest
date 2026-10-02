@@ -25,6 +25,13 @@ export type BodyPass = {
   run(lines: string[]): string[];
 };
 
+/** `pageBreakContinuations`, with the Leveson quotation-tail mode. */
+export type PageBreakContinuationsPass = {
+  readonly name: "pageBreakContinuations";
+  readonly stage: "page";
+  readonly quoteTails: boolean;
+};
+
 /** Runs over one volume's pages together. */
 export type VolumePass = {
   readonly name: string;
@@ -62,6 +69,7 @@ export type NumberedHeadingsPass = {
 
 export type Pass =
   | NumberedHeadingsPass
+  | PageBreakContinuationsPass
   | PagePass
   | BodyPass
   | VolumePass
@@ -137,6 +145,20 @@ export const numberedParagraphs = (): PagePass => ({
  */
 export const escapeNumberedParagraphs = (): PagePass => ({
   name: "escapeNumberedParagraphs",
+  stage: "page",
+});
+
+/**
+ * Escapes a paragraph, quotation or list item whose text opens with a literal
+ * "#" ("# 18-7503-005, March 5, 1999." where a citation wraps after "Project";
+ * a press release's "# # #" end mark), so Markdown does not read it as a
+ * heading and ship it as an h1 (reportsthatmatter-6zo).
+ *
+ * Opt-in: a report whose text has no such line gains nothing, and the shared
+ * default would move every report that does (Columbia, Psi) unannounced.
+ */
+export const escapeLeadingHash = (): PagePass => ({
+  name: "escapeLeadingHash",
   stage: "page",
 });
 
@@ -241,6 +263,23 @@ export const unmarkedHeadings = (): PagePass => ({
 });
 
 /**
+ * Lets `unmarkedHeadings` also read a contents entry that opens a page.
+ *
+ * `unmarkedHeadings` needs a line above the candidate, on the same page, that
+ * ends cleanly, so a sentence carried over from the page before is never
+ * mistaken for a heading. A heading at the very top of a page has no such
+ * line. With this pass it still stands when it matches a contents entry
+ * letter for letter, opens with a capital or digit, ends on no stop, comma,
+ * semicolon or colon, and the next line is a numbered paragraph or another
+ * contents-listed heading (Chilcot's "Negotiation of resolution 1441" over
+ * "119. There were…"). Opt-in, and inert without `unmarkedHeadings`.
+ */
+export const recoverListedHeadings = (): PagePass => ({
+  name: "recoverListedHeadings",
+  stage: "page",
+});
+
+/**
  * Reads an item set with a hanging indent under a short numbered label —
  * Columbia's "F6.3-1", "R6.4-1", "O10.7-1" findings, recommendations and
  * observations — as one paragraph, label and all (reportsthatmatter-tk8).
@@ -303,6 +342,71 @@ export const endnotes = (): PagePass => ({ name: "endnotes", stage: "page" });
 export const citationRunOver = (): PagePass => ({ name: "citationRunOver", stage: "page" });
 
 /**
+ * Reads lowercase roman-numeral folios ("vii", set twice on one line as
+ * "vii   vii" when a spread's folio is repeated) as the printed page number
+ * of front matter, and takes them off the page (reportsthatmatter-cbr).
+ *
+ * `takePrintedNumber` only reads arabic numbers, so a roman folio stayed in
+ * the text ("Fran Ulmer v v") and the page lost its anchor and its page
+ * number. A page read this way gets a `%%page vii%%` marker, rendered as
+ * `id="page-vii"` and `data-page="vii"`; `printed` stays null, so footnote
+ * and correction page scopes are unchanged.
+ *
+ * Opt-in: a lone "i", "v" or "x" is also a plausible stray line, so a report
+ * declares that its front matter is folioed in roman numerals.
+ */
+export const romanFolios = (): PagePass => ({ name: "romanFolios", stage: "page" });
+
+/**
+ * A photo credit set between a paragraph and its continuation does not take
+ * the continuation (reportsthatmatter-xay).
+ *
+ * Deep Water sets a photograph's credit ("Mark Wilson/Getty Images") on a
+ * line of its own beside the caption, at a page's foot or head; the rest of
+ * the sentence the page break split follows it, and `mergeAcrossPages` joined
+ * the continuation to the credit, the nearest unfinished-looking paragraph.
+ * With this pass the continuation rejoins the unfinished paragraph above the
+ * credit (looking back past up to three complete blocks and the page marker),
+ * and the credit stays a paragraph of its own. When no unfinished paragraph
+ * is there, the continuation stays its own paragraph rather than joining the
+ * credit.
+ *
+ * Opt-in: it keys on a credit's shape (a short name/agency byline), which only
+ * a report with set-in photographs needs.
+ */
+/**
+ * A lettered or numbered line inside a table is not a heading
+ * (reportsthatmatter-0ij).
+ *
+ * Deep Water's Appendix D sets its staff in two columns, and a row that opens
+ * with an initial ("C. Hobson Bryan   Jill Jonnes") reads as the lettered
+ * heading "C. ..." — two bogus h3 sections in the middle of a list. A line is
+ * in a table when aligned rows sit on both sides of it (`tabularContext`).
+ * `numberedHeadings(false)` is too blunt for this report: its Chapter 9
+ * recommendations ("A. Improving the Safety of Offshore Operations") are real
+ * lettered headings.
+ *
+ * Opt-in: making this the default moved seven reports, and a lettered heading
+ * set between aligned rows is sometimes real.
+ */
+export const numberedOutsideTables = (): PagePass => ({ name: "numberedOutsideTables", stage: "page" });
+
+export const photoCredits = (): PagePass => ({ name: "photoCredits", stage: "page" });
+
+/**
+ * Reads a footnote block set off by a wide gap, wherever it falls
+ * (reportsthatmatter-74p). Two shapes the ordinary reading misses, both in
+ * PSI around embedded charts: the page's expected note sits below a chart's
+ * empty space with no later note to corroborate it (its text printed in the
+ * body), and a previous note's tail opens the block below a gap while the body
+ * above stops mid-sentence (several paragraphs of it printed in the body).
+ *
+ * Opt-in: a wide gap above a lone number is also how a table or heading sits,
+ * so only a report whose footnotes are checked against it declares this.
+ */
+export const footnoteGap = (): PagePass => ({ name: "footnoteGap", stage: "page" });
+
+/**
  * Reads the report's chapter-and-section numbering from its contents
  * ("8.1   The Summer of Threat 254") and takes each numbered section's heading
  * from there (reportsthatmatter-w8g).
@@ -323,6 +427,89 @@ export const citationRunOver = (): PagePass => ({ name: "citationRunOver", stage
  */
 export const numberedSections = (): PagePass => ({
   name: "numberedSections",
+  stage: "page",
+});
+
+/**
+ * Lays out the contents pages `numberedSections` reads as their entries
+ * (reportsthatmatter-5fn).
+ *
+ * The 9/11 Commission Report's contents sets a plain space before each page
+ * number, with no leaders and no wide gap, so no contents-page test fired:
+ * each chapter entry became a heading ('## 8. "THE SYSTEM WAS BLINKING RED"')
+ * and each chapter's sections one run-together quotation. With this, a page
+ * on which the contents lists numbered sections is laid out as contents
+ * entries, "8.1 The Summer of Threat — 254", chapter numbers kept, a wrapped
+ * title joined, a list of illustrations ("p. 32–33   Flight paths") likewise.
+ *
+ * Opt-in, and only with `numberedSections`, whose reading of the contents it
+ * borrows: elsewhere a page of "N.N title page" lines may be something else.
+ */
+export const contentsEntries = (): PagePass => ({
+  name: "contentsEntries",
+  stage: "page",
+});
+
+/**
+ * Reads a short title-case line set alone above a paragraph as that
+ * paragraph's subheading (reportsthatmatter-5u2).
+ *
+ * The 9/11 Commission Report breaks its sections with unnumbered, mixed-case
+ * subheads ("The Drumbeat Begins", "Moving to Departure Positions") that no
+ * heading rule reads: not capitals, not numbered, not in the contents. They
+ * ran into the paragraph below ("The Drumbeat Begins In the spring of
+ * 2001, the level of reporting…"). Each becomes a level-4 heading, under the
+ * numbered section's level 3. See `shortSubheadAt` for the shape.
+ *
+ * Opt-in: in a report that sets a short title-case line over a full one for
+ * any other reason (a byline over its first paragraph, a speaker's name) it
+ * would invent a heading.
+ */
+export const shortSubheads = (): PagePass => ({
+  name: "shortSubheads",
+  stage: "page",
+});
+
+/**
+ * Measures the margin of a page the scan has shifted sideways
+ * (reportsthatmatter-m2y).
+ *
+ * The Challenger scan sets a few pages three to six columns in from the rest
+ * (printed p. 5 of the Committee's conclusions, whose body sits at 3 where
+ * the document's is 0). Measured against the document's margin every line of
+ * such a page opens a paragraph, and the paragraphs that follow a line
+ * ending mid-sentence join only where they begin in lower case: "…in the
+ * Solid" / "Rocket Booster joints." stayed in two, as did "Rather," / "NASA
+ * chose…". See `shiftedPageMargin` for the test; a page that does not pass it
+ * takes the document's margin, so quotations and exhibits are untouched.
+ * Not `geometry("per-page")`: read that way a page that is mostly testimony
+ * takes the quotation's indent for its margin, and 160 of Challenger's
+ * quotations became prose.
+ *
+ * Opt-in, for a report with such pages.
+ */
+export const shiftedPages = (): PagePass => ({
+  name: "shiftedPages",
+  stage: "page",
+});
+
+/**
+ * A quotation that stops mid-sentence at the foot of a page and carries on, in
+ * lower case, as the first paragraph of the next is one quotation
+ * (reportsthatmatter-m2y).
+ *
+ * Challenger's Conclusions set the Committee's departure from the Rogers
+ * Commission as an inset passage, "…poor technical decision-making over a
+ * period of several years by top NASA" at the foot of printed p. 4 and "and
+ * contractor personnel, who failed to act decisively…" at the head of p. 5,
+ * where the page's lines sit at the margin and read as prose. The sentence
+ * could not be quoted whole. `pageBreakContinuations` joins the other
+ * direction (a page-opening quotation into the paragraph above); the two do
+ * not overlap. Opt-in, for the reason that pass is: elsewhere a lower-case
+ * paragraph after a quotation can be the reporter's own words.
+ */
+export const quoteRunOn = (): PagePass => ({
+  name: "quoteRunOn",
   stage: "page",
 });
 
@@ -466,10 +653,24 @@ export const contentsOutline = (): PagePass => ({
  * read as prose (Leveson), or OCR noise (Challenger), and joining them would
  * turn a quotation into the reporter's own words. `pageBreakSplits` in the
  * fidelity checks counts what is left for a report to judge by.
+ *
+ * `quoteTails` (reportsthatmatter-nen) is for that Leveson shape. A quotation
+ * whose first line is the last line of a page is read as prose — one line
+ * cannot show its inset — and the rest of it, on the next page, as a
+ * quotation. When the paragraph left at the foot of the page opens on a
+ * quotation mark and was introduced by a finished sentence or a colon ("He
+ * said:"), the paragraph is the head of the quotation: it is joined *into*
+ * the quotation rather than the quotation into it. And a paragraph that sits
+ * between a quotation stopping mid-sentence and its page-opening rest (a
+ * footnote or page-edge line read into the body) is not taken for the head
+ * of the sentence, so nothing is joined onto it.
  */
-export const pageBreakContinuations = (): PagePass => ({
+export const pageBreakContinuations = (
+  options: { quoteTails?: boolean } = {}
+): PageBreakContinuationsPass => ({
   name: "pageBreakContinuations",
   stage: "page",
+  quoteTails: options.quoteTails ?? false,
 });
 
 /**

@@ -126,6 +126,21 @@ describe("contentsOutline (reportsthatmatter-72f)", () => {
     );
   });
 
+  it("reads a letter closing on its bracket alone, 'a)', as a label (Valukas Repo 105, reportsthatmatter-dnv)", () => {
+    const entries = readContentsOutline([
+      "4.   Repo 105 ........ 732",
+      "     a) Repo 105 \u2013 Executive Summary ........ 732",
+      "     b) Introduction ........ 750",
+      "          (1) The Genesis of Lehman's Repo 105 Program in 2001 ........ 765",
+    ]);
+    expect(entries.map((e) => `${e.label} ${e.title}`)).toEqual([
+      "4. Repo 105",
+      "a) Repo 105 \u2013 Executive Summary",
+      "b) Introduction",
+      "(1) The Genesis of Lehman's Repo 105 Program in 2001",
+    ]);
+  });
+
   const headings = (markdown: string) => markdown.split("\n").filter((line) => /^#{2,4} /.test(line));
 
   it("cuts the heading at the line end and quotes its tail with the finding below, without the pass (the defect)", () => {

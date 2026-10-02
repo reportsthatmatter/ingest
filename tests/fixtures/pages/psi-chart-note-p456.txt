@@ -1,0 +1,43 @@
+                                                         449
+
+       The Subcommittee’s net short chart is generally consistent with a Goldman chart that Mr.
+Birnbaum asked one of the Mortgage Department’s analysts to prepare for him in August 2007,
+which can be seen on the following page.
+
+                  [SEE CHART NEXT PAGE: RMBS Subprime Notional History,
+                  prepared by Goldman Sachs.]1864
+
+        The “zero” line in the middle of the chart represents a neutral trading position that is neither
+net long nor net short. To use Mr. Viniar’s description, the zero line represents “home.” The area
+below the zero line represents net short positions; the area above the line represents net long
+positions. The chart shows that the Goldman Mortgage Department was net short throughout
+2007, with a total net short position that reached $13.9 billion in July.
+
+
+
+
+1864
+     8/17/2007 Goldman internal chart, “RMBS Subprime Notional History (Mtg Dept - ‘Mtg NYC SPG
+Portfolio’),” GS MBS-E-012928391, Hearing Exhibit 4/27-56a. The title of the Goldman chart, “NYC SPG
+Trading” is confusing, as Mr. Birnbaum asked the analyst, Kevin Kao, for a chart of all synthetic positions across the
+entire Mortgage Department (including areas other than SPG Trading). In an email to M r. Birnbaum, Mr. Kao
+confirmed that despite the title, the chart actually included all synthetic positions across the entire Mortgage
+Department, and not just the SPG Trading Desk positions. 8/17/2007 email from Mr. Kao to Mr. Birnbaum, GS
+MBS-E-012929469. Mr. Kao explained that his chart did not include cash positions, meaning long positions in
+mortgage loans or RMBS from any remaining warehouse inventory. Id. That omission was not significant, however,
+since Goldman had rapidly sold off the vast bulk of its cash inventory starting in November 2006. 4/2010 “Goldman
+Sachs Long Cash Subprime Mortgage Exposure, Investments in Subprime Mortgage Loans, and Investments in
+Subprime Mortgage Backed Securities November 24, 2006 vs. August 31, 2007 - in $ Billions,” chart prepared by
+the Subcommittee, Hearing Exhibit 4/27-163. In any event, the Subcommittee’s net short chart includes the
+Department’s cash positions and demonstrates that any long cash positions were insufficient to offset the shorts, as
+the Mortgage Department was massively net short throughout most of 2007. See PSI Net Short Chart.
+
+          In his Supplemental Responses to Questions for the Record from the Subcommittee, Mr. Birnbaum
+conceded that the Subcommittee’s net short chart includes cash positions and therefore fixed the problem of being
+limited to synthetics as was the case with Goldman’s own net short chart. See 8/17/2007 Goldman internal chart,
+“RM BS Subprime Notional History (Mtg Dept - Mtg NYC SPG Portfolio),” GS M BS-E-012928391, Hearing
+Exhibit 4/27-56a; Birnbaum responses to Subcommittee QFRs at PSI_QFR_GS0509. Mr. Birnbaum maintained his
+objection that the Subcommittee’s net short chart improperly summed the notional amounts of different asset classes.
+Id. However, as noted in the text, the Mortgage Department’s Top Sheet actually converted the notional amounts of
+each asset class into their market values, making it fair to sum across all asset classes.
+

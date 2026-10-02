@@ -149,6 +149,107 @@ describe("pageBreakContinuations: a page whose first lines were read as a quotat
   });
 });
 
+describe("pageBreakContinuations({ quoteTails: true }): a quotation's first line left at the foot of a page", () => {
+  const TAILS = { continuations: true, quoteTails: true };
+  const leveson289 = () => [
+    para("Somerset Police, went further by suggesting that it was not necessarily possible to discern what was acceptable from the nature of the hospitality. He said:414", 842),
+    para('"I trust and rely upon the discretion of my staff. They make life-and-death decisions', 842),
+    marker(843),
+    quote("day in and day out, and if I can't trust them to decide that a cup of coffee is not appropriate, then I've lost the plot.\"", 843),
+  ];
+
+  it("joins the quotation into the prose without the mode (the wrong way round)", () => {
+    const merged = mergeAcrossPages(leveson289(), ON);
+    expect(merged.filter((block) => block.kind === "quote")).toHaveLength(0);
+  });
+
+  it("joins the prose into the quotation with it (Leveson p.842-843)", () => {
+    const merged = mergeAcrossPages(leveson289(), TAILS);
+    expect(merged.map((block) => block.kind)).toEqual(["paragraph", "quote", "page"]);
+    expect(texts(merged)[1]).toBe(
+      '"I trust and rely upon the discretion of my staff. They make life-and-death decisions day in and day out, and if I can\'t trust them to decide that a cup of coffee is not appropriate, then I\'ve lost the plot."'
+    );
+    // The page marker stays after the quotation, whose first line is on the page before.
+    expect(merged[1].at?.pdfIndex).toBe(842);
+  });
+
+  it("reads an ellipsis-opened quotation the same way", () => {
+    const merged = mergeAcrossPages(
+      [
+        para("Mr Fedorcio felt that Mr Yates was:664", 880),
+        para('"… well placed to advise me on any potential risks to the organisation if Neil Wallis', 880),
+        marker(881),
+        quote('was engaged by the MPS in view of the News of the World involvement in the phone hacking case."', 881),
+      ],
+      TAILS
+    );
+    expect(merged.map((block) => block.kind)).toEqual(["paragraph", "quote", "page"]);
+  });
+
+  it("keeps an inline quotation in the middle of a sentence as prose (Leveson p.583-584)", () => {
+    const merged = mergeAcrossPages(
+      [
+        para("8.18 The Article 8/Article 10 debate again requires an analysis of the public interest although", 583),
+        para('"special considerations attach to photographs in the field of privacy. ... As a means of invading', 583),
+        marker(584),
+        quote('privacy, a photograph is particularly intrusive".115 In reality, it takes the argument no further forward.', 584),
+      ],
+      TAILS
+    );
+    expect(merged.filter((block) => block.kind === "quote")).toHaveLength(0);
+    expect(texts(merged)[1]).toMatch(/As a means of invading privacy, a photograph/);
+  });
+
+  it("leaves a footnote line standing between a quotation's two halves alone (Leveson p.3-4)", () => {
+    const blocks = [
+      quote('"In recent days … We would like to get on with both those elements as quickly as possible. So,', 3),
+      para("HC Hansard, 13 July 2011, vol 531, col 311-312", 3),
+      marker(4),
+      quote("after listening carefully, we have decided that the best way to proceed is with one inquiry.\"", 4),
+    ];
+    expect(texts(mergeAcrossPages(structuredClone(blocks), ON))).toHaveLength(2);
+    const merged = mergeAcrossPages(structuredClone(blocks), TAILS);
+    expect(merged.map((block) => block.kind)).toEqual(["quote", "paragraph", "page", "quote"]);
+  });
+
+  it("looks past a stray page-edge contents entry when deciding that", () => {
+    const merged = mergeAcrossPages(
+      [
+        quote('"The point I always made was to suggest that we had to work in a', 1564),
+        { kind: "contents", text: "J", page: "204", at: at(1564) },
+        para("pp84-85, lines 10-2, Tim Toulmin, ibid", 1564),
+        marker(1565),
+        quote('complementary way."', 1565),
+      ],
+      TAILS
+    );
+    expect(merged.filter((block) => block.kind === "quote")).toHaveLength(2);
+  });
+
+  it("still joins a numbered paragraph's tail after a quotation that trails off", () => {
+    const merged = mergeAcrossPages(
+      [
+        quote('"I would also be looking to consider an offence of conspiracy …"', 283),
+        para("2.43 It is correct to observe that it would probably be sufficient to prove a common", 283),
+        marker(284),
+        quote("intention to intercept voicemail messages.", 284),
+      ],
+      TAILS
+    );
+    expect(texts(merged)[1]).toBe(
+      "2.43 It is correct to observe that it would probably be sufficient to prove a common intention to intercept voicemail messages."
+    );
+  });
+
+  it("is a mode of the same pass, off unless asked for", () => {
+    const base = { id: "t", title: "t", repo: ".", volumes: [{ path: "a.pdf" }] };
+    expect(resolvePasses(pipeline({ ...base, passes: [pageBreakContinuations()] })).pageBreakQuoteTails).toBe(false);
+    const both = resolvePasses(pipeline({ ...base, passes: [pageBreakContinuations({ quoteTails: true })] }));
+    expect(both.pageBreakContinuations).toBe(true);
+    expect(both.pageBreakQuoteTails).toBe(true);
+  });
+});
+
 describe("the pass is opt-in", () => {
   it("is declared by name and off unless declared", () => {
     const base = { id: "t", title: "t", repo: ".", volumes: [{ path: "a.pdf" }] };
