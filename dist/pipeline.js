@@ -176,7 +176,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
                     ? outlineContentsBlocks(pageLines, outlineEntries)
                     : toBlocks(pageLines, resolved.geometry === "per-page"
                         ? pageMargin(split.body, margins[0])
-                        : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings, resolved.hangingIndents, resolved.unmarkedHeadings, resolved.letteredItems)).map((block) => ({ ...block, at }));
+                        : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings, resolved.hangingIndents, resolved.unmarkedHeadings)).map((block) => ({ ...block, at }));
             // Record where each printed page begins. These documents are cited by page
             // ("Report at 62"), so the printed number is the citation unit readers
             // already use — and it can be checked against the original PDF.
@@ -256,7 +256,6 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     // a correction could reach it (reportsthatmatter-3jb).
     const joined = mergeAcrossPages(bodyChunks, {
         continuations: resolved.pageBreakContinuations,
-        letteredItems: resolved.letteredItems,
     });
     const corrected = applyCorrections(resolved.chapterContents ? contentsHeadings(joined) : joined, corrections, meta.title, footnotes);
     let body = blocksToMarkdown(corrected.blocks, {

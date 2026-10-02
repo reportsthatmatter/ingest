@@ -230,7 +230,7 @@ export type FindingCounter = {
  * a new paragraph. Blank lines are a secondary signal, and block quotes (set
  * far to the right) are kept as quotes.
  */
-export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>, numbered?: NumberedContents, findings?: FindingCounter, outline?: Outline, divisions?: ListedDivisions, wrappedHeadings?: boolean, hangingIndents?: boolean, unmarkedHeadings?: boolean, letteredItems?: boolean): Block[];
+export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>, numbered?: NumberedContents, findings?: FindingCounter, outline?: Outline, divisions?: ListedDivisions, wrappedHeadings?: boolean, hangingIndents?: boolean, unmarkedHeadings?: boolean): Block[];
 export declare function endsSentence(text: string): boolean;
 export type MergeOptions = {
     /**
@@ -239,12 +239,6 @@ export type MergeOptions = {
      * carries on a sentence as the rest of that sentence. See the pass.
      */
     continuations?: boolean;
-    /**
-     * `letteredItems`: a block opening on its own item letter ("b. On 4
-     * November…") is the next item, not the lower-case rest of the sentence
-     * above, however the item above ends.
-     */
-    letteredItems?: boolean;
 };
 export declare function mergeAcrossPages(blocks: Block[], options?: MergeOptions): Block[];
 export declare function blocksToMarkdown(blocks: Block[], options?: {

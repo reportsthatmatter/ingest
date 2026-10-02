@@ -911,9 +911,10 @@ function readFindings(lines, margin, counter, isHeading) {
  * a new paragraph. Blank lines are a secondary signal, and block quotes (set
  * far to the right) are kept as quotes.
  */
-export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false, allCapsHeadings = true, paragraphContents = false, numberedHeadings = true, listed, numbered, findings, outline, divisions, wrappedHeadings = false, hangingIndents = false, unmarkedHeadings = false, letteredItems = false) {
+export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false, allCapsHeadings = true, paragraphContents = false, numberedHeadings = true, listed, numbered, findings, outline, divisions, wrappedHeadings = false, hangingIndents = false, unmarkedHeadings = false) {
     if (paragraphContents)
         lines = joinParagraphContents(lines);
+    const hanging = hangingIndents ? hangingItems(lines) : null;
     // With `listedHeadings`, a would-be heading the contents does not name is
     // text: judged before anything else looks at the line, so a quoted cue line
     // counts as part of its quotation rather than as structure beside it.
@@ -979,9 +980,6 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
     // short page — the last of a section, say — can have too few lines to infer
     // it from, and getting it wrong turns an ordinary paragraph into a quote.
     const margin = documentMargin ?? bodyIndent(lines);
-    const hanging = hangingIndents || letteredItems
-        ? hangingItems(lines, hangingIndents, letteredItems ? margin + quoteInset : 0)
-        : null;
     const blocks = [];
     // A row of a table is not a division. The Jack Smith docket lists "Section 4
     // Filing and an Adjournment of the CIPA Section 5 Deadline" as a filing
@@ -1348,18 +1346,11 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
  * or more spaces before its text; the item is the lines indented to that
  * text, within a character.
  */
-function hangingItems(lines, numbered = true, letteredBelow = 0) {
+function hangingItems(lines) {
     const opens = lines.map(() => false);
     const continues = lines.map(() => false);
     for (let i = 0; i < lines.length; i++) {
-        let label = numbered ? lines[i].match(/^(\s*)(?=\S*\d)(\S{2,12})( {2,})\S/) : null;
-        // `letteredItems`: a sub-item's own letter ("a.", "(b)", "iv.") over its
-        // wrapped lines, wherever it sits short of a quotation's inset.
-        if (!label && letteredBelow) {
-            label = lines[i].match(/^(\s*)(\(?(?:[a-z]|[ivx]{1,4})[.)])( {2,})\S/);
-            if (label && indentOf(lines[i]) >= letteredBelow)
-                label = null;
-        }
+        const label = lines[i].match(/^(\s*)(?=\S*\d)(\S{2,12})( {2,})\S/);
         if (!label)
             continue;
         const column = label[0].length - 1;
@@ -1468,8 +1459,6 @@ export function endsSentence(text) {
         return false;
     return true;
 }
-/** An item's own letter: "b." or "(c)" or "iv.", then its text. */
-const ITEM_LABEL = /^\(?(?:[a-z]|[ivx]{1,4})[.)]\s+\S/;
 /** Lower case, or punctuation no sentence opens on. */
 const CONTINUATION = /^[a-z,;]/;
 /**
@@ -1569,7 +1558,6 @@ export function mergeAcrossPages(blocks, options = {}) {
             !endsSentence(previous.text) &&
             // A lowercase opening is the usual sign of a continuation. After an
             // abbreviation the next word is often a name, so allow either.
-            !(options.letteredItems && ITEM_LABEL.test(block.text)) &&
             (/^[a-z,;]/.test(block.text) ||
                 ABBREVIATION.test(previous.text) ||
                 INITIAL.test(previous.text))) {
