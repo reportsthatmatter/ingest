@@ -315,8 +315,11 @@ const UNIT_AFTER =
 
 export function linkInlineMarkers(text: string, known: Set<number>): string {
   return text.replace(
-    /([.,;:!?"'\)])\s+(\d{1,4})(?=\s|$)/g,
-    (whole, punctuation: string, digits: string, offset: number) => {
+    // The gap may wrap a line but never cross a blank line: that is a block
+    // boundary, and a number opening the next block is not a note marker for
+    // the one above (reportsthatmatter-yun).
+    /([.,;:!?"'\)])((?:(?!\n[ \t]*\n)\s)+)(\d{1,4})(?=\s|$)/g,
+    (whole, punctuation: string, _gap: string, digits: string, offset: number) => {
       const value = Number.parseInt(digits, 10);
       if (!known.has(value)) return whole;
       // "0050": a Bates or page number keeps its zeros; a note number has none.

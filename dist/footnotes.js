@@ -256,7 +256,11 @@ const LIST_GOES_ON = /^\s*(?:(?:and|or|to)\s+\d|[-–]\s*\d|\()/;
 /** "2008, 119 years", "At 37 seconds, 45 seconds": a count in a list, not a note. */
 const UNIT_AFTER = /^\s+(?:years?|months?|weeks?|days?|hours?|minutes?|seconds?|percent|per\s?cent|times|million|billion|thousand|hundred)\b/;
 export function linkInlineMarkers(text, known) {
-    return text.replace(/([.,;:!?"'\)])\s+(\d{1,4})(?=\s|$)/g, (whole, punctuation, digits, offset) => {
+    return text.replace(
+    // The gap may wrap a line but never cross a blank line: that is a block
+    // boundary, and a number opening the next block is not a note marker for
+    // the one above (reportsthatmatter-yun).
+    /([.,;:!?"'\)])((?:(?!\n[ \t]*\n)\s)+)(\d{1,4})(?=\s|$)/g, (whole, punctuation, _gap, digits, offset) => {
         const value = Number.parseInt(digits, 10);
         if (!known.has(value))
             return whole;

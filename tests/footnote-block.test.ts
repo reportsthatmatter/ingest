@@ -184,6 +184,12 @@ describe("numbers that are not footnote markers (PSI)", () => {
   it("still links a real marker after an ellipsis", () => {
     expect(linkInlineMarkers('he said it "would . . . . 7 In fact,', new Set([7]))).toContain("[^7]");
   });
+
+  it("does not link a number across a blank line (reportsthatmatter-yun)", () => {
+    const text = "## VIII. DEFENDANTS HAVE VIOLATED 18 U.S.C. §1962(d).\n\n18 U.S.C. § 1962(d) provides that it is unlawful";
+    expect(linkInlineMarkers(text, new Set([18]))).toBe(text);
+    expect(linkInlineMarkers("it ended.\n 18 U.S.C. wraps", new Set([18]))).toContain("[^18]");
+  });
 });
 
 /**
