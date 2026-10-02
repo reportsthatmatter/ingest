@@ -47,6 +47,10 @@ export type ResolvedPasses = {
   unmarkedHeadings?: boolean;
   endnotes?: boolean;
   numberedSections?: boolean;
+  contentsEntries?: boolean;
+  shortSubheads?: boolean;
+  shiftedPages?: boolean;
+  quoteRunOn?: boolean;
   unlistedHeadingsMinor?: boolean;
   hangingIndents?: boolean;
   numberedFindings?: boolean;
@@ -96,6 +100,12 @@ export function pipeline(def: PipelineDef): PipelineDef {
     );
   }
 
+  if (passNames.has("contentsEntries") && !passNames.has("numberedSections")) {
+    throw new Error(
+      `${def.id}: contentsEntries declared without numberedSections — it lays out the contents pages numberedSections reads`
+    );
+  }
+
   return def;
 }
 
@@ -121,6 +131,10 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     unmarkedHeadings: passes.some((pass) => pass.name === "unmarkedHeadings"),
     endnotes: passes.some((pass) => pass.name === "endnotes"),
     numberedSections: passes.some((pass) => pass.name === "numberedSections"),
+    contentsEntries: passes.some((pass) => pass.name === "contentsEntries"),
+    shortSubheads: passes.some((pass) => pass.name === "shortSubheads"),
+    shiftedPages: passes.some((pass) => pass.name === "shiftedPages"),
+    quoteRunOn: passes.some((pass) => pass.name === "quoteRunOn"),
     unlistedHeadingsMinor: passes.some((pass) => pass.name === "unlistedHeadingsMinor"),
     hangingIndents: passes.some((pass) => pass.name === "hangingIndents"),
     numberedFindings: passes.some((pass) => pass.name === "numberedFindings"),

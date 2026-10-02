@@ -502,6 +502,49 @@ export function parseNotesAppendix(lines: NotesLine[], chapters: ReadonlySet<str
  * chapter's flush markers unlinked instead (the honest "not linked" list
  * still catches them).
  */
+/**
+ * Links the endnote markers set flush against sentence punctuation rather than
+ * a lower-case word (reportsthatmatter-w1n): after a closing quotation mark
+ * (`descending."37`), a short or capitalised word (`it.44`, `CNN.180`), a
+ * closing bracket (`terrorists).22`), or a number (`7:45.4`).
+ *
+ * `linkFlushMarkers` needs a word of three lower-case letters in front, which
+ * is why about one note in five stayed unlinked. These shapes are looser, so
+ * each candidate must also come in sequence: the notes of a chapter are
+ * numbered in the order they are cited, so a candidate is a marker only if
+ * its number is one of the chapter's and runs on from the last marker read
+ * (within a dozen, since a note can be cited from a table or an unread
+ * figure). A year after a full stop, or a decimal, does not.
+ */
+export function linkSequencedMarkers(text: string, plausible: ReadonlySet<number>): string {
+  const CLOSERS = `[)"”’'\\]]`;
+  const candidate = new RegExp(
+    `\\[\\^(\\d+)\\]|(${CLOSERS}*[.?!,;:]${CLOSERS}*|${CLOSERS}+)([1-9]\\d{0,2})(?=\\s|$)`,
+    "g"
+  );
+  let last = 0;
+  return text.replace(candidate, (whole: string, linked: string | undefined, head: string, digits: string, offset: number) => {
+    if (linked !== undefined) {
+      last = Number.parseInt(linked, 10);
+      return whole;
+    }
+    const value = Number.parseInt(digits, 10);
+    if (!plausible.has(value) || value <= last || value - last > 12) return whole;
+    const before = text[offset - 1];
+    // "3.5 million" and "at 4.30 p.m." are numbers; a digit before the
+    // stop is a marker only when a new sentence follows.
+    if (before !== undefined && /\d/.test(before)) {
+      const after = text.slice(offset + whole.length).match(/^\s*(\S)/);
+      if (after && !/[A-Z"“(]/.test(after[1])) return whole;
+    }
+    if (before === undefined || /\s/.test(before)) return whole;
+    // A heading's own number ("### 2.1 A Declaration of War") is not a marker.
+    if (text[text.lastIndexOf("\n", offset - 1) + 1] === "#") return whole;
+    last = value;
+    return `${head}[^${value}]`;
+  });
+}
+
 export function linkFlushMarkersByChapter(
   body: string,
   chapters: ReadonlySet<string>,
@@ -527,7 +570,10 @@ export function linkFlushMarkersByChapter(
     // The candidate and the appendix chapter it lines up with must actually
     // be the same chapter — otherwise this segment's own numbers are left
     // exactly as read rather than scoped against the wrong chapter's notes.
-    out += bound.title === bodyChapters[i].title ? linkFlushMarkers(segment, bodyChapters[i].numbers) : segment;
+    out +=
+      bound.title === bodyChapters[i].title
+        ? linkSequencedMarkers(linkFlushMarkers(segment, bodyChapters[i].numbers), bodyChapters[i].numbers)
+        : segment;
   }
   return out;
 }
