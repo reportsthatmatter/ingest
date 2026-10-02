@@ -41,6 +41,7 @@ export type ResolvedPasses = {
   flushFootnoteMarkers: boolean;
   numberedParagraphs: boolean;
   escapeNumberedParagraphs?: boolean;
+  escapeLeadingHash?: boolean;
   paragraphNotes?: boolean;
   chapterContents?: boolean;
   listedHeadings?: boolean;
@@ -48,6 +49,10 @@ export type ResolvedPasses = {
   recoverListedHeadings?: boolean;
   endnotes?: boolean;
   numberedSections?: boolean;
+  contentsEntries?: boolean;
+  shortSubheads?: boolean;
+  shiftedPages?: boolean;
+  quoteRunOn?: boolean;
   unlistedHeadingsMinor?: boolean;
   hangingIndents?: boolean;
   numberedFindings?: boolean;
@@ -56,7 +61,13 @@ export type ResolvedPasses = {
   listedDivisions?: boolean;
   wrappedHeadings?: boolean;
   pageBreakContinuations?: boolean;
+  /** `pageBreakContinuations({ quoteTails: true })`. */
+  pageBreakQuoteTails?: boolean;
   citationRunOver?: boolean;
+  romanFolios?: boolean;
+  numberedOutsideTables?: boolean;
+  photoCredits?: boolean;
+  footnoteGap?: boolean;
   quoteInset?: number;
   allCapsHeadings: boolean;
   numberedHeadings?: boolean;
@@ -97,6 +108,12 @@ export function pipeline(def: PipelineDef): PipelineDef {
     );
   }
 
+  if (passNames.has("contentsEntries") && !passNames.has("numberedSections")) {
+    throw new Error(
+      `${def.id}: contentsEntries declared without numberedSections — it lays out the contents pages numberedSections reads`
+    );
+  }
+
   return def;
 }
 
@@ -116,6 +133,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     flushFootnoteMarkers: passes.some((pass) => pass.name === "flushFootnoteMarkers"),
     numberedParagraphs: passes.some((pass) => pass.name === "numberedParagraphs"),
     escapeNumberedParagraphs: passes.some((pass) => pass.name === "escapeNumberedParagraphs"),
+    escapeLeadingHash: passes.some((pass) => pass.name === "escapeLeadingHash"),
     paragraphNotes: passes.some((pass) => pass.name === "paragraphNotes"),
     chapterContents: passes.some((pass) => pass.name === "chapterContents"),
     listedHeadings: passes.some((pass) => pass.name === "listedHeadings"),
@@ -128,6 +146,10 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
       passes.some((pass) => pass.name === "listedHeadings"),
     endnotes: passes.some((pass) => pass.name === "endnotes"),
     numberedSections: passes.some((pass) => pass.name === "numberedSections"),
+    contentsEntries: passes.some((pass) => pass.name === "contentsEntries"),
+    shortSubheads: passes.some((pass) => pass.name === "shortSubheads"),
+    shiftedPages: passes.some((pass) => pass.name === "shiftedPages"),
+    quoteRunOn: passes.some((pass) => pass.name === "quoteRunOn"),
     unlistedHeadingsMinor: passes.some((pass) => pass.name === "unlistedHeadingsMinor"),
     hangingIndents: passes.some((pass) => pass.name === "hangingIndents"),
     numberedFindings: passes.some((pass) => pass.name === "numberedFindings"),
@@ -136,7 +158,14 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     listedDivisions: passes.some((pass) => pass.name === "listedDivisions"),
     wrappedHeadings: passes.some((pass) => pass.name === "wrappedHeadings"),
     pageBreakContinuations: passes.some((pass) => pass.name === "pageBreakContinuations"),
+    pageBreakQuoteTails: passes.some(
+      (pass) => pass.name === "pageBreakContinuations" && "quoteTails" in pass && pass.quoteTails === true
+    ),
     citationRunOver: passes.some((pass) => pass.name === "citationRunOver"),
+    romanFolios: passes.some((pass) => pass.name === "romanFolios"),
+    numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),
+    photoCredits: passes.some((pass) => pass.name === "photoCredits"),
+    footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
     quoteInset: passes.find(
       (pass): pass is QuoteInsetPass => pass.stage === "quoteInset"
     )?.columns,
