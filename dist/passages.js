@@ -37,7 +37,7 @@ export function extractPassages(html) {
         const text = cleanPassageText(inner);
         if (!text)
             continue;
-        const page = attrs.match(/data-page="(\d+)"/)?.[1] ?? null;
+        const page = attrs.match(/data-page="([^"]+)"/)?.[1] ?? null;
         passages.push({ paragraphId, text, page });
     }
     return passages;

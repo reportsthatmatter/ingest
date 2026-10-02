@@ -5,6 +5,8 @@ export type SplitPage = {
     pdfIndex: number;
     /** Printed page number, if the page carries one. */
     printed: number | null;
+    /** A roman-numeral folio (`romanFolios`), lower case, when the page carries one and no arabic number. */
+    roman?: string;
     body: string[];
     footnotes: string[];
     /**
@@ -50,8 +52,11 @@ export declare function noteCandidates(lines: string[]): Array<{
  * uses a footer, the PSI report a header, and looking in only one place loses
  * page anchors for half the archive.
  */
-export declare function takePrintedNumber(input: string[]): {
+export declare function takePrintedNumber(input: string[], options?: {
+    roman?: boolean;
+}): {
     printed: number | null;
+    roman?: string;
     lines: string[];
 };
 /**
@@ -64,6 +69,7 @@ export declare function takePrintedNumber(input: string[]): {
  */
 export declare function splitFootnoteBlock(lines: string[], expectedNote: number, options?: {
     citationRunOver?: boolean;
+    footnoteGap?: boolean;
 }): {
     body: string[];
     footnotes: string[];
@@ -77,6 +83,8 @@ export declare function splitFootnoteBlock(lines: string[], expectedNote: number
  */
 export declare function splitPage(page: Page, expectedNote: number, options?: {
     citationRunOver?: boolean;
+    footnoteGap?: boolean;
+    romanFolios?: boolean;
 }): SplitPage;
 export type FurnitureOptions = {
     /**

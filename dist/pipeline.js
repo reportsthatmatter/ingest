@@ -3,7 +3,7 @@ import { splitPage, takePrintedNumber, collapseDoubleSpacing } from "./clean.js"
 import { extractParagraphNotes } from "./paragraph-notes.js";
 import { applyCorrections } from "./corrections.js";
 import { rejoinHyphenated, vocabulary } from "./hyphens.js";
-import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, mergeAcrossPages, contentsHeadings, contentsTitles, headingKey, numberedContents, emptyOutline, readContentsOutline, learnOutline, outlineContentsBlocks, divisionContents, bodyIndent, } from "./paragraphs.js";
+import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, spacedContentsBlocks, shortSubheadAt, isIllustrationList, mergeAcrossPages, contentsHeadings, contentsTitles, headingKey, numberedContents, emptyOutline, readContentsOutline, learnOutline, outlineContentsBlocks, divisionContents, bodyIndent, } from "./paragraphs.js";
 import { parseFootnotes, linkInlineMarkers, linkFlushMarkers, renderEndnotes, isNotesChapterHead, parseNotesAppendix, linkFlushMarkersByChapter, } from "./footnotes.js";
 import { autoFix, findSuspects, rankSuspects } from "./ocr.js";
 /**
@@ -18,9 +18,28 @@ function keepsSection(text, listed, numbered) {
         return true;
     if (/^(?:[A-Z]|\d{1,2})\.\d{1,2}\s/.test(text))
         return true;
+    if (/^appendix [a-z]\b/i.test(text))
+        return true;
     if (/\b(?:part|chapter|appendix)\s+(?:\d{1,2}|[a-z])$/i.test(text))
         return true;
     return [...numbered.divisions.values()].some((title) => headingKey(title) === headingKey(text));
+}
+/**
+ * Reads a page in the stretches between its short subheads
+ * (`shortSubheads`), each subhead a level-4 heading of its own.
+ */
+function readWithSubheads(lines, read) {
+    const blocks = [];
+    let from = 0;
+    for (let i = 0; i < lines.length; i++) {
+        if (!shortSubheadAt(lines, i))
+            continue;
+        blocks.push(...read(lines.slice(from, i)));
+        blocks.push({ kind: "heading", level: 4, text: lines[i].replace(/\s+/g, " ").trim() });
+        from = i + 1;
+    }
+    blocks.push(...read(lines.slice(from)));
+    return blocks;
 }
 /**
  * PDF → Markdown, deterministically. The same input always produces the same
@@ -69,7 +88,11 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         // as a block at the page foot; endnotes are not read as notes at all.
         const split = resolved.paragraphNotes || resolved.endnotes
             ? splitPageNumberOnly(page)
-            : splitPage(page, expectedNote, { citationRunOver: resolved.citationRunOver });
+            : splitPage(page, expectedNote, {
+                citationRunOver: resolved.citationRunOver,
+                romanFolios: resolved.romanFolios,
+                footnoteGap: resolved.footnoteGap,
+            });
         // A note that ran over the page break: its tail opens this page's
         // block, and belongs to the last note read before it.
         const previous = footnotes[footnotes.length - 1];
@@ -146,7 +169,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
                     continue;
                 }
             }
-            const titles = resolved.listedHeadings || resolved.unlistedHeadingsMinor ? contentsTitles(pageLines) : [];
+            const titles = resolved.listedHeadings || resolved.unlistedHeadingsMinor ? contentsTitles(pageLines, resolved.recoverListedHeadings) : [];
             for (const title of titles)
                 listed.add(headingKey(title));
             const gate = resolved.listedHeadings && !titles.length && listed.size ? listed : undefined;
@@ -170,20 +193,41 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
             const outlineEntries = outline ? readContentsOutline(pageLines) : [];
             if (outline)
                 learnOutline(outline, outlineEntries);
-            const blocks = (isContentsPage(pageLines)
-                ? parseContentsPage(pageLines)
-                : outlineEntries.length
-                    ? outlineContentsBlocks(pageLines, outlineEntries)
-                    : toBlocks(pageLines, resolved.geometry === "per-page"
-                        ? pageMargin(split.body, margins[0])
-                        : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings, resolved.hangingIndents, resolved.unmarkedHeadings)).map((block) => ({ ...block, at }));
+            const readBody = (lines) => toBlocks(lines, resolved.geometry === "per-page"
+                ? pageMargin(split.body, margins[0])
+                : resolved.shiftedPages
+                    ? shiftedPageMargin(split.body, margins[resolved.geometry === "per-volume" ? groupIndex : 0])
+                    : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings, resolved.hangingIndents, resolved.unmarkedHeadings, resolved.numberedOutsideTables, resolved.recoverListedHeadings, resolved.letteredItems);
+            const blocks = (resolved.contentsEntries && (entries?.sections.size || isIllustrationList(pageLines))
+                ? spacedContentsBlocks(pageLines)
+                : isContentsPage(pageLines)
+                    ? parseContentsPage(pageLines, resolved.recoverListedHeadings)
+                    : outlineEntries.length
+                        ? outlineContentsBlocks(pageLines, outlineEntries)
+                        : resolved.shortSubheads
+                            ? readWithSubheads(pageLines, readBody)
+                            : readBody(pageLines)).map((block) => ({ ...block, at }));
             // Record where each printed page begins. These documents are cited by page
             // ("Report at 62"), so the printed number is the citation unit readers
             // already use — and it can be checked against the original PDF.
             if (split.printed !== null && blocks.length) {
                 bodyChunks.push({ kind: "page", number: split.printed, at });
             }
-            if (resolved.unlistedHeadingsMinor && !titles.length && listed.size) {
+            else if (split.roman && blocks.length) {
+                bodyChunks.push({ kind: "page", number: split.roman, at });
+            }
+            // `contentsEntries` read the contents as entries: whatever it names —
+            // chapters, appendices, "Preface" — is a heading the report lists, as
+            // leaders would have said (`unlistedHeadingsMinor`).
+            const readEntries = Boolean(resolved.contentsEntries && (entries?.sections.size || isIllustrationList(pageLines)));
+            if (readEntries && resolved.unlistedHeadingsMinor) {
+                for (const block of blocks) {
+                    if (block.kind !== "contents")
+                        continue;
+                    listed.add(headingKey(block.text.replace(/\\/g, "").replace(/^\d{1,2}\.\d{1,2}\s+/, "")));
+                }
+            }
+            if (resolved.unlistedHeadingsMinor && !titles.length && !readEntries && listed.size) {
                 for (const block of blocks) {
                     if (block.kind === "heading" && !keepsSection(block.text, listed, numbered)) {
                         block.level = 4;
@@ -256,10 +300,15 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     // a correction could reach it (reportsthatmatter-3jb).
     const joined = mergeAcrossPages(bodyChunks, {
         continuations: resolved.pageBreakContinuations,
+        quoteTails: resolved.pageBreakQuoteTails,
+        quoteRunOn: resolved.quoteRunOn,
+        photoCredits: resolved.photoCredits,
+        letteredItems: resolved.letteredItems,
     });
     const corrected = applyCorrections(resolved.chapterContents ? contentsHeadings(joined) : joined, corrections, meta.title, footnotes);
     let body = blocksToMarkdown(corrected.blocks, {
         escapeNumberedParagraphs: resolved.escapeNumberedParagraphs,
+        escapeLeadingHash: resolved.escapeLeadingHash,
     });
     const notes = corrected.footnotes;
     // Rejoin words the typesetter broke at a line end, decided from the
@@ -346,6 +395,30 @@ function pageMargin(body, fallback) {
     const lines = body.filter((line) => line.trim());
     return lines.length >= PAGE_MARGIN_MIN_LINES ? bodyIndent(lines) : fallback;
 }
+/**
+ * The left margin of a page the scan has shifted (`shiftedPages`,
+ * reportsthatmatter-m2y): every line of its body sits in from the document's
+ * margin by the same few columns. Only a page whose commonest indent is also
+ * its least, over at least fifteen lines of prose, is taken to be shifted, and
+ * only by two to six columns: a page that is mostly quotation has the same
+ * commonest indent, but carries lines of its own prose at the margin, and a
+ * table or an exhibit sits further in. Any other page takes the document's.
+ */
+function shiftedPageMargin(body, fallback) {
+    const lines = body.filter((line) => normaliseWhitespace(line).split(" ").length > 3);
+    if (lines.length < SHIFTED_PAGE_MIN_LINES)
+        return fallback;
+    const counts = new Map();
+    for (const line of lines) {
+        const indent = line.length - line.trimStart().length;
+        counts.set(indent, (counts.get(indent) ?? 0) + 1);
+    }
+    const least = Math.min(...counts.keys());
+    const commonest = [...counts].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0];
+    const shift = least - fallback;
+    return commonest === least && shift >= 2 && shift <= 6 ? least : fallback;
+}
+const SHIFTED_PAGE_MIN_LINES = 15;
 /** "9.165   " up to where its text starts; the glyph after it may be unmapped. */
 const NUMBERED_OPENER = /^\s{0,8}\d{1,2}\.\d{1,3}[ \uFFFD]{2,}(?=\S)/;
 const PAGE_MARGIN_MIN_LINES = 8;
