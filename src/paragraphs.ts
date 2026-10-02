@@ -1,3 +1,4 @@
+import type { Layout } from "./layout";
 import { normaliseWhitespace } from "./extract";
 import { COLUMN_BREAK } from "./columns";
 
@@ -1877,6 +1878,11 @@ export function endsSentence(text: string): boolean {
 }
 
 export type MergeOptions = {
+  /**
+   * The PDF's line layout, when the host supplied one. Nothing reads it yet;
+   * it is here so a layout-gated join can, without another signature change.
+   */
+  layout?: Layout;
   /**
    * The `pageBreakContinuations` pass (reportsthatmatter-ca3, -kb4): look past
    * every page marker, not just one, and read a page-opening quotation that

@@ -87,6 +87,11 @@ export {
 export type { Check, PageBreakSplit } from "./fidelity";
 export { computeBaseline, diffBaselines } from "./baseline";
 export type { Baseline } from "./baseline";
+export { openLayout, buildLayout, parseLayoutXml, layoutXml, indentVersus } from "./layout";
+export type { Layout, LayoutLine, PageLayout, BodyFont, RaisedRun } from "./layout";
+export type { PipelineContext } from "./context";
+export { measureLayout, ORACLE_SIGNALS, ORACLE } from "./oracle";
+export type { OracleReport, OracleSignal, OracleFinding, PageCounts } from "./oracle";
 export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler";
 
 // — Human corrections —

@@ -42,6 +42,7 @@ import {
   type NotesChapter,
 } from "./footnotes";
 import { autoFix, findSuspects, rankSuspects, type Suspect } from "./ocr";
+import type { PipelineContext } from "./context";
 
 export type IngestResult = {
   markdown: string;
@@ -51,6 +52,12 @@ export type IngestResult = {
   suspects: Suspect[];
   autoFixes: number;
   pages: number;
+  /**
+   * The final blocks, as serialised into `markdown`: for tools that measure
+   * the structure (the layout oracle) rather than re-parse the text. Page
+   * provenance is on `at`; footnote markers are not yet linked in `text`.
+   */
+  blocks?: Block[];
 };
 
 export type Metadata = {
@@ -120,7 +127,8 @@ export function ingestPageGroups(
     bodyPasses: [],
     volumePasses: [],
   },
-  corrections: Correction[] = []
+  corrections: Correction[] = [],
+  context: PipelineContext = {}
 ): IngestResult {
   // Volume is assigned here because this is the only place that knows the
   // order the volumes were given in — and that order is semantic: footnote
@@ -178,7 +186,8 @@ export function ingestPageGroups(
       // Body passes rewrite the page's own lines once its furniture is off:
       // reading two columns in order, for instance.
       split.body = resolved.bodyPasses.reduce(
-        (lines, pass) => pass.run(lines),
+        (lines, pass) =>
+          pass.run(lines, context, { volume: split.volume, pdfIndex: split.pdfIndex, printed: split.printed }),
         split.body
       );
       return split;
@@ -197,7 +206,7 @@ export function ingestPageGroups(
   // Which passes run is a declared property of the document, not something
   // inferred from how many arguments were typed on the command line.
   const cleanedGroups = splitGroups.map((group) =>
-    resolved.volumePasses.reduce((pages, pass) => pass.run(pages), group)
+    resolved.volumePasses.reduce((pages, pass) => pass.run(pages, context), group)
   );
   // Measured on the page *body*, never on the raw lines.
   //
@@ -400,6 +409,7 @@ export function ingestPageGroups(
     quoteListRunOns: resolved.quoteListRunOns,
     photoCredits: resolved.photoCredits,
     letteredItems: resolved.letteredItems,
+    layout: context.layout,
   });
   const corrected = applyCorrections(
     resolved.chapterContents ? contentsHeadings(joined) : joined,
@@ -482,6 +492,7 @@ export function ingestPageGroups(
     autoFixes: fixed.applied + noteFixes,
     corrections: corrected.applied,
     pages: pages.length,
+    blocks: corrected.blocks,
   };
 }
 

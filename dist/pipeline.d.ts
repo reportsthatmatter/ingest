@@ -1,8 +1,10 @@
 import { type Page } from "./extract.js";
 import type { ResolvedPasses } from "./define.js";
 import { type Correction } from "./corrections.js";
+import { type Block } from "./paragraphs.js";
 import { type Footnote } from "./footnotes.js";
 import { type Suspect } from "./ocr.js";
+import type { PipelineContext } from "./context.js";
 export type IngestResult = {
     markdown: string;
     corrections: number;
@@ -11,6 +13,12 @@ export type IngestResult = {
     suspects: Suspect[];
     autoFixes: number;
     pages: number;
+    /**
+     * The final blocks, as serialised into `markdown`: for tools that measure
+     * the structure (the layout oracle) rather than re-parse the text. Page
+     * provenance is on `at`; footnote markers are not yet linked in `text`.
+     */
+    blocks?: Block[];
 };
 export type Metadata = {
     title: string;
@@ -30,4 +38,4 @@ export declare function ingestPages(pages: Page[], meta: Metadata): IngestResult
  * keep a margin per source volume: each PDF's page furniture and typesetting
  * may differ, so one global margin is not meaningful across all of them.
  */
-export declare function ingestPageGroups(pageGroups: Page[][], meta: Metadata, resolved?: ResolvedPasses, corrections?: Correction[]): IngestResult;
+export declare function ingestPageGroups(pageGroups: Page[][], meta: Metadata, resolved?: ResolvedPasses, corrections?: Correction[], context?: PipelineContext): IngestResult;

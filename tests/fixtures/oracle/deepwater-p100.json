@@ -1,0 +1,88 @@
+{
+ "source": "us-deepwater-horizon volume 1 PDF page 100",
+ "xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE pdf2xml SYSTEM \"pdf2xml.dtd\">\n\n<pdf2xml producer=\"poppler\" version=\"26.08.0\">\n<page number=\"100\" position=\"absolute\" top=\"0\" left=\"0\" height=\"1080\" width=\"756\">\n\t<fontspec id=\"0\" size=\"11\" family=\"JLEDBX+Swiss721BT-Light\" color=\"#1964b6\"/>\n\t<fontspec id=\"1\" size=\"12\" family=\"JLEDBX+Swiss721BT\" color=\"#ffffff\"/>\n\t<fontspec id=\"2\" size=\"14\" family=\"JLEDBX+CarminaBT-Light\" color=\"#231f20\"/>\n\t<fontspec id=\"3\" size=\"9\" family=\"JLEDBX+CarminaBT-Light\" color=\"#231f20\"/>\n\t<fontspec id=\"4\" size=\"8\" family=\"JLEDBX+CarminaBT-Light\" color=\"#231f20\"/>\n\t<fontspec id=\"5\" size=\"9\" family=\"JLEDBX+Swiss721BT\" color=\"#1964b6\"/>\n\t<fontspec id=\"6\" size=\"8\" family=\"JLEDBX+Swiss721BT\" color=\"#231f20\"/>\n<text top=\"61\" left=\"108\" width=\"366\" height=\"13\" font=\"0\">National Commission on the BP Deepwater Horizon Oil Spill and Offshore Drilling</text>\n<text top=\"59\" left=\"57\" width=\"17\" height=\"14\" font=\"1\"><b>84</b></text>\n<text top=\"133\" left=\"108\" width=\"552\" height=\"16\" font=\"2\">calculation of the worst-case discharge scenario, plan for dispersant use, in-situ burning </text>\n<text top=\"153\" left=\"108\" width=\"432\" height=\"16\" font=\"2\">plan, and information regarding oil-spill response training and drills).</text>\n<text top=\"152\" left=\"540\" width=\"16\" height=\"11\" font=\"3\">158</text>\n<text top=\"153\" left=\"556\" width=\"103\" height=\"16\" font=\"2\"> The emergency-</text>\n<text top=\"172\" left=\"108\" width=\"531\" height=\"16\" font=\"2\">response plan is supposed to be the core of the overall plan, and in turn is required to </text>\n<text top=\"192\" left=\"108\" width=\"557\" height=\"16\" font=\"2\">include information regarding the spill-response team; the types and characteristics of oil </text>\n<text top=\"211\" left=\"108\" width=\"552\" height=\"16\" font=\"2\">at the facilities; procedures for early detection of a spill; and procedures to be followed in </text>\n<text top=\"231\" left=\"108\" width=\"109\" height=\"16\" font=\"2\">the case of a spill.</text>\n<text top=\"230\" left=\"217\" width=\"16\" height=\"11\" font=\"3\">159</text>\n<text top=\"231\" left=\"233\" width=\"4\" height=\"16\" font=\"2\"> </text>\n<text top=\"270\" left=\"108\" width=\"531\" height=\"16\" font=\"2\">But neither BP, in crafting its Oil Spill Response Plan for the Gulf of Mexico applicable </text>\n<text top=\"289\" left=\"108\" width=\"524\" height=\"16\" font=\"2\">to the Macondo well, nor MMS in approving it, evidenced serious attention to detail.</text>\n<text top=\"290\" left=\"631\" width=\"14\" height=\"10\" font=\"4\">160</text>\n<text top=\"289\" left=\"646\" width=\"4\" height=\"16\" font=\"2\"> </text>\n<text top=\"309\" left=\"108\" width=\"551\" height=\"16\" font=\"2\">For instance, the BP plan identified three different worst-case scenarios that ranged from </text>\n<text top=\"328\" left=\"108\" width=\"520\" height=\"16\" font=\"2\">28,033 to 250,000 barrels of oil discharge and used identical language to “analyze” </text>\n<text top=\"348\" left=\"108\" width=\"261\" height=\"16\" font=\"2\">the shoreline impacts under each scenario.</text>\n<text top=\"348\" left=\"369\" width=\"14\" height=\"10\" font=\"4\">161</text>\n<text top=\"348\" left=\"383\" width=\"254\" height=\"16\" font=\"2\"> To the same effect, half of the “Resource </text>\n<text top=\"367\" left=\"108\" width=\"535\" height=\"16\" font=\"2\">Identification” appendix (five pages) to the BP Oil Spill Response Plan was copied from </text>\n<text top=\"387\" left=\"108\" width=\"570\" height=\"16\" font=\"2\">material on NOAA websites, without any discernible effort to determine the applicability of </text>\n<text top=\"406\" left=\"108\" width=\"568\" height=\"16\" font=\"2\">that information to the Gulf of Mexico. As a result, the BP Oil Spill Response Plan described </text>\n<text top=\"426\" left=\"108\" width=\"567\" height=\"16\" font=\"2\">biological resources nonexistent in the Gulf—including sea lions, sea otters, and walruses.* </text>\n<text top=\"465\" left=\"108\" width=\"524\" height=\"16\" font=\"2\">Even more troubling, the MMS Gulf of Mexico Regional Office approved the BP plan </text>\n<text top=\"484\" left=\"108\" width=\"548\" height=\"16\" font=\"2\">without additional analysis. There is little in that approval to suggest that BP and MMS </text>\n<text top=\"504\" left=\"108\" width=\"538\" height=\"16\" font=\"2\">gave close scrutiny to the contents of the Oil Spill Response Plan. The Regional Office’s </text>\n<text top=\"523\" left=\"108\" width=\"564\" height=\"16\" font=\"2\">routine practice was to review and approve oil-spill response plans within 30 days of their </text>\n<text top=\"543\" left=\"108\" width=\"567\" height=\"16\" font=\"2\">receipt. Absent any legal requirement to do so, the office did not distribute submitted plans </text>\n<text top=\"562\" left=\"108\" width=\"567\" height=\"16\" font=\"2\">to other federal agencies for review or comment, nor did it seek public review or comment. </text>\n<text top=\"601\" left=\"108\" width=\"523\" height=\"16\" font=\"2\">The inescapable conclusion is striking, and profoundly unsettling. Notwithstanding </text>\n<text top=\"621\" left=\"108\" width=\"497\" height=\"16\" font=\"2\">statutory promises of layers of required environmental scrutiny—by NEPA, the </text>\n<text top=\"640\" left=\"108\" width=\"526\" height=\"16\" font=\"2\">Magnuson-Stevens Act, the Outer Continental Shelf Lands Act, and the Oil Pollution </text>\n<text top=\"660\" left=\"108\" width=\"515\" height=\"16\" font=\"2\">Act—and the potential application of some of the nation’s toughest environmental </text>\n<text top=\"679\" left=\"108\" width=\"393\" height=\"16\" font=\"2\">restrictions—the Endangered Species Act and Clean Water Act—</text>\n<text top=\"679\" left=\"501\" width=\"171\" height=\"17\" font=\"2\">none of these laws resulted </text>\n<text top=\"699\" left=\"108\" width=\"519\" height=\"16\" font=\"2\">in site-specific review of the drilling operations of the Macondo well. The agency in </text>\n<text top=\"718\" left=\"108\" width=\"545\" height=\"16\" font=\"2\">charge, MMS, lacked the resources and committed agency culture to do so, and none of </text>\n<text top=\"738\" left=\"108\" width=\"563\" height=\"16\" font=\"2\">the other federal agencies with relevant environmental expertise had adequate resources or </text>\n<text top=\"757\" left=\"108\" width=\"569\" height=\"16\" font=\"2\">sufficient statutory authority to make sure the resulting gap in attention to environmental </text>\n<text top=\"777\" left=\"108\" width=\"188\" height=\"16\" font=\"2\">protection concerns was filled.</text>\n<text top=\"777\" left=\"296\" width=\"4\" height=\"10\" font=\"4\">†</text>\n<text top=\"777\" left=\"300\" width=\"8\" height=\"16\" font=\"2\">  </text>\n<text top=\"816\" left=\"108\" width=\"531\" height=\"16\" font=\"2\">Federal oversight of oil and gas activities in the Gulf of Mexico—almost the only area </text>\n<text top=\"835\" left=\"108\" width=\"536\" height=\"16\" font=\"2\">where substantial amounts of drilling were taking place—took a generally minimalist </text>\n<text top=\"855\" left=\"108\" width=\"536\" height=\"16\" font=\"2\">approach in the years leading up to the Macondo explosion. The national government </text>\n<text top=\"874\" left=\"108\" width=\"506\" height=\"16\" font=\"2\">failed to exercise the full scope of its power, grounded both in its role as owner of </text>\n<text top=\"894\" left=\"108\" width=\"522\" height=\"16\" font=\"2\">the natural resources to be developed and in its role as sovereign and responsible for </text>\n<text top=\"913\" left=\"108\" width=\"544\" height=\"16\" font=\"2\">ensuring the safety of drilling operations. Many aspects of national environmental law </text>\n<text top=\"950\" left=\"108\" width=\"4\" height=\"10\" font=\"4\">*</text>\n<text top=\"953\" left=\"112\" width=\"2\" height=\"11\" font=\"5\"> </text>\n<text top=\"954\" left=\"115\" width=\"520\" height=\"9\" font=\"6\">The BP plan does not appear to be an aberration. It was prepared by a contractor who also prepared the Gulf of Mexico plans for Chevron, ConocoPhillips, </text>\n<text top=\"963\" left=\"108\" width=\"558\" height=\"9\" font=\"6\">ExxonMobil, Shell, and other companies operating in the Gulf. The result is four nearly identical plans that repeat the same mistakes found in the BP plan applicable to </text>\n<text top=\"972\" left=\"108\" width=\"63\" height=\"9\" font=\"6\">the Macondo well. </text>\n<text top=\"987\" left=\"108\" width=\"4\" height=\"10\" font=\"4\">†</text>\n<text top=\"990\" left=\"112\" width=\"2\" height=\"11\" font=\"5\"> </text>\n<text top=\"992\" left=\"115\" width=\"527\" height=\"9\" font=\"6\">The President’s decision in March 2010 to expand offshore oil and gas leasing is a more recent example of the absence of full consideration of environmental </text>\n<text top=\"1001\" left=\"108\" width=\"550\" height=\"9\" font=\"6\">protection concerns. According to their testimony before the Commission in August 2010, the White House did not ask either the Chair of the President’s Council on </text>\n<text top=\"1010\" left=\"108\" width=\"567\" height=\"9\" font=\"6\">Environmental Quality or the Administrator of NOAA to be directly involved in reviewing the plans before the President’s decision. See Testimony of The Honorable Nancy </text>\n<text top=\"1019\" left=\"108\" width=\"560\" height=\"9\" font=\"6\">Sutley, Chair, Council on Environmental Quality, and The Honorable Jane Lubchenco, Administrator, NOAA, Hearing before the National Commission, August 25, 2010. </text>\n</page>\n</pdf2xml>\n",
+ "blocks": [
+  {
+   "kind": "page",
+   "number": 84,
+   "at": {
+    "volume": 1,
+    "pdfIndex": 100,
+    "printed": 84
+   }
+  },
+  {
+   "kind": "paragraph",
+   "text": "calculation of the worst-case discharge scenario, plan for dispersant use, in-situ burning plan, and information regarding oil-spill response training and drills).158 The emergency- response plan is supposed to be the core of the overall plan, and in turn is required to include information regarding the spill-response team; the types and characteristics of oil at the facilities; procedures for early detection of a spill; and procedures to be followed in the case of a spill.159",
+   "at": {
+    "volume": 1,
+    "pdfIndex": 100,
+    "printed": 84
+   }
+  },
+  {
+   "kind": "paragraph",
+   "text": "But neither BP, in crafting its Oil Spill Response Plan for the Gulf of Mexico applicable to the Macondo well, nor MMS in approving it, evidenced serious attention to detail.160 For instance, the BP plan identified three different worst-case scenarios that ranged from 28,033 to 250,000 barrels of oil discharge and used identical language to \"analyze\" the shoreline impacts under each scenario.161 To the same effect, half of the \"Resource Identification\" appendix (five pages) to the BP Oil Spill Response Plan was copied from material on NOAA websites, without any discernible effort to determine the applicability of that information to the Gulf of Mexico. As a result, the BP Oil Spill Response Plan described biological resources nonexistent in the Gulf—including sea lions, sea otters, and walruses.*",
+   "at": {
+    "volume": 1,
+    "pdfIndex": 100,
+    "printed": 84
+   }
+  },
+  {
+   "kind": "paragraph",
+   "text": "Even more troubling, the MMS Gulf of Mexico Regional Office approved the BP plan without additional analysis. There is little in that approval to suggest that BP and MMS gave close scrutiny to the contents of the Oil Spill Response Plan. The Regional Office's routine practice was to review and approve oil-spill response plans within 30 days of their receipt. Absent any legal requirement to do so, the office did not distribute submitted plans to other federal agencies for review or comment, nor did it seek public review or comment.",
+   "at": {
+    "volume": 1,
+    "pdfIndex": 100,
+    "printed": 84
+   }
+  },
+  {
+   "kind": "paragraph",
+   "text": "The inescapable conclusion is striking, and profoundly unsettling. Notwithstanding statutory promises of layers of required environmental scrutiny—by NEPA, the Magnuson-Stevens Act, the Outer Continental Shelf Lands Act, and the Oil Pollution Act—and the potential application of some of the nation's toughest environmental restrictions—the Endangered Species Act and Clean Water Act—none of these laws resulted in site-specific review of the drilling operations of the Macondo well. The agency in charge, MMS, lacked the resources and committed agency culture to do so, and none of the other federal agencies with relevant environmental expertise had adequate resources or sufficient statutory authority to make sure the resulting gap in attention to environmental protection concerns was filled.†",
+   "at": {
+    "volume": 1,
+    "pdfIndex": 100,
+    "printed": 84
+   }
+  },
+  {
+   "kind": "paragraph",
+   "text": "Federal oversight of oil and gas activities in the Gulf of Mexico—almost the only area where substantial amounts of drilling were taking place—took a generally minimalist approach in the years leading up to the Macondo explosion. The national government failed to exercise the full scope of its power, grounded both in its role as owner of the natural resources to be developed and in its role as sovereign and responsible for ensuring the safety of drilling operations. Many aspects of national environmental law",
+   "at": {
+    "volume": 1,
+    "pdfIndex": 100,
+    "printed": 84
+   }
+  },
+  {
+   "kind": "paragraph",
+   "text": "*",
+   "at": {
+    "volume": 1,
+    "pdfIndex": 100,
+    "printed": 84
+   }
+  },
+  {
+   "kind": "paragraph",
+   "text": "The BP plan does not appear to be an aberration. It was prepared by a contractor who also prepared the Gulf of Mexico plans for Chevron, ConocoPhillips, ExxonMobil, Shell, and other companies operating in the Gulf. The result is four nearly identical plans that repeat the same mistakes found in the BP plan applicable to the Macondo well. †",
+   "at": {
+    "volume": 1,
+    "pdfIndex": 100,
+    "printed": 84
+   }
+  },
+  {
+   "kind": "paragraph",
+   "text": "The President's decision in March 2010 to expand offshore oil and gas leasing is a more recent example of the absence of full consideration of environmental protection concerns. According to their testimony before the Commission in August 2010, the White House did not ask either the Chair of the President's Council on Environmental Quality or the Administrator of NOAA to be directly involved in reviewing the plans before the President's decision. See Testimony of The Honorable Nancy Sutley, Chair, Council on Environmental Quality, and The Honorable Jane Lubchenco, Administrator, NOAA, Hearing before the National Commission, August 25, 2010.",
+   "at": {
+    "volume": 1,
+    "pdfIndex": 100,
+    "printed": 84
+   }
+  }
+ ],
+ "footnotes": []
+}

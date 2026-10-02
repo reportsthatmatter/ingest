@@ -24,6 +24,11 @@ export { runChecks, structuralChecks, losslessCheck, retentionCheck, severedSent
 export type { Check, PageBreakSplit } from "./fidelity.js";
 export { computeBaseline, diffBaselines } from "./baseline.js";
 export type { Baseline } from "./baseline.js";
+export { openLayout, buildLayout, parseLayoutXml, layoutXml, indentVersus } from "./layout.js";
+export type { Layout, LayoutLine, PageLayout, BodyFont, RaisedRun } from "./layout.js";
+export type { PipelineContext } from "./context.js";
+export { measureLayout, ORACLE_SIGNALS, ORACLE } from "./oracle.js";
+export type { OracleReport, OracleSignal, OracleFinding, PageCounts } from "./oracle.js";
 export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler.js";
 export { parseCorrections, parseDismissals, applyCorrections, correctionVocabulary, } from "./corrections.js";
 export { rejoinHyphenated, vocabulary } from "./hyphens.js";
