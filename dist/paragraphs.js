@@ -2086,7 +2086,142 @@ export function mergeAcrossPages(blocks, options = {}) {
         }
         merged.push(block);
     }
-    return merged;
+    return options.photoCredits ? attachRepeatedCredits(merged) : merged;
+}
+/** The credit is at most this many words; the caption it joins at most `CREDIT_CAPTION_WORDS`. */
+const CREDIT_WORDS = 3;
+const CREDIT_CAPTION_WORDS = 40;
+/** A credit recurs: a firm's name under each of the report's figures. */
+const CREDIT_REPEATS = 3;
+/**
+ * A graphics firm's name set under each figure ("TrialGraphix", Deepwater),
+ * with no slash for `isPhotoCredit` to find. Once the page breaks are joined it
+ * stands as a paragraph of its own, repeated down the report, which is how the
+ * quality harness reads it (`furniture-paragraph`, reportsthatmatter-sbnn).
+ *
+ * A lone short line of at most three words, no sentence, that stands as a whole
+ * paragraph at least three times in the report and directly below a caption-sized
+ * paragraph, is that credit: it is attached to the caption ("FIGURE 4.1: Macondo
+ * Well Schematic — TrialGraphix"), so no word is lost and no paragraph is left
+ * standing for it. A short repeated line below anything longer is left alone.
+ */
+function attachRepeatedCredits(blocks) {
+    const key = (text) => text.trim().toLowerCase();
+    const counts = new Map();
+    const isCredit = (b) => b.kind === "paragraph" && b.finding === undefined && words(b.text) <= CREDIT_WORDS && !endsSentence(b.text);
+    for (const b of blocks)
+        if (b.kind === "paragraph" && isCredit(b))
+            counts.set(key(b.text), (counts.get(key(b.text)) ?? 0) + 1);
+    const out = [];
+    for (const b of blocks) {
+        const above = out[out.length - 1];
+        if (b.kind === "paragraph" &&
+            isCredit(b) &&
+            (counts.get(key(b.text)) ?? 0) >= CREDIT_REPEATS &&
+            above?.kind === "paragraph" &&
+            above.finding === undefined &&
+            !isCredit(above) &&
+            words(above.text) <= CREDIT_CAPTION_WORDS) {
+            above.text = `${above.text} — ${b.text.trim()}`;
+            continue;
+        }
+        out.push(b);
+    }
+    return out;
+}
+/** How many blocks may stand between a paragraph and its continuation (a chart's labels count one each). */
+const MAX_INTERPOSED = 12;
+/** How many pages back the paragraph may sit (a two-page photo spread between: 9/11 p.254 to p.257). */
+const MAX_PAGES_PAST = 3;
+/**
+ * The paragraph a page-opening body paragraph may continue past what stands
+ * between them, or undefined. Walks back from `block` through `merged`: page
+ * markers; blocks set off the body face (footnotes, sidebars, captions, credits;
+ * a quotation only when it does not open in lower case, since a quotation in
+ * the body face or carrying on the sentence is part of the text, not between
+ * it); captions and source lines in the body face; a chart's labels (six words
+ * or fewer, no sentence end); headings (running heads, pull-out titles). The
+ * first body paragraph on an earlier page that stops mid-sentence is the
+ * target. Anything else (a list, a contents entry, a body paragraph or
+ * quotation, a column break) means there is none.
+ */
+function interposedTarget(merged, block, layout) {
+    const at = block.at;
+    if (isOffFaceBlock(layout, block.text, at) || isCaption(block.text))
+        return undefined;
+    let between = 0;
+    let heading = false;
+    for (let i = merged.length - 1; i >= 0; i--) {
+        const b = merged[i];
+        if (b.kind === "page")
+            continue;
+        if (b.hardBreak || b.at === undefined || (b.at.volume ?? 1) !== (at.volume ?? 1))
+            return undefined;
+        if (b.at.pdfIndex < at.pdfIndex - MAX_PAGES_PAST)
+            return undefined;
+        const earlier = b.at.pdfIndex < at.pdfIndex;
+        if (b.kind === "paragraph" && b.finding === undefined && earlier && !isCaption(b.text) && !isPhotoCredit(b.text) && isBodyParagraph(b.text, b.at, layout)) {
+            if (!between || finishedSentence(b.text))
+                return undefined;
+            return { target: b, heading };
+        }
+        // The block right in front is a sentence left open itself, of a paragraph's
+        // length: the block may be its rest (Leveson p.352, "…MPS had not “gone the
+        // whole distance”… In this" / "case, by reason of his responsibility…").
+        // A note ending on a reference ("…/news-and-events/", "at pp. 15, 19") is not.
+        if (between === 0 && b.kind === "paragraph" && words(b.text) > OPEN_SENTENCE_WORDS && OPEN_ON_A_WORD.test(b.text.trim()))
+            return undefined;
+        if (++between > MAX_INTERPOSED)
+            return undefined;
+        if (b.kind === "list" || b.kind === "contents")
+            return undefined;
+        // On the new page, ahead of the block: something opening in lower case is
+        // itself the sentence carrying on (an italic quotation, Leveson p.41:
+        // "…Gordon Brown, apologised" / "“on behalf of all politicians” for…").
+        if (!earlier && b.kind !== "heading" && OPENS_LOWER.test(b.text))
+            return undefined;
+        // A numbered paragraph is the body whatever its first line's face ("2.32 …").
+        if (b.kind === "paragraph" && NUMBERED_PARAGRAPH.test(b.text))
+            return undefined;
+        if (b.kind === "heading") {
+            heading = true;
+            continue;
+        }
+        const offFace = isOffFaceBlock(layout, b.text, b.at);
+        if (b.kind === "quote") {
+            if (offFace && !OPENS_LOWER.test(b.text))
+                continue;
+            return undefined;
+        }
+        if (offFace || isCaption(b.text) || isPhotoCredit(b.text))
+            continue;
+        // A chart's labels on the new page, before the text resumes; on the old
+        // page only a lone mark ("*"): a short line of words after the paragraph
+        // there is the next entry of a list ("June 25, 2001–September 4, 2001").
+        if (earlier ? !/[A-Za-z0-9]/.test(b.text) : words(b.text) <= CHART_LABEL_WORDS && !endsSentence(b.text))
+            continue;
+        return undefined;
+    }
+    return undefined;
+}
+/** A footnote marker after a full stop, not yet linked: "breakdowns.3", "this."246", "seal.[^21]". */
+const MARKER_AFTER_STOP = /([.?!:;]["'\u201d\u2019)\]]*)\s?(?:\d{1,4}|\[\^[\w-]{1,12}\])$/;
+/** A sentence end, with or without a footnote marker after it. */
+const finishedSentence = (text) => endsSentence(text) || endsSentence(text.replace(MARKER_AFTER_STOP, "$1"));
+/** Stops on a word, not a stop, a number or a link: "…In this". */
+const OPEN_ON_A_WORD = /(?:^|\s)[A-Za-z][a-z'’]*$/;
+/** A block this long that stops mid-sentence is a sentence of its own, not a caption or a credit. */
+const OPEN_SENTENCE_WORDS = 20;
+/** A chart's axis label or a lone mark ("10,000", "Water Depth", "*"): this many words or fewer. */
+const CHART_LABEL_WORDS = 6;
+/** A printed paragraph number: "2.32 ", "57. ", "9.4.1 ". */
+const NUMBERED_PARAGRAPH = /^\d{1,4}(?:(?:\.\d{1,4})+\.?|\.)\s/;
+/** Lower case, perhaps behind a bracket or quotation mark ("[t]he fact that…"). */
+const OPENS_LOWER = /^[[("'\u201c\u2018]*[a-z]/;
+const words = (s) => s.trim().split(/\s+/).filter(Boolean).length;
+/** A paragraph of the body: in the body face, and longer than a chart's label. */
+function isBodyParagraph(text, at, layout) {
+    return words(text) > CHART_LABEL_WORDS && !isOffFaceBlock(layout, text, at);
 }
 /** How many blocks may stand between a paragraph and its continuation (a chart's labels count one each). */
 const MAX_INTERPOSED = 12;
