@@ -80,6 +80,14 @@ describe("layoutHeadings", () => {
     ]);
   });
 
+  it("takes only the declared sizes, the first at firstLevel", () => {
+    const only = layoutHeadings(layout, { firstLevel: 4, minLines: 3, sizes: [21] });
+    expect(only.faces.map((f) => [f.face, f.level])).toEqual([["HelveticaNeue-Medium|21|#780030", 4]]);
+    expect(only.headings.map((h) => h.text)).toEqual(["What happened after 3pm", "The Police Federation responds to the Taylor Interim Report", "Conclusion", "A third subhead"]);
+    const both = layoutHeadings(layout, { firstLevel: 4, minLines: 3, sizes: [26, 21] });
+    expect(both.faces.map((f) => f.level)).toEqual([4, 5]);
+  });
+
   it("takes a face only when it recurs", () => {
     expect(layoutHeadings(layout, { minPages: 4 }).headings).toEqual([]);
   });

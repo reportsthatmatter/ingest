@@ -24,6 +24,13 @@ import type { Block } from "./paragraphs.js";
 export type TypographicHeadingsOptions = {
     /** Level of the largest heading face; each smaller face is one level deeper. Default 2. */
     firstLevel?: number;
+    /**
+     * The heading sizes in points, largest first: only lines set at one of them (within half a point) are
+     * headings, the first at `firstLevel`, the next one level deeper. Omitted, every face that qualifies
+     * is one, ranked by size. Declare it where the largest face is not a subsection heading
+     * (Hillsborough's 35pt is the title of a part or chapter, which its other passes read).
+     */
+    sizes?: number[];
     /** A heading line is at least this many times the body's size. Default 1.15. */
     minRatio?: number;
     /** Longest heading, in characters. Default 160. */

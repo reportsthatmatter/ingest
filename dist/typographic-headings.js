@@ -15,6 +15,8 @@ function candidate(line, bodySize, o) {
         return false;
     if (SENTENCE_END.test(text))
         return false;
+    if (o.sizes && !o.sizes.some((size) => Math.abs(size - line.size) <= 0.5))
+        return false;
     return true;
 }
 /** The face key without a bold marker's suffix order mattering: `family|size|color[|b]`. */
@@ -26,6 +28,7 @@ const faceSize = (face) => Number(face.split("|")[1]) || 0;
 export function layoutHeadings(layout, options = {}) {
     const o = {
         firstLevel: options.firstLevel ?? 2,
+        ...(options.sizes ? { sizes: options.sizes } : {}),
         minRatio: options.minRatio ?? 1.15,
         maxChars: options.maxChars ?? 160,
         minPages: options.minPages ?? 3,
@@ -52,7 +55,9 @@ export function layoutHeadings(layout, options = {}) {
     const ranked = [...byFace]
         .filter(([, e]) => e.lines >= o.minLines && e.pages.size >= o.minPages)
         .sort((a, b) => faceSize(b[0]) - faceSize(a[0]) || Number(b[0].endsWith("|b")) - Number(a[0].endsWith("|b")) || b[1].lines - a[1].lines);
-    const levels = new Map(ranked.map(([face], i) => [face, Math.min(6, o.firstLevel + i)]));
+    // (declared sizes fix the levels; otherwise the faces that qualified are ranked)
+    const rank = (face, i) => (o.sizes ? o.sizes.findIndex((size) => Math.abs(size - faceSize(face)) <= 0.5) : i);
+    const levels = new Map(ranked.map(([face], i) => [face, Math.min(6, o.firstLevel + rank(face, i))]));
     const faces = ranked.map(([face, e]) => ({ face, level: levels.get(face), lines: e.lines, pages: e.pages.size }));
     const headings = [];
     for (const { volume, page, lines, cands } of perPage) {
@@ -166,13 +171,15 @@ function cutPage(pageBlocks, todo, stats) {
                     const { text: _t, ...rest } = block;
                     if (before)
                         pieces.push({ ...block, text: before });
-                    pieces.push({ kind: "heading", level: h.level, text: h.text, layoutHeading: true, ...(block.at ? { at: block.at } : {}), ...(block.source ? { source: block.source } : {}) });
+                    // (the heading's words as the text reading spelt them, quotation marks and all: not the layout's)
+                    const title = block.text.slice(start, end).replace(/\s+/g, " ").trim();
+                    pieces.push({ kind: "heading", level: h.level, text: title, layoutHeading: true, ...(block.at ? { at: block.at } : {}), ...(block.source ? { source: block.source } : {}) });
                     if (after)
                         pieces.push({ ...rest, kind: block.kind, text: after });
                     units = [...units.slice(0, k), ...pieces, ...units.slice(k + 1)];
                     from = k + pieces.length - (after ? 1 : 0);
                     stats.split++;
-                    stats.added.push({ volume: h.volume, pdfIndex: h.pdfIndex, level: h.level, text: h.text, before: before.slice(-40), after: after.slice(0, 40) });
+                    stats.added.push({ volume: h.volume, pdfIndex: h.pdfIndex, level: h.level, text: title, before: before.slice(-40), after: after.slice(0, 40) });
                     placed = true;
                     break;
                 }

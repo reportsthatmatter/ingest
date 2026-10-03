@@ -26,6 +26,13 @@ import type { Block } from "./paragraphs";
 export type TypographicHeadingsOptions = {
   /** Level of the largest heading face; each smaller face is one level deeper. Default 2. */
   firstLevel?: number;
+  /**
+   * The heading sizes in points, largest first: only lines set at one of them (within half a point) are
+   * headings, the first at `firstLevel`, the next one level deeper. Omitted, every face that qualifies
+   * is one, ranked by size. Declare it where the largest face is not a subsection heading
+   * (Hillsborough's 35pt is the title of a part or chapter, which its other passes read).
+   */
+  sizes?: number[];
   /** A heading line is at least this many times the body's size. Default 1.15. */
   minRatio?: number;
   /** Longest heading, in characters. Default 160. */
@@ -59,13 +66,14 @@ const LABEL_ONLY = /^\s*(?:\(?\d{1,4}(?:\.\d{1,4})*[.)]?|\(?[a-z][.)]|[ivxlc]{1,
 type Heading = { volume: number; pdfIndex: number; text: string; level: number };
 
 /** A heading line's candidacy, before the face's recurrence is known. */
-function candidate(line: LayoutLine, bodySize: number, o: Required<TypographicHeadingsOptions>): boolean {
+function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<TypographicHeadingsOptions, "sizes">> & { sizes?: number[] }): boolean {
   const text = line.text.trim();
   if (!text || text.length > o.maxChars) return false;
   if (line.body || line.italic) return false;
   if (bodySize <= 0 || line.size < o.minRatio * bodySize) return false;
   if (LABEL_ONLY.test(text) || !/\p{L}/u.test(text)) return false;
   if (SENTENCE_END.test(text)) return false;
+  if (o.sizes && !o.sizes.some((size) => Math.abs(size - line.size) <= 0.5)) return false;
   return true;
 }
 
@@ -77,8 +85,9 @@ const faceSize = (face: string) => Number(face.split("|")[1]) || 0;
  * Exported for the tests.
  */
 export function layoutHeadings(layout: Layout, options: TypographicHeadingsOptions = {}): { headings: Heading[]; faces: TypographicHeadingStats["faces"] } {
-  const o: Required<TypographicHeadingsOptions> = {
+  const o: Required<Omit<TypographicHeadingsOptions, "sizes">> & { sizes?: number[] } = {
     firstLevel: options.firstLevel ?? 2,
+    ...(options.sizes ? { sizes: options.sizes } : {}),
     minRatio: options.minRatio ?? 1.15,
     maxChars: options.maxChars ?? 160,
     minPages: options.minPages ?? 3,
@@ -105,7 +114,9 @@ export function layoutHeadings(layout: Layout, options: TypographicHeadingsOptio
   const ranked = [...byFace]
     .filter(([, e]) => e.lines >= o.minLines && e.pages.size >= o.minPages)
     .sort((a, b) => faceSize(b[0]) - faceSize(a[0]) || Number(b[0].endsWith("|b")) - Number(a[0].endsWith("|b")) || b[1].lines - a[1].lines);
-  const levels = new Map(ranked.map(([face], i) => [face, Math.min(6, o.firstLevel + i)]));
+  // (declared sizes fix the levels; otherwise the faces that qualified are ranked)
+  const rank = (face: string, i: number) => (o.sizes ? o.sizes.findIndex((size) => Math.abs(size - faceSize(face)) <= 0.5) : i);
+  const levels = new Map(ranked.map(([face], i) => [face, Math.min(6, o.firstLevel + rank(face, i))]));
   const faces = ranked.map(([face, e]) => ({ face, level: levels.get(face)!, lines: e.lines, pages: e.pages.size }));
 
   const headings: Heading[] = [];
@@ -220,12 +231,14 @@ function cutPage(pageBlocks: Block[], todo: Heading[], stats: TypographicHeading
           const pieces: Block[] = [];
           const { text: _t, ...rest } = block as Block & { text: string };
           if (before) pieces.push({ ...block, text: before } as Block);
-          pieces.push({ kind: "heading", level: h.level, text: h.text, layoutHeading: true, ...(block.at ? { at: block.at } : {}), ...(block.source ? { source: block.source } : {}) } as Block);
+          // (the heading's words as the text reading spelt them, quotation marks and all: not the layout's)
+          const title = block.text.slice(start, end).replace(/\s+/g, " ").trim();
+          pieces.push({ kind: "heading", level: h.level, text: title, layoutHeading: true, ...(block.at ? { at: block.at } : {}), ...(block.source ? { source: block.source } : {}) } as Block);
           if (after) pieces.push({ ...rest, kind: block.kind, text: after } as Block);
           units = [...units.slice(0, k), ...pieces, ...units.slice(k + 1)];
           from = k + pieces.length - (after ? 1 : 0);
           stats.split++;
-          stats.added.push({ volume: h.volume, pdfIndex: h.pdfIndex, level: h.level, text: h.text, before: before.slice(-40), after: after.slice(0, 40) });
+          stats.added.push({ volume: h.volume, pdfIndex: h.pdfIndex, level: h.level, text: title, before: before.slice(-40), after: after.slice(0, 40) });
           placed = true;
           break;
         }
