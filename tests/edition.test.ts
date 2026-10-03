@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { align } from "../src/align";
 import { tokens, tokensBefore } from "../src/tokens";
 import { htmlEvents, decodeEntities } from "../src/html";
-import { assembleEdition, cleanEdition, inlineMarkdown, inlineText, type Edition, type PrintedPage } from "../src/edition";
+import { assembleEdition, cleanEdition, fillPrintedGaps, inlineMarkdown, inlineText, type Edition, type PrintedPage } from "../src/edition";
 import { losslessCheck } from "../src/fidelity";
 import { pipeline, resolvePasses } from "../src/define";
 import type { Page } from "../src/extract";
@@ -77,6 +77,10 @@ describe("htmlEvents", () => {
     expect(ev.filter((e) => e.kind === "start").map((e) => (e as { tag: string }).tag)).toEqual(["p", "p", "strong", "br"]);
     expect((ev[0] as { attrs: Record<string, string> }).attrs.align).toBe("center");
     expect(ev.filter((e) => e.kind === "text").map((e) => (e as { text: string }).text)).toEqual(["A & B C", "D", "—"]);
+  });
+
+  it("decodes the Latin letters and fractions an inquiry website uses", () => {
+    expect(decodeEntities("&Oacute; Dochart, &Eacute;amon, &frac12;, &pound;5, Ma&iuml;")).toBe("Ó Dochart, Éamon, ½, £5, Maï");
   });
 
   it("decodes named, decimal and hex references", () => {
@@ -200,6 +204,60 @@ describe("assembleEdition", () => {
   });
 });
 
+describe("notes printed under their paragraphs (notes: \"page-foot\")", () => {
+  // two paragraphs a page, each with its note beneath it on the page: the notes are a stream of their own
+  const A = LONG(1);
+  const B = LONG(2);
+  const pdf = (): Page[] => [{ ...page(1, [A, B, "first note text", "second note text"]), footLines: 2 }];
+  const ed: Edition = {
+    blocks: [{ kind: "paragraph", text: `${A}[^1-1]` }, { kind: "paragraph", text: `${B}[^1-2]` }],
+    notes: [{ label: "1-1", text: "first note text" }, { label: "1-2", text: "second note text" }],
+  };
+
+  it("aligns the edition's notes to the PDF's notes, not to the body, and says which page each is on", () => {
+    const r = assembleEdition(ed, pdf(), [{ volume: 1, pdfIndex: 1, number: 1 }], []);
+    expect(r.report.alignedWords).toBe(r.report.editionWords);
+    expect(r.report.disagreements).toEqual({ editionNotInPdf: 0, pdfNotInEdition: 0 });
+    expect(r.notePages).toEqual([0, 0]);
+  });
+});
+
+describe("pages the edition does not hold", () => {
+  it("does not mark pages before the first one with a word of the edition, and renumbers a repeated number", () => {
+    const pages = [page(1, ["Title page of another volume"]), page(2, ["Contents of the whole report"]), page(3, [LONG(1)]), page(4, [LONG(2)])];
+    const printed: PrintedPage[] = [
+      { volume: 1, pdfIndex: 1, number: 3 },
+      { volume: 1, pdfIndex: 2, number: 4 },
+      { volume: 1, pdfIndex: 3, number: 3, occurrence: 2 },
+      { volume: 1, pdfIndex: 4, number: 4, occurrence: 2 },
+    ];
+    const ed: Edition = { blocks: [{ kind: "paragraph", text: LONG(1) }, { kind: "paragraph", text: LONG(2) }], notes: [] };
+    const r = assembleEdition(ed, pages, printed, []);
+    expect(r.body.split("\n\n")).toEqual(["%%page 3%%", LONG(1), "%%page 4%%", LONG(2)]);
+    expect(r.report.pages.frontMatterSkipped).toBe(2);
+  });
+});
+
+describe("fillPrintedGaps", () => {
+  const at = (pdfIndex: number, number: number | string, occurrence?: number): PrintedPage => ({ volume: 1, pdfIndex, number, occurrence });
+  it("numbers the pages between two marked pages whose numbers run in step with the PDF's", () => {
+    expect(fillPrintedGaps([at(52, 47), at(55, 50)]).map((p) => [p.pdfIndex, p.number])).toEqual([[52, 47], [53, 48], [54, 49], [55, 50]]);
+  });
+  it("leaves a gap whose numbers are not in step, roman numerals and repeated numbers alone", () => {
+    expect(fillPrintedGaps([at(52, 47), at(55, 60)])).toHaveLength(2);
+    expect(fillPrintedGaps([at(1, "iv"), at(4, "vii")])).toHaveLength(2);
+    expect(fillPrintedGaps([at(10, 5), at(13, 8, 2)])).toHaveLength(2);
+  });
+});
+
+describe("a quotation of several paragraphs", () => {
+  it("is one blockquote with a paragraph to each", () => {
+    const ed: Edition = { blocks: [{ kind: "quote", text: `${LONG(1)}\n\nA: ${LONG(2)}` }], notes: [] };
+    const r = assembleEdition(ed, [page(1, [LONG(1), `A: ${LONG(2)}`])], [{ volume: 1, pdfIndex: 1, number: 1 }], []);
+    expect(r.body.split("\n\n")).toEqual(["%%page 1%%", `> ${LONG(1)}\n>\n> A: ${LONG(2)}`]);
+  });
+});
+
 describe("cleanEdition", () => {
   const dir = mkdtempSync(join(tmpdir(), "edition-"));
   writeFileSync(join(dir, "a.htm"), "<p>Hello");
@@ -210,6 +268,11 @@ describe("cleanEdition", () => {
     expect(pass.read().blocks[0]).toEqual({ kind: "paragraph", text: "<p>Hello" });
     const bad = cleanEdition({ dir, files: [{ path: "a.htm", sha256: "0".repeat(64) }], read: () => ({ blocks: [], notes: [] }) });
     expect(() => bad.read()).toThrow(/checksum mismatch/);
+  });
+
+  it("says where the PDF prints the notes, and defaults to the back", () => {
+    expect(cleanEdition({ dir, files: [], read: () => ({ blocks: [], notes: [] }) }).notes).toBe("back");
+    expect(cleanEdition({ dir, files: [], notes: "page-foot", read: () => ({ blocks: [], notes: [] }) }).notes).toBe("page-foot");
   });
 
   it("is declared like any pass, once", () => {

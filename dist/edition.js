@@ -49,6 +49,7 @@ export function cleanEdition(options) {
         name: "cleanEdition",
         stage: "edition",
         sources: options.files,
+        notes: options.notes ?? "back",
         read() {
             const files = options.files.map((file) => {
                 const buffer = readFileSync(join(options.dir, file.path));
@@ -129,6 +130,29 @@ function inline(pieces, plain) {
         .replace(new RegExp(`[${EM_OPEN}${EM_CLOSE}]`, "g"), "*")
         .replace(new RegExp(`${MARK_OPEN}([^${MARK_CLOSE}]*)${MARK_CLOSE}`, "g"), "[^$1]");
 }
+/**
+ * Pages the PDF ingest read no printed number off (a page of a figure, a page
+ * whose header it did not read) that sit between two it did, with the numbers
+ * in step with the PDF's own page order (printed 47 on PDF page 52, printed 50
+ * on PDF page 55: 48 and 49 are the pages between). A gap whose numbers do not
+ * run in step is left unmarked.
+ */
+export function fillPrintedGaps(printed) {
+    const sorted = [...printed].sort((a, b) => a.volume - b.volume || a.pdfIndex - b.pdfIndex);
+    const out = [...sorted];
+    for (let k = 0; k + 1 < sorted.length; k++) {
+        const a = sorted[k];
+        const b = sorted[k + 1];
+        if (a.volume !== b.volume || typeof a.number !== "number" || typeof b.number !== "number")
+            continue;
+        const gap = b.pdfIndex - a.pdfIndex;
+        if (gap < 2 || b.number - a.number !== gap || a.occurrence || b.occurrence)
+            continue;
+        for (let i = 1; i < gap; i++)
+            out.push({ volume: a.volume, pdfIndex: a.pdfIndex + i, number: a.number + i });
+    }
+    return out.sort((x, y) => x.volume - y.volume || x.pdfIndex - y.pdfIndex);
+}
 /** Tokens of inline Markdown, with note markers masked so their digits are not words. */
 function fieldTokens(text) {
     return tokens(text.replace(/\[\^[^\]]*\]/g, (m) => " ".repeat(m.length)));
@@ -174,12 +198,25 @@ export function assembleEdition(edition, pages, printed, sources) {
     const bodyTokens = clean.findIndex((t) => fields[t.field].note);
     const bodyEnd = bodyTokens === -1 ? clean.length : bodyTokens;
     const pageText = pages.map((page) => page.lines.join("\n"));
-    const pdf = [];
+    // A page's notes are a stream of their own where the PDF prints them under their
+    // paragraphs (`notes: "page-foot"`): the edition's notes follow its body, so the PDF's do too.
+    const pdfBody = [];
+    const pdfFoot = [];
     pageText.forEach((text, p) => {
+        const foot = pages[p].footLines ?? 0;
+        const footStart = foot > 0 ? pages[p].lines.slice(0, pages[p].lines.length - foot).join("\n").length : text.length;
         for (const t of tokens(text))
-            pdf.push({ ...t, page: p });
+            (t.start >= footStart ? pdfFoot : pdfBody).push({ ...t, page: p });
     });
+    const pdf = [...pdfBody, ...pdfFoot];
     const { map, inv } = align(clean.map((t) => t.word), pdf.map((t) => t.word));
+    // the page (index into `pages`) each note's first aligned word is on
+    const notePages = notes.map(() => undefined);
+    clean.forEach((t, c) => {
+        const f = fields[t.field];
+        if (f.note && notePages[f.block] === undefined && map[c] >= 0)
+            notePages[f.block] = pdf[map[c]].page;
+    });
     // 4. typography: an ASCII hyphen the PDF prints as a dash between the same two words
     let dashesRestored = 0;
     let spacesRestored = 0;
@@ -261,10 +298,24 @@ export function assembleEdition(edition, pages, printed, sources) {
         if (!firstOnPage.has(pdf[j].page))
             firstOnPage.set(pdf[j].page, c);
     }
-    const marked = printed
+    const everyPage = printed
         .map((entry) => ({ entry, p: pageIndex.get(`${entry.volume}:${entry.pdfIndex}`) }))
         .filter((x) => x.p !== undefined)
         .sort((x, y) => x.p - y.p);
+    // Pages before the first one the edition holds a word of (a title page, a contents the edition
+    // does not carry) are not marked: with no text of the edition's on them, a marker would only
+    // open the document with page numbers that belong to other pages ("page 19" of the front
+    // matter, ahead of the real page 19).
+    const firstHeld = everyPage.findIndex((x) => firstOnPage.has(x.p));
+    const skipped = firstHeld > 0 ? everyPage.slice(0, firstHeld) : [];
+    const marked = firstHeld > 0 ? everyPage.slice(firstHeld) : everyPage;
+    for (const x of marked) {
+        if (!x.entry.occurrence)
+            continue;
+        const before = skipped.filter((s) => s.entry.number === x.entry.number).length;
+        const occurrence = x.entry.occurrence - before;
+        x.entry = { ...x.entry, occurrence: occurrence > 1 ? occurrence : undefined };
+    }
     const own = marked.map((x) => firstOnPage.get(x.p));
     // a page with no word of its own (a full-page figure) sits where the next page does;
     // positions only move forward, so a stray alignment cannot reorder the pages
@@ -522,6 +573,7 @@ export function assembleEdition(edition, pages, printed, sources) {
     return {
         blocks: asBlocks,
         linkedText,
+        notePages,
         body: out.join("\n\n"),
         notes: notes.map((note) => `[^${note.label}]: ${note.text}`).join("\n\n"),
         suspects,
@@ -533,7 +585,7 @@ export function assembleEdition(edition, pages, printed, sources) {
             oovExamples: [...new Set(oovWords)].slice(0, 40),
             pdfWords,
             pdfAligned,
-            pages: { anchored, placedByNeighbour: marked.length - anchored },
+            pages: { anchored, placedByNeighbour: marked.length - anchored, ...(skipped.length ? { frontMatterSkipped: skipped.length } : {}) },
             dashesRestored,
             spacesRestored,
             hyphensClosed,
@@ -555,7 +607,11 @@ function blockMarkdown(block) {
         case "heading":
             return `${"#".repeat(block.level)} ${block.text}`;
         case "quote":
-            return `> ${escapeOpening(block.text)}`;
+            // a quotation of several paragraphs (a boxed extract) is one blockquote
+            return block.text
+                .split("\n\n")
+                .map((paragraph) => `> ${escapeOpening(paragraph)}`)
+                .join("\n>\n");
         case "contents":
             return `- ${escapeOpening(block.text)} — ${block.page}`;
         case "list":

@@ -6,7 +6,7 @@ import { rejoinHyphenated, vocabulary } from "./hyphens.js";
 import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, spacedContentsBlocks, shortSubheadAt, isIllustrationList, mergeAcrossPages, contentsHeadings, contentsTitles, headingKey, numberedContents, emptyOutline, readContentsOutline, learnOutline, outlineContentsBlocks, divisionContents, bodyIndent, } from "./paragraphs.js";
 import { parseFootnotes, linkInlineMarkers, linkFlushMarkers, renderEndnotes, isNotesChapterHead, parseNotesAppendix, linkFlushMarkersByChapter, } from "./footnotes.js";
 import { autoFix, findSuspects, rankSuspects } from "./ocr.js";
-import { assembleEdition } from "./edition.js";
+import { assembleEdition, fillPrintedGaps } from "./edition.js";
 /**
  * Whether a heading stays a section under `unlistedHeadingsMinor`: the
  * contents lists it, it is a numbered section or division read from the
@@ -500,17 +500,38 @@ function ingestEdition(pageGroups, meta, resolved, corrections, context) {
     const shadow = ingestPageGroups(pageGroups, meta, { ...resolved, edition: undefined }, corrections, context);
     // the PDF's words page by page, as the shadow read them once their furniture was off
     const pages = (shadow.pageText ?? []).map((page, i) => ({ index: i + 1, ...page }));
-    const printed = (shadow.blocks ?? []).flatMap((block) => block.kind === "page" && block.at
+    if (pass.notes === "page-foot") {
+        // The notes the shadow lifted out from under their paragraphs go back on their pages, as a
+        // foot of their own; the markers it linked into the body text are not words.
+        const at = new Map(pages.map((page) => [`${page.volume}:${page.pdfIndex}`, page]));
+        for (const page of pages)
+            page.lines = page.lines.map((line) => line.replace(/\[\^[^\]]*\]/g, ""));
+        for (const note of shadow.footnotes) {
+            const page = at.get(`${note.volume}:${note.pdfIndex}`);
+            if (!page)
+                continue;
+            page.lines.push(note.text);
+            page.footLines = (page.footLines ?? 0) + 1;
+        }
+    }
+    const printed = fillPrintedGaps((shadow.blocks ?? []).flatMap((block) => block.kind === "page" && block.at
         ? [{ volume: block.at.volume, pdfIndex: block.at.pdfIndex, number: block.number, occurrence: block.occurrence }]
-        : []);
+        : []));
     const edition = pass.read();
     const assembled = assembleEdition(edition, pages, printed, pass.sources);
-    const footnotes = edition.notes.map((note, i) => ({
-        number: Number.parseInt(note.label, 10) || i + 1,
-        label: note.label,
-        text: note.text,
-        page: 0,
-    }));
+    const printedAt = new Map(printed.map((entry) => [`${entry.volume}:${entry.pdfIndex}`, entry.number]));
+    const footnotes = edition.notes.map((note, i) => {
+        // the PDF page the note's first word is printed on, so a golden page can say which notes it defines
+        const at = assembled.notePages[i] === undefined ? undefined : pages[assembled.notePages[i]];
+        const number = at ? printedAt.get(`${at.volume}:${at.pdfIndex}`) : undefined;
+        return {
+            number: Number.parseInt(note.label, 10) || i + 1,
+            label: note.label,
+            text: note.text,
+            page: at?.index ?? 0,
+            ...(at ? { volume: at.volume, pdfIndex: at.pdfIndex, printed: typeof number === "number" ? number : null } : {}),
+        };
+    });
     const markdown = [
         frontMatter({ ...meta, pages: shadow.pages, footnotes: footnotes.length }),
         assembled.body,
