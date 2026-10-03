@@ -165,6 +165,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     }));
     // `foliosInStep`: a printed number read off a figure or test-report page's OCR garble, out of step with the
     // pages round it, is dropped, and the page numbered from its neighbours (reportsthatmatter-uw50).
+    const folios = splitGroups.flatMap((group) => group.map((s) => ({ volume: s.volume, pdfIndex: s.pdfIndex, printed: s.printed, dropped: false })));
     if (resolved.foliosInStep) {
         for (const group of splitGroups) {
             const stray = strayFolios(group.flatMap((s) => (s.printed === null ? [] : [{ pdfIndex: s.pdfIndex, printed: s.printed }])));
@@ -174,6 +175,9 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
             for (const split of group)
                 if (stray.has(split.pdfIndex))
                     split.printed = null;
+            for (const row of folios)
+                if (row.volume === volume && stray.has(row.pdfIndex))
+                    row.dropped = true;
             for (const note of footnotes)
                 if (note.volume === volume && note.pdfIndex !== undefined && stray.has(note.pdfIndex))
                     note.printed = null;
@@ -510,6 +514,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         blocks: outBlocks,
         linkedText,
         pageText,
+        folios,
         ...(markerStats ? { layoutMarkers: markerStats } : {}),
         ...(visionReport ? { vision: visionReport } : {}),
         ...(headingStats ? { typographicHeadings: headingStats } : {}),
@@ -757,6 +762,7 @@ function ingestEdition(pageGroups, meta, resolved, corrections, context) {
         pages: shadow.pages,
         edition: assembled.report,
         shadow,
+        folios: shadow.folios,
         blocks: assembled.blocks,
         linkedText: assembled.linkedText,
     };

@@ -208,3 +208,5 @@ export {
 } from "./publish";
 export type { PublishFile, Manifest } from "./publish";
 export { markPrintedNumbers } from "./printed-numbers";
+export { strayFolios, folioReport } from "./folios";
+export type { FolioRead, FolioRow, FolioPage, FolioRun, FolioReport, FolioSource } from "./folios";

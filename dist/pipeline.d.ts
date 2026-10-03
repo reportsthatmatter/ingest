@@ -1,4 +1,5 @@
 import { type Page } from "./extract.js";
+import { type FolioRow } from "./folios.js";
 import type { ResolvedPasses } from "./define.js";
 import { type Correction } from "./corrections.js";
 import { type Block } from "./paragraphs.js";
@@ -46,6 +47,8 @@ export type IngestResult = {
         lines: string[];
         noteLines?: number;
     }>;
+    /** Every page's printed-number read, before `foliosInStep` dropped any (`folioReport`, `pnpm ingest folios`). */
+    folios?: FolioRow[];
     /** What `layoutMarkers` saw and linked, when the report declares it. */
     layoutMarkers?: LayoutMarkerStats;
     /** `visionStructure`: which pages took the vision model's structure, and why the others did not. */
