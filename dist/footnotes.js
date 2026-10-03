@@ -14,7 +14,7 @@ const NOTE_STACKED = /^\s{0,10}(\d{1,4})\s*$/;
 // A deeper hanging indent than the bare style's: this appendix sets its note
 // number a good 14 columns in, not the 0-8 the rest of the corpus's page-foot
 // blocks use.
-const NOTE_INLINE_PERIOD = /^\s{0,20}(\d{1,4})\.\s{0,3}(?=[A-Za-z"“(])/;
+const NOTE_INLINE_PERIOD = /^\s{0,20}(\d{1,4})\.\s{0,6}(?=[A-Za-z"“(])/;
 const NOTE_STACKED_PERIOD = /^\s{0,20}(\d{1,4})\.\s*$/;
 /**
  * A note-start whose digit is followed by exactly one stray OCR character

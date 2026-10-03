@@ -358,6 +358,16 @@ export declare const photoCredits: () => PagePass;
  */
 export declare const footnoteGap: () => PagePass;
 /**
+ * How the report numbers its page-foot notes, where that is not the usual bare
+ * "104 Letter from…": `"period"` reads "104. Letter from…" (Hillsborough,
+ * reportsthatmatter-ivg.3), whose notes were otherwise printed in the body as
+ * a paragraph with every marker bare. Opt-in: a numbered list item at a page
+ * foot has the same shape.
+ */
+export declare const footnoteNumbers: (numbers: "period") => PagePass & {
+    numbers: "period";
+};
+/**
  * Reads the report's chapter-and-section numbering from its contents
  * ("8.1   The Summer of Threat 254") and takes each numbered section's heading
  * from there (reportsthatmatter-w8g).

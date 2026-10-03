@@ -71,6 +71,8 @@ export type ResolvedPasses = {
     numberedOutsideTables?: boolean;
     photoCredits?: boolean;
     footnoteGap?: boolean;
+    /** `footnoteNumbers`: how page-foot notes are numbered. */
+    footnoteNumbers?: "bare" | "period";
     quoteInset?: number;
     allCapsHeadings: boolean;
     numberedHeadings?: boolean;

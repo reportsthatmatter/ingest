@@ -48,6 +48,7 @@ export {
   numberedOutsideTables,
   photoCredits,
   footnoteGap,
+  footnoteNumbers,
   runningFurniture,
   geometry,
   columns,
@@ -71,8 +72,8 @@ export type {
 export { detectGutter, splitColumns } from "./columns";
 
 // — A clean edition as the source (the hybrid mode, edition.ts) —
-export { cleanEdition, inlineMarkdown, inlineText, escapeInline, assembleEdition } from "./edition";
-export type { Edition, EditionBlock, EditionNote, EditionPass, EditionSource, EditionReport, InlinePiece, PrintedPage } from "./edition";
+export { cleanEdition, inlineMarkdown, inlineText, escapeInline, assembleEdition, fillGaps } from "./edition";
+export type { Edition, EditionBlock, EditionNote, EditionPass, EditionSource, EditionReport, InlinePiece, PrintedPage, BlockSource, FilledGap, ShadowText } from "./edition";
 export { htmlEvents, decodeEntities } from "./html";
 export type { HtmlEvent } from "./html";
 // Monotone word alignment (promoted from the site's scorer, src/lib/score)
