@@ -189,9 +189,18 @@ describe("a footnote's run-over between the paragraph and its continuation (repo
     expect((merged[1] as { text: string }).text).toBe(f.note);
   });
 
-  it("not past a figure's caption, which is off the body face too", () => {
+  // Since reportsthatmatter-y7ix a caption between the halves is looked past like a note; what must not join
+  // is a chart's label after it (Columbia), which is not the paragraph's rest.
+  it("past a figure's caption, which is off the body face too", () => {
     const b = stream();
     (b[1] as { text: string }).text = `Figure 3.4-6. ${f.note}`;
+    expect(mergeAcrossPages(b, { layout: f.layout, layoutJoins: {} })).toHaveLength(3);
+  });
+
+  it("not onto a chart's label after the caption", () => {
+    const b = stream();
+    (b[1] as { text: string }).text = `Figure 3.4-6. ${f.note}`;
+    (b[3] as { text: string }).text = "Gregory (Lehman's President";
     expect(mergeAcrossPages(b, { layout: f.layout, layoutJoins: {} })).toHaveLength(4);
   });
 
