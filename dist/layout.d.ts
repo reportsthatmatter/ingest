@@ -12,11 +12,16 @@
  *
  * Nothing here changes any output. It is an input to passes that opt in.
  */
-/** A small raised run of digits inside a body line: the shape of a footnote marker. */
+/**
+ * A small raised run of digits inside a body line: the shape of a footnote marker.
+ * `offset` is where the run's own text starts in the line's `text` (so the words before
+ * it, the marker's anchor, are `text.slice(0, offset)`).
+ */
 export type RaisedRun = {
     text: string;
     size: number;
     left: number;
+    offset: number;
 };
 export type LayoutLine = {
     /** Which source volume, 1-based, in the order the report lists them. */

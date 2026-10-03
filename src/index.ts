@@ -36,6 +36,7 @@ export {
   quoteRunOn,
   quoteListRunOns,
   layoutPageJoins,
+  layoutMarkers,
   numberedFindings,
   doubleSpaced,
   contentsOutline,
@@ -58,6 +59,7 @@ export type {
   Pass,
   PagePass,
   LayoutPageJoinsPass,
+  LayoutMarkersPass,
   PageBreakContinuationsPass,
   BodyPass,
   VolumePass,
@@ -78,6 +80,9 @@ export { align } from "./align";
 export type { Alignment, AlignOptions } from "./align";
 export { tokens, words, fold, tokensBefore, hasLetter } from "./tokens";
 export type { Token } from "./tokens";
+export { linkLayoutMarkers, foldForMatch } from "./markers";
+export type { LayoutMarkerStats, LayoutMarkersOptions, MarkerNotes } from "./markers";
+export { pageDefinesNotes } from "./markers";
 export type { Gutter } from "./columns";
 
 // — Running a build —

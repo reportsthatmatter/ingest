@@ -63,18 +63,39 @@ export function parseLayoutXml(xml) {
                     right = f.left + f.width;
                 }
             }
+            // A raised marker poppler emits after the text that follows it on the line ("phone.” ",
+            // "He also sent…", then "1585": PSI p.399) goes back into the gap it sits in.
+            for (let j = i + 1; j < frags.length && j < i + MAX_FRAGMENTS_PER_LINE; j++) {
+                if (used.has(j))
+                    continue;
+                const f = frags[j];
+                const base = parts[0];
+                if (f.top > base.top + base.height)
+                    break;
+                if (!MARKER.test(f.text) || f.height >= base.height)
+                    continue;
+                if (f.top < base.top - base.height / 2 || f.top + f.height > base.top + base.height + 2)
+                    continue;
+                const k = parts.findIndex((p, n) => n < parts.length - 1 && f.left >= p.left + p.width - 2 && f.left + f.width <= parts[n + 1].left + 2);
+                if (k < 0)
+                    continue;
+                parts.splice(k + 1, 0, f);
+                used.add(j);
+            }
             const main = parts.reduce((a, b) => (b.text.length > a.text.length ? b : a));
             const font = fonts.get(main.font) ?? { size: main.height, family: "", color: "" };
+            const joined = joinParts(parts, font.size);
             const raised = [];
-            for (const p of parts) {
+            parts.forEach((p, k) => {
                 if (p === main)
-                    continue;
+                    return;
                 const pf = fonts.get(p.font);
                 const smaller = pf ? pf.size <= font.size - 2 : p.height < main.height - 2;
                 if (smaller && p.top < main.top + main.height / 2 && MARKER.test(p.text)) {
-                    raised.push({ text: p.text.trim(), size: pf?.size ?? p.height, left: p.left });
+                    const offset = joined.starts[k] + (p.text.length - p.text.trimStart().length);
+                    raised.push({ text: p.text.trim(), size: pf?.size ?? p.height, left: p.left, offset });
                 }
-            }
+            });
             const left = parts[0].left;
             const bold = /<b>/.test(main.inner) || /bold|black|heavy|semibold/i.test(font.family);
             const italic = /<i>/.test(main.inner) || /italic|oblique/i.test(font.family);
@@ -94,7 +115,7 @@ export function parseLayoutXml(xml) {
                 bold,
                 italic,
                 raised,
-                text: joinParts(parts, font.size),
+                text: joined.text,
             });
         }
     }
@@ -108,13 +129,15 @@ export function parseLayoutXml(xml) {
 function joinParts(parts, size) {
     let out = "";
     let right = 0;
+    const starts = [];
     parts.forEach((p, i) => {
         if (i > 0 && p.left - right > 0.15 * size && !/\s$/.test(out) && !/^\s/.test(p.text))
             out += " ";
+        starts.push(out.length);
         out += p.text;
         right = p.left + p.width;
     });
-    return out;
+    return { text: out, starts };
 }
 /** Some PDFs emit every word as a fragment: a justified line has dozens. */
 const MAX_FRAGMENTS_PER_LINE = 120;

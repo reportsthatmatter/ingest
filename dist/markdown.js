@@ -321,9 +321,19 @@ export function resolveNoteReferences(labels, order) {
     }
     const n = refs.length;
     const m = defs.length;
-    // Beyond this the table is not worth building; the positional rule stands.
-    if (!n || !m || n * m > 40_000_000)
+    if (!n || !m)
         return result;
+    // A table this size would take hundreds of megabytes (Leveson: 8,500 references by 8,600
+    // definitions, once its raised markers are linked, reportsthatmatter-b94). The same alignment in
+    // linear space instead; below it, the table, whose pairing every other report already renders.
+    if (n * m > 40_000_000) {
+        if (n * m > MAX_LINEAR_ALIGNMENT)
+            return result;
+        for (const [i, j] of alignLinearSpace(refs.map((r) => labels[r]), defs.map((d) => d.label))) {
+            result[refs[i]] = defs[j].index;
+        }
+        return result;
+    }
     const width = m + 1;
     const table = new Uint16Array((n + 1) * width);
     for (let i = n - 1; i >= 0; i--) {
@@ -350,6 +360,70 @@ export function resolveNoteReferences(labels, order) {
         }
     }
     return result;
+}
+/** Beyond this even the linear-space alignment is too slow to run on every render; the positional rule stands. */
+const MAX_LINEAR_ALIGNMENT = 1_000_000_000;
+/**
+ * A longest common subsequence of `a` and `b`, as index pairs in order, in
+ * space linear in `b` (Hirschberg's divide and conquer over the same
+ * recurrence as the table in `resolveNoteReferences`).
+ */
+function alignLinearSpace(a, b) {
+    const ids = new Map();
+    const id = (s) => {
+        let v = ids.get(s);
+        if (v === undefined)
+            ids.set(s, (v = ids.size));
+        return v;
+    };
+    const A = Int32Array.from(a, id);
+    const B = Int32Array.from(b, id);
+    const pairs = [];
+    // LCS lengths of A[aLo, aHi) against every prefix (forward) or suffix (backward) of B[bLo, bHi).
+    const row = (aLo, aHi, bLo, bHi, forward) => {
+        const w = bHi - bLo;
+        let prev = new Int32Array(w + 1);
+        let cur = new Int32Array(w + 1);
+        for (let x = 0; x < aHi - aLo; x++) {
+            const av = A[forward ? aLo + x : aHi - 1 - x];
+            for (let y = 1; y <= w; y++) {
+                const bv = B[forward ? bLo + y - 1 : bHi - y];
+                cur[y] = av === bv ? prev[y - 1] + 1 : Math.max(prev[y], cur[y - 1]);
+            }
+            [prev, cur] = [cur, prev];
+        }
+        return prev;
+    };
+    const solve = (aLo, aHi, bLo, bHi) => {
+        if (aHi <= aLo || bHi <= bLo)
+            return;
+        if (aHi - aLo === 1) {
+            for (let j = bLo; j < bHi; j++) {
+                if (B[j] === A[aLo]) {
+                    pairs.push([aLo, j]);
+                    return;
+                }
+            }
+            return;
+        }
+        const mid = (aLo + aHi) >> 1;
+        const left = row(aLo, mid, bLo, bHi, true);
+        const right = row(mid, aHi, bLo, bHi, false);
+        const w = bHi - bLo;
+        let split = 0;
+        let best = -1;
+        for (let k = 0; k <= w; k++) {
+            const total = left[k] + right[w - k];
+            if (total > best) {
+                best = total;
+                split = k;
+            }
+        }
+        solve(aLo, mid, bLo, bLo + split);
+        solve(mid, aHi, bLo + split, bHi);
+    };
+    solve(0, A.length, 0, B.length);
+    return pairs;
 }
 /**
  * A note this long floating in the margin runs disproportionately taller

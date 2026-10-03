@@ -50,6 +50,11 @@ export type ResolvedPasses = {
     quoteListRunOns?: boolean;
     /** `layoutPageJoins`: on, with its options. */
     layoutPageJoins?: PageBreakOptions;
+    /** `layoutMarkers`: on, with where its notes are. */
+    layoutMarkers?: {
+        scope: "page" | "document";
+        textFallback: boolean;
+    };
     unlistedHeadingsMinor?: boolean;
     hangingIndents?: boolean;
     letteredItems?: boolean;

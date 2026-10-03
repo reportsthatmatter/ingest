@@ -66,6 +66,7 @@ export function resolvePasses(def) {
         quoteRunOn: passes.some((pass) => pass.name === "quoteRunOn"),
         quoteListRunOns: passes.some((pass) => pass.name === "quoteListRunOns"),
         layoutPageJoins: layoutPageJoinsOf(passes),
+        layoutMarkers: layoutMarkersOf(passes),
         unlistedHeadingsMinor: passes.some((pass) => pass.name === "unlistedHeadingsMinor"),
         hangingIndents: passes.some((pass) => pass.name === "hangingIndents"),
         letteredItems: passes.some((pass) => pass.name === "letteredItems"),
@@ -97,4 +98,8 @@ function layoutPageJoinsOf(passes) {
         ...(pass.scanned ? { scanned: true } : {}),
         ...(pass.referee ? { referee: pass.referee } : {}),
     };
+}
+function layoutMarkersOf(passes) {
+    const pass = passes.find((p) => p.name === "layoutMarkers");
+    return pass ? { scope: pass.scope ?? "page", textFallback: pass.textFallback === true } : undefined;
 }

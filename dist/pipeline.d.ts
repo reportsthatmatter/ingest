@@ -3,6 +3,7 @@ import type { ResolvedPasses } from "./define.js";
 import { type Correction } from "./corrections.js";
 import { type Block } from "./paragraphs.js";
 import { type Footnote } from "./footnotes.js";
+import { type LayoutMarkerStats } from "./markers.js";
 import { type Suspect } from "./ocr.js";
 import type { PipelineContext } from "./context.js";
 import { type EditionReport } from "./edition.js";
@@ -42,6 +43,8 @@ export type IngestResult = {
         pdfIndex: number;
         lines: string[];
     }>;
+    /** What `layoutMarkers` saw and linked, when the report declares it. */
+    layoutMarkers?: LayoutMarkerStats;
 };
 export type Metadata = {
     title: string;

@@ -160,7 +160,9 @@ function furniture(layout) {
 }
 function expectedHeadings(page, bodyFont, skip) {
     const bodyLine = page.lines.find((l) => l.body);
-    const size = bodyLine?.size ?? bodyFont.size;
+    // (a page that is mostly footnotes takes their face for its body; its text, at the document's
+    // size, is not "bigger" than that: measure against the larger of the two)
+    const size = Math.max(bodyLine?.size ?? bodyFont.size, bodyFont.size);
     const color = bodyLine?.color ?? bodyFont.color;
     const out = [];
     let cur = [];
@@ -212,7 +214,14 @@ function locate(lines, text, n = 12) {
  * `footnotes` supplies the note numbers a marker may link to, as the pipeline
  * itself links them (`linkInlineMarkers`).
  */
-export function measureLayout(layout, blocks, footnotes = []) {
+export function measureLayout(layout, blocks, footnotes = [], 
+/**
+ * `relink: false` when `blocks` come from `finalBlocks` and their markers are the pipeline's own.
+ * Re-linking them with `linkInlineMarkers` counts links the reader never sees wherever the
+ * pipeline did not run it (a report whose layout decides its markers, `layoutMarkers`; paragraph notes).
+ */
+options = {}) {
+    const relink = options.relink ?? true;
     const counts = zero();
     const pages = {};
     const findings = [];
@@ -344,7 +353,7 @@ export function measureLayout(layout, blocks, footnotes = []) {
             // — Markers —
             const labels = [];
             // (a page that is mostly footnotes has the notes' face as its body: take the document's too)
-            const inBody = (l) => l.body || (Math.abs(l.size - bodyFont.size) < 0.5 && l.color === bodyFont.color && !l.bold && !l.italic);
+            const inBody = (l) => l.body || (Math.abs(l.size - bodyFont.size) < 0.5 && l.color === bodyFont.color);
             for (const l of lines)
                 if (inBody(l))
                     for (const r of l.raised)
@@ -354,7 +363,7 @@ export function measureLayout(layout, blocks, footnotes = []) {
             pool.set(pageKey(v, p), labels);
             for (const b of mine) {
                 for (const t of blockTexts(b)) {
-                    const linked = known.size ? linkInlineMarkers(t, known) : t;
+                    const linked = relink && known.size ? linkInlineMarkers(t, known) : t;
                     for (const m of linked.matchAll(/\[\^(\d+)(?:-[^\]\s]+)?\]/g))
                         producedMarkers.push({ volume: v, page: p, label: m[1] });
                 }

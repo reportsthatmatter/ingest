@@ -360,6 +360,28 @@ describe("repeated note labels resolve by alignment, not by count", () => {
     expect(resolveNoteReferences(["9"], ["1", "1"])).toEqual([null]);
     expect(collectNoteOrder("[^1]: a\n\n[^2]: b\n\n[^1]: c")).toEqual(["1", "2", "1"]);
   });
+
+  it("aligns a report the size of Leveson's (8,500 by 8,600), not the positional fallback", () => {
+    // 300 chapters of 30 notes; each chapter's reference to note 3 is missing (a marker not linked).
+    // Positionally, every later [^4]..[^30] would still be right, but every later [^3] would open the
+    // next chapter's note 3; aligned, chapter c's references open chapter c's notes.
+    const order: string[] = [];
+    const labels: string[] = [];
+    const chapterOf: number[] = [];
+    for (let c = 0; c < 300; c++) {
+      for (let n = 1; n <= 30; n++) {
+        order.push(String(n));
+        if (n === 3 && c % 2 === 0) continue;
+        labels.push(String(n));
+        chapterOf.push(c);
+      }
+    }
+    expect(labels.length * order.length).toBeGreaterThan(40_000_000);
+    const t = Date.now();
+    const aligned = resolveNoteReferences(labels, order);
+    expect(Date.now() - t).toBeLessThan(20_000);
+    expect(aligned.every((index, i) => index === chapterOf[i])).toBe(true);
+  });
 });
 
 describe("collectNotes", () => {
