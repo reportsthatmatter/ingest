@@ -29,7 +29,6 @@ export {
   unmarkedHeadings,
   recoverListedHeadings,
   endnotes,
-  layoutEndnotes,
   numberedSections,
   contentsEntries,
   shortSubheads,
@@ -79,13 +78,6 @@ export { cleanEdition, inlineMarkdown, inlineText, escapeInline, assembleEdition
 export type { Edition, EditionBlock, EditionNote, EditionPass, EditionSource, EditionReport, InlinePiece, PrintedPage, BlockSource, FilledGap, ShadowText } from "./edition";
 export { htmlEvents, decodeEntities } from "./html";
 export type { HtmlEvent } from "./html";
-// — Block structure from a vision model's verified page reading (vision/hybrid.ts) —
-export { visionStructure, visionPage, readPack, renderVisionReport } from "./vision/hybrid";
-export type { VisionStructurePass, VisionReport, VisionPageRecord, VisionOptions, VisionSource } from "./vision/hybrid";
-export { parseDoctags } from "./vision/doctags";
-export type { VisionBlock } from "./vision/doctags";
-export { verifyPage, verifyWithLayout, rejoinLineHyphens } from "./vision/verify";
-export type { VerifiedBlock, VerifiedPage, VerifyOptions } from "./vision/verify";
 // Monotone word alignment (promoted from the site's scorer, src/lib/score)
 export { align } from "./align";
 export type { Alignment, AlignOptions } from "./align";

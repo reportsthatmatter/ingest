@@ -12,7 +12,6 @@ import type {
 } from "./passes";
 import type { PageBreakOptions } from "./pagebreaks";
 import type { EditionPass } from "./edition";
-import type { VisionStructurePass } from "./vision/hybrid";
 import type { TypographicHeadingsOptions } from "./typographic-headings";
 
 export type Volume = { path: string; sha256?: string };
@@ -64,9 +63,7 @@ export type ResolvedPasses = {
   /** `layoutPageJoins`: on, with its options. */
   layoutPageJoins?: PageBreakOptions;
   /** `layoutMarkers`: on, with where its notes are. */
-  layoutMarkers?: { scope: "page" | "document" | "chapter"; textFallback: boolean };
-  /** `layoutEndnotes`: notes sections read off the layout, labelled by chapter. */
-  layoutEndnotes?: boolean;
+  layoutMarkers?: { scope: "page" | "document"; textFallback: boolean };
   /** `typographicHeadings`: on, with its options. */
   typographicHeadings?: TypographicHeadingsOptions;
   unlistedHeadingsMinor?: boolean;
@@ -97,11 +94,6 @@ export type ResolvedPasses = {
    * the PDF passes still run, as the shadow ingest that supplies printed pages.
    */
   edition?: EditionPass;
-  /**
-   * `visionStructure`: block structure from a vision model's verified reading
-   * of the page images, on the pages that pass its gate (vision/hybrid.ts).
-   */
-  vision?: VisionStructurePass;
 };
 
 /** Validates a report's definition. Throws rather than ingesting nonsense. */
@@ -128,14 +120,6 @@ export function pipeline(def: PipelineDef): PipelineDef {
   }
   if ((def.passes ?? []).filter((pass) => pass.stage === "edition").length > 1) {
     throw new Error(`${def.id}: more than one cleanEdition declared`);
-  }
-  const visions = (def.passes ?? []).filter((pass) => pass.stage === "vision").length;
-  if (visions > 1) throw new Error(`${def.id}: more than one visionStructure declared`);
-  if (visions && (def.passes ?? []).some((pass) => pass.stage === "edition")) {
-    throw new Error(`${def.id}: visionStructure and cleanEdition do not combine — one takes structure from the PDF's pages, the other text and structure from an edition`);
-  }
-  if (visions && (def.passes ?? []).some((pass) => pass.name === "paragraphNotes" || pass.name === "endnotes")) {
-    throw new Error(`${def.id}: visionStructure reads page-foot notes; it does not combine with paragraphNotes or endnotes`);
   }
   if ((def.passes ?? []).filter((pass) => pass.stage === "allCapsHeadings").length > 1) {
     throw new Error(`${def.id}: more than one allCapsHeadings pass declared`);
@@ -185,7 +169,6 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
       passes.some((pass) => pass.name === "unmarkedHeadings") &&
       passes.some((pass) => pass.name === "listedHeadings"),
     endnotes: passes.some((pass) => pass.name === "endnotes"),
-    layoutEndnotes: passes.some((pass) => pass.name === "layoutEndnotes"),
     numberedSections: passes.some((pass) => pass.name === "numberedSections"),
     contentsEntries: passes.some((pass) => pass.name === "contentsEntries"),
     shortSubheads: passes.some((pass) => pass.name === "shortSubheads"),
@@ -227,7 +210,6 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     bodyPasses: passes.filter((pass): pass is BodyPass => pass.stage === "body"),
     volumePasses: passes.filter((pass): pass is VolumePass => pass.stage === "volume"),
     edition: passes.find((pass): pass is EditionPass => pass.stage === "edition"),
-    vision: passes.find((pass): pass is VisionStructurePass => pass.stage === "vision"),
   };
 }
 
@@ -241,7 +223,7 @@ function layoutPageJoinsOf(passes: Pass[]): PageBreakOptions | undefined {
   };
 }
 
-function layoutMarkersOf(passes: Pass[]): { scope: "page" | "document" | "chapter"; textFallback: boolean } | undefined {
+function layoutMarkersOf(passes: Pass[]): { scope: "page" | "document"; textFallback: boolean } | undefined {
   const pass = passes.find((p): p is LayoutMarkersPass => p.name === "layoutMarkers");
   return pass ? { scope: pass.scope ?? "page", textFallback: pass.textFallback === true } : undefined;
 }

@@ -283,12 +283,7 @@ export function linkInlineMarkers(text, known) {
         // Look at what follows the candidate.
         const followingStart = offset + whole.length;
         const following = text.slice(followingStart, followingStart + 28);
-        // The month filter stops at a blank line: the next block (a running head
-        // "January 6, 2025") says nothing about this candidate. The other
-        // filters keep reading across it: "Planning, 75 | Fed. Reg. 60,800" is a
-        // citation a page break cut in two (reportsthatmatter-3ezs).
-        const followingInBlock = following.split(/\n[ \t]*\n/, 1)[0];
-        if (MONTH_SOON_AFTER.test(followingInBlock))
+        if (MONTH_SOON_AFTER.test(following))
             return whole;
         if (PHONE_NUMBER_SOON_AFTER.test(following))
             return whole;

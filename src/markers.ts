@@ -123,7 +123,7 @@ function anchorPattern(before: string, earlier: Array<{ offset: number; text: st
       .join("\\s+");
   for (const r of marks) {
     out += plain(trimmed.slice(at, r.offset));
-    out += `(?:\\[\\^${r.text}(?:-\\d+)?\\]|${r.text})`;
+    out += `(?:\\[\\^${r.text}\\]|${r.text})`;
     at = r.offset + r.text.length;
   }
   out += plain(trimmed.slice(at));
@@ -220,12 +220,7 @@ export type MarkerNotes =
   /** Page-foot notes: the note numbers collected on each page. */
   | { scope: "page"; onPage: (volume: number, pdfIndex: number) => ReadonlySet<number> }
   /** Endnotes: every note number the report collected. */
-  | { scope: "document"; known: ReadonlySet<number> }
-  /**
-   * Endnotes numbered afresh per chapter (`layoutEndnotes`): each block's chapter, and the
-   * note numbers printed for it. A marker is linked `[^N-C]`; a block in no chapter links nothing.
-   */
-  | { scope: "chapter"; chapterOf: (block: Block) => { key: number; numbers: ReadonlySet<number> } | undefined };
+  | { scope: "document"; known: ReadonlySet<number> };
 
 export function linkLayoutMarkers(blocks: Block[], layout: Layout, notes: MarkerNotes): LayoutMarkerStats {
   const stats: LayoutMarkerStats = { raised: 0, candidates: 0, linked: 0, unplaced: 0, links: [], misses: [] };
@@ -256,10 +251,7 @@ export function linkLayoutMarkers(blocks: Block[], layout: Layout, notes: Marker
     if (!layout.page(volume, pdfIndex)) continue;
     const raised = raisedOn(volume, pdfIndex);
     stats.raised += raised.length;
-    // A page's chapter is its first block's that has one (chapters open on a page of their own).
-    const chapter = notes.scope === "chapter" ? units.map((u) => notes.chapterOf(u.block)).find(Boolean) : undefined;
     const cites = (n: number): boolean => {
-      if (notes.scope === "chapter") return chapter?.numbers.has(n) ?? false;
       if (notes.scope === "document") return notes.known.has(n);
       if (notes.onPage(volume, pdfIndex).has(n)) return true;
       return [pdfIndex - 1, pdfIndex + 1].some(
@@ -282,7 +274,7 @@ export function linkLayoutMarkers(blocks: Block[], layout: Layout, notes: Marker
       const text = textOf(unit);
       // Close up any space pdftotext put between the word and its marker.
       const head = text.slice(0, at.start).replace(/[ \t]+$/, "");
-      const marker = chapter ? `[^${c.value}-${chapter.key}]` : `[^${c.value}]`;
+      const marker = `[^${c.value}]`;
       setText(unit, head + marker + text.slice(at.end));
       cursor.unit = at.unit;
       cursor.pos = head.length + marker.length;
