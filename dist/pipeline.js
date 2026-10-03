@@ -111,16 +111,22 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         // `footnoteNumbers("period")`: a block opening "8. In all of the above cases" in the body's face is
         // the body's own numbered paragraphs (an appendix's), not notes: the page is read without them.
         const firstNote = split.footnotes.find((line) => line.trim());
-        if (resolved.footnoteNumbers === "period" && context.layout && firstNote && !inNoteFace(context.layout, split.volume, split.pdfIndex, firstNote)) {
+        if ((resolved.footnoteNumbers === "period" || resolved.footnoteNumbers === "tabbed") &&
+            context.layout &&
+            firstNote &&
+            !inNoteFace(context.layout, split.volume, split.pdfIndex, firstNote, resolved.footnoteNumbers === "tabbed")) {
             split = splitPage(page, expectedNote, { ...splitOptions, footnoteNumbers: undefined });
         }
+        // `pdfPageNumbers`: the report prints no folios; its pages are numbered by their place in the PDF.
+        if (resolved.pdfPageNumbers)
+            split.printed = split.pdfIndex;
         // `layoutMarkers` (page scope): page-foot "notes" on a page whose layout
         // defines none (nothing raised, nothing in a smaller face) are the body's
         // own lines, a contents page's entries most often (reportsthatmatter-b94).
         if (resolved.layoutMarkers?.scope === "page" &&
             context.layout &&
             split.footnotes.length &&
-            !pageDefinesNotes(context.layout, split.volume, split.pdfIndex)) {
+            !pageDefinesNotes(context.layout, split.volume, split.pdfIndex, resolved.footnoteNumbers === "tabbed")) {
             split.body = [...split.body, ...split.footnotes];
             split.footnotes = [];
         }
@@ -145,7 +151,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
             split.body = [...split.body, ...split.runOver];
         }
         if (split.footnotes.length) {
-            const parsed = parseFootnotes(split.footnotes, split.index, resolved.footnoteNumbers === "period" ? "period" : "bare").map((note) => ({
+            const parsed = parseFootnotes(split.footnotes, split.index, resolved.footnoteNumbers ?? "bare").map((note) => ({
                 ...note,
                 volume: split.volume,
                 pdfIndex: split.pdfIndex,

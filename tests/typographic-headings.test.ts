@@ -91,6 +91,24 @@ describe("layoutHeadings", () => {
   it("takes a face only when it recurs", () => {
     expect(layoutHeadings(layout, { minPages: 4 }).headings).toEqual([]);
   });
+
+  it("takes exactly the declared faces, one list per level, italic and one-off faces included (Post Office Horizon)", () => {
+    const declared = layoutHeadings(layout, {
+      firstLevel: 2,
+      faces: [["HelveticaNeue-Medium|21|#780030"], ["HelveticaNeue|15|#780030|i"]],
+    });
+    expect(declared.faces.map((f) => [f.face, f.level])).toEqual([
+      ["HelveticaNeue-Medium|21|#780030", 2],
+      ["HelveticaNeue|15|#780030|i", 3],
+    ]);
+    expect(declared.headings.map((h) => [h.pdfIndex, h.level, h.text])).toEqual([
+      [1, 2, "What happened after 3pm"],
+      [1, 3, "Figure 1: Map of the stadium"],
+      [2, 2, "The Police Federation responds to the Taylor Interim Report"],
+      [2, 2, "Conclusion"],
+      [3, 2, "A third subhead"],
+    ]);
+  });
 });
 
 describe("applyTypographicHeadings", () => {

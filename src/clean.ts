@@ -49,9 +49,17 @@ const FOOTNOTE_STACKED = /^\s{0,10}(\d{1,4})\s*$/;
  * were read as notes 16-21 of their page until the number had to be flush).
  */
 const FOOTNOTE_INLINE_PERIOD = /^\s{0,1}(\d{1,4})\.\s{1,6}(?=[A-Za-z"“‘'(])/;
+/**
+ * `footnoteNumbers("tabbed")`: a page-foot note whose number is flush at the page's edge and whose text
+ * starts at a tab stop, so `pdftotext -layout` sets one to eight spaces between them ("9     Most of…",
+ * "335   Transcript…"), and whose text may open on a bracketed document reference ("[INQ00002032].").
+ * The Post Office Horizon IT Inquiry sets its notes this way: the bare style allows three spaces at most
+ * and no bracket, so only its three-digit notes that opened on a letter were read.
+ */
+const FOOTNOTE_INLINE_TABBED = /^\s{0,1}(\d{1,4})\s{1,8}(?=[A-Za-z"“‘'(\[])/;
 
-/** How a report numbers its page-foot notes: "104 Letter…" (bare) or "104. Letter…" (period). */
-export type FootnoteNumbers = "bare" | "period";
+/** How a report numbers its page-foot notes: "104 Letter…" (bare), "104. Letter…" (period) or "104<tab>Letter…" (tabbed). */
+export type FootnoteNumbers = "bare" | "period" | "tabbed";
 
 /** Candidate note openings on a page, in either layout. */
 export function noteCandidates(
@@ -61,7 +69,9 @@ export function noteCandidates(
   const candidates: Array<{ line: number; note: number }> = [];
 
   for (let i = 0; i < lines.length; i++) {
-    const inline = lines[i].match(numbers === "period" ? FOOTNOTE_INLINE_PERIOD : FOOTNOTE_INLINE);
+    const inline = lines[i].match(
+      numbers === "period" ? FOOTNOTE_INLINE_PERIOD : numbers === "tabbed" ? FOOTNOTE_INLINE_TABBED : FOOTNOTE_INLINE
+    );
     if (inline) {
       candidates.push({ line: i, note: Number.parseInt(inline[1], 10) });
       continue;

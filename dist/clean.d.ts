@@ -32,8 +32,8 @@ export type SplitPage = {
  * thousands.
  */
 export declare const FOOTNOTE_INLINE: RegExp;
-/** How a report numbers its page-foot notes: "104 Letter…" (bare) or "104. Letter…" (period). */
-export type FootnoteNumbers = "bare" | "period";
+/** How a report numbers its page-foot notes: "104 Letter…" (bare), "104. Letter…" (period) or "104<tab>Letter…" (tabbed). */
+export type FootnoteNumbers = "bare" | "period" | "tabbed";
 /** Candidate note openings on a page, in either layout. */
 export declare function noteCandidates(lines: string[], numbers?: FootnoteNumbers): Array<{
     line: number;

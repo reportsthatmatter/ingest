@@ -23,10 +23,15 @@ export function extractPages(pdfPath) {
         // no way to know where it sits in the report's order.
         volume: 1,
         pdfIndex: i + 1,
-        lines: page.split("\n"),
+        // InDesign's "indent to here" and similar control characters reach the text layer as C0 controls
+        // (U+0007 before a note's text, after a contents number): 744 in the Post Office Horizon IT
+        // Inquiry's Volume 1, 52 in Leveson. Each becomes a space, so the line's columns stay as laid out.
+        lines: page.split("\n").map((line) => line.replace(CONTROL_CHARACTERS, " ")),
     }))
         .filter((page) => page.lines.some((line) => line.trim().length > 0));
 }
+/** C0 control characters other than tab, line feed and form feed (which `extractPages` splits on). */
+const CONTROL_CHARACTERS = /[\u0000-\u0008\u000b\u000d-\u001f]/g;
 /** Normalises the characters pdftotext emits that would otherwise reach output. */
 export function normaliseWhitespace(text) {
     return text

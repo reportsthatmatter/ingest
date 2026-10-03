@@ -16,6 +16,8 @@ const NOTE_STACKED = /^\s{0,10}(\d{1,4})\s*$/;
 // blocks use.
 const NOTE_INLINE_PERIOD = /^\s{0,20}(\d{1,4})\.\s{0,6}(?=[A-Za-z"“(])/;
 const NOTE_STACKED_PERIOD = /^\s{0,20}(\d{1,4})\.\s*$/;
+/** `footnoteNumbers("tabbed")`: the number flush, its text at a tab stop, possibly opening on "[" (clean.ts). */
+const NOTE_INLINE_TABBED = /^\s{0,1}(\d{1,4})\s{1,8}(?=[A-Za-z"“‘'(\[])/;
 /**
  * A note-start whose digit is followed by exactly one stray OCR character
  * before its real text — the "I" of "Ibid." landing as "%" or "!" ("0
@@ -33,7 +35,7 @@ const NOTE_STACKED_PERIOD = /^\s{0,20}(\d{1,4})\.\s*$/;
  */
 const GARBLED_INLINE = /^\s{0,8}(\d{1,4})\s{0,3}[^\sA-Za-z\d]\s{0,3}(?=[A-Za-z"“(])/;
 function classify(line, style = "bare") {
-    const inline = line.match(style === "period" ? NOTE_INLINE_PERIOD : NOTE_INLINE);
+    const inline = line.match(style === "period" ? NOTE_INLINE_PERIOD : style === "tabbed" ? NOTE_INLINE_TABBED : NOTE_INLINE);
     if (inline) {
         return {
             kind: "inline",

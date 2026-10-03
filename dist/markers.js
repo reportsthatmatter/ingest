@@ -224,7 +224,17 @@ export function linkLayoutMarkers(blocks, layout, notes) {
  * Appendix 1, "8. In all of the above cases, …") is in the body's face, and stays body. A line the layout
  * does not find is given the benefit of the doubt.
  */
-export function inNoteFace(layout, volume, pdfIndex, line) {
+/**
+ * Whether a line is set in a note's face: well below the body's size, or (`otherFamily`, for a report that
+ * sets its notes in another typeface only a little smaller, as the Post Office Horizon IT Inquiry sets Arial
+ * 15 under an Open Sans 17 body: 0.88 of it) smaller and in a family other than the body's.
+ */
+function noteFace(line, bodySize, bodyFamily, otherFamily) {
+    if (line.size < BODY_SIZE_RATIO * bodySize)
+        return true;
+    return otherFamily && line.size < bodySize && line.family !== bodyFamily;
+}
+export function inNoteFace(layout, volume, pdfIndex, line, otherFamily = false) {
     const page = layout.page(volume, pdfIndex);
     if (!page)
         return true;
@@ -234,14 +244,14 @@ export function inNoteFace(layout, volume, pdfIndex, line) {
     const hit = page.lines.find((l) => key(l.text) === want || (want.length >= 12 && key(l.text).startsWith(want.slice(0, 12))));
     if (!hit || bodySize <= 0)
         return true;
-    return hit.size < BODY_SIZE_RATIO * bodySize;
+    return noteFace(hit, bodySize, layout.bodyFont.family, otherFamily);
 }
-export function pageDefinesNotes(layout, volume, pdfIndex) {
+export function pageDefinesNotes(layout, volume, pdfIndex, otherFamily = false) {
     const page = layout.page(volume, pdfIndex);
     if (!page)
         return true;
     // (a page that is mostly notes takes their face for its body: measure against the document's too)
     const bodySize = Math.max(Number(page.bodyFont.split("|")[1]) || 0, layout.bodyFont.size);
     return page.lines.some((l) => l.raised.some((r) => r.offset === 0 && /^\d/.test(r.text)) ||
-        (bodySize > 0 && l.size < BODY_SIZE_RATIO * bodySize && /^\s*\d{1,4}(?:\s|$)/.test(l.text)));
+        (bodySize > 0 && noteFace(l, bodySize, layout.bodyFont.family, otherFamily) && /^\s*\d{1,4}(?:\s|$)/.test(l.text)));
 }

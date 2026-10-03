@@ -13,7 +13,7 @@ export type Footnote = {
     /** The printed page number the note sits on — what a correction's `where` scopes against. */
     printed?: number | null;
 };
-type NoteStyle = "bare" | "period";
+type NoteStyle = "bare" | "period" | "tabbed";
 export declare function parseFootnotes(lines: string[], page: number, style?: NoteStyle): Footnote[];
 export declare function linkInlineMarkers(text: string, known: Set<number>): string;
 /**

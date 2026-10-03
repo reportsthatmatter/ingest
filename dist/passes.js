@@ -351,6 +351,19 @@ export const footnoteNumbers = (numbers) => ({
     numbers,
 });
 /**
+ * The report prints no page numbers, and its own contents cite the PDF's page
+ * order (the Post Office Horizon IT Inquiry's Volume 1: "1. INTRODUCTION 6" is
+ * the PDF's sixth page, and no page carries a folio). Each page is numbered by
+ * its place in its volume's PDF, so page anchors are the numbers the contents
+ * gives.
+ *
+ * Without it such a report has no page anchors at all, or worse: a running head
+ * carrying a constant number ("…Report: Volume 1") is read by
+ * `runningFurniture` as every page's folio. Opt-in: only a report whose
+ * contents is checked against its PDF pages declares it.
+ */
+export const pdfPageNumbers = () => ({ name: "pdfPageNumbers", stage: "page" });
+/**
  * Reads the report's chapter-and-section numbering from its contents
  * ("8.1   The Summer of Threat 254") and takes each numbered section's heading
  * from there (reportsthatmatter-w8g).
