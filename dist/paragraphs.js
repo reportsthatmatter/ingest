@@ -1994,8 +1994,9 @@ export function blocksToMarkdown(blocks, options = {}) {
         // (`escapeNumberedParagraphs`, reportsthatmatter-4qw).
         if (block.kind === "paragraph" &&
             (block.finding !== undefined ||
+                block.printedNumber ||
                 (options.escapeNumberedParagraphs && /^\d{1,4}\.\s/.test(block.text)))) {
-            return block.text.replace(/^(\d+)\./, "$1\\.");
+            return block.text.replace(/^(\d+)([.)])/, "$1\\$2");
         }
         const markdown = blockToMarkdown(block);
         return options.escapeLeadingHash ? escapeHash(block, markdown) : markdown;

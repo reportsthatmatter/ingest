@@ -16,6 +16,8 @@ export type Block = ({
     text: string;
     /** A numbered finding's number (`numberedFindings`). */
     finding?: number;
+    /** The text opens with a printed paragraph number to escape (`markPrintedNumbers`). */
+    printedNumber?: true;
 } | {
     kind: "list";
     items: string[];

@@ -105,7 +105,7 @@ export function finalBlocks(result) {
         if (c === undefined)
             return b; // closed into the block before it by the hyphen rejoin
         // blocksToMarkdown escapes "3437." and "#" at a block's start so Markdown reads them as text: undo that
-        const unescape = (t) => t.replace(/^(\d+)\\\./, "$1.").replace(/^\\(#{1,6})(?=\s|$)/, "$1");
+        const unescape = (t) => t.replace(/^(\d+)\\([.)])/, "$1$2").replace(/^\\(#{1,6})(?=\s|$)/, "$1");
         if (b.kind === "paragraph")
             return { ...b, text: unescape(c) };
         if (b.kind === "quote")

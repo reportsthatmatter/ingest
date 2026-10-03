@@ -1,5 +1,6 @@
 import { extractPages, normaliseWhitespace, type Page } from "./extract";
 import { splitPage, takePrintedNumber, collapseDoubleSpacing, type SplitPage } from "./clean";
+import { markPrintedNumbers } from "./printed-numbers";
 import { extractParagraphNotes } from "./paragraph-notes";
 import type { ResolvedPasses } from "./define";
 import { applyCorrections, type Correction } from "./corrections";
@@ -444,7 +445,10 @@ export function ingestPageGroups(
     meta.title,
     footnotes
   );
-  let body = blocksToMarkdown(corrected.blocks, {
+  // Printed paragraph numbers are escaped (and a year split off its sentence
+  // rejoined) so Markdown does not read them as list items: see printed-numbers.ts.
+  const outBlocks = markPrintedNumbers(corrected.blocks);
+  let body = blocksToMarkdown(outBlocks, {
     escapeNumberedParagraphs: resolved.escapeNumberedParagraphs,
     escapeLeadingHash: resolved.escapeLeadingHash,
   });
@@ -513,7 +517,7 @@ export function ingestPageGroups(
 
   // Blocks are joined with one blank line and none holds one, so the final body splits back into them,
   // except where the hyphen rejoin closed a paragraph into the next ("fol-" / "lowing").
-  const linkedText = alignChunks(corrected.blocks, body.split("\n\n"));
+  const linkedText = alignChunks(outBlocks, body.split("\n\n"));
 
   return {
     markdown,
@@ -523,7 +527,7 @@ export function ingestPageGroups(
     autoFixes: fixed.applied + noteFixes,
     corrections: corrected.applied,
     pages: pages.length,
-    blocks: corrected.blocks,
+    blocks: outBlocks,
     linkedText,
     pageText,
   };

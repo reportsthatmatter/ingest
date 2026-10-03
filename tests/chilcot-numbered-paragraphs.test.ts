@@ -26,12 +26,10 @@ const run = (passes: Pass[]) =>
   ).markdown;
 
 describe("escapeNumberedParagraphs (reportsthatmatter-4qw)", () => {
-  it("the defect: numberedParagraphs alone writes a margin-set number as an ordered list, with no id", () => {
+  it("numberedParagraphs alone now escapes the margin number by default (reportsthatmatter-mv1t)", () => {
     const markdown = run([numberedParagraphs()]);
-    expect(markdown).toMatch(/^20\. In the Inquiry.s view, the diplomatic options/m);
-    const html = renderMarkdown(markdown);
-    expect(html).toContain("<ol");
-    expect(html).not.toContain('id="20-inquiry-s-view-diplomatic"');
+    expect(markdown).toMatch(/^20\\\. In the Inquiry.s view, the diplomatic options/m);
+    expect(renderMarkdown(markdown)).not.toContain("<ol");
   });
 
   it("escapes the margin number once declared, so it renders as a paragraph with a citable id", () => {
