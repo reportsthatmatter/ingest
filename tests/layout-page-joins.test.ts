@@ -56,7 +56,7 @@ describe("layoutPageJoins on real page breaks", () => {
     // "…the well's new bottom cement seal.21" / "According to the BP team's plan…": flush, but finished,
     // and the page is not justified, so R2 cannot apply either. Read as unfinished, R1 joined it.
     const d = decide("deepwater-p20");
-    expect(d).toMatchObject({ join: false, reason: "finished" });
+    expect(d).toMatchObject({ join: false, reason: "finished, next line flush", confidence: "medium", ambiguous: false });
   });
 
   it("never joins into a numbered paragraph (Saville p.122, '7.44')", () => {

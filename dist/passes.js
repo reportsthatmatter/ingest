@@ -623,7 +623,11 @@ export const quoteListRunOns = () => ({ name: "quoteListRunOns", stage: "page" }
  * `referee`: an optional, deterministic second opinion on the low-margin
  * calls (an indent near the threshold, an R2 join, no line under the first
  * line to compare with) — in practice a lookup in a committed cache keyed by
- * `PageBreakCase.key` (38s.11). An `undefined` answer leaves the rules' call.
+ * `PageBreakCase.key` (38s.11): `pageBreakCache(new URL("./referee/pagebreaks.json",
+ * import.meta.url))`, filled offline by the host (`src/referee.ts`). An
+ * `undefined` answer leaves the rules' call. `refer: "medium"` also puts the
+ * medium-confidence calls to it (a flush first line after a finished
+ * sentence; a layout-only label after an unfinished one).
  */
 /**
  * Links the footnote markers the PDF sets as small raised digits
@@ -656,6 +660,7 @@ export const layoutPageJoins = (options = {}) => ({
     stage: "page",
     ...(options.scanned ? { scanned: true } : {}),
     ...(options.referee ? { referee: options.referee } : {}),
+    ...(options.referee && options.refer === "medium" ? { refer: "medium" } : {}),
 });
 /**
  * Whether a numbered or lettered line ("1. Withdrawing the Army", "C. The

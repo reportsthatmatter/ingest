@@ -211,6 +211,7 @@ function layoutPageJoinsOf(passes: Pass[]): PageBreakOptions | undefined {
   return {
     ...(pass.scanned ? { scanned: true } : {}),
     ...(pass.referee ? { referee: pass.referee } : {}),
+    ...(pass.refer ? { refer: pass.refer } : {}),
   };
 }
 
