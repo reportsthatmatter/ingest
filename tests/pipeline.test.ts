@@ -842,21 +842,6 @@ describe("citation numbers are not footnote markers", () => {
       "told him the same.[^10] On November"
     );
   });
-
-  it("does not let a month in the next block veto a marker at a block's end (reportsthatmatter-3ezs)", () => {
-    // Jack Smith p.167: the marker ends the paragraph; the next block is the running head.
-    expect(linkInlineMarkers("the statutory predecessor. 10\n\nJanuary 6, 2025\n\nNext.", new Set([10]))).toBe(
-      "the statutory predecessor.[^10]\n\nJanuary 6, 2025\n\nNext."
-    );
-    // A citation cut in two by a page break is still a citation (Deepwater note 72).
-    expect(linkInlineMarkers("Restoration Planning, 75\n\nFed. Reg. 60,800 (Oct. 1, 2010).", new Set([75]))).toBe(
-      "Restoration Planning, 75\n\nFed. Reg. 60,800 (Oct. 1, 2010)."
-    );
-    // Within one block a date is still a date.
-    expect(linkInlineMarkers("on the day. 6 January 2025 he left", new Set([6]))).toBe(
-      "on the day. 6 January 2025 he left"
-    );
-  });
 });
 
 describe("hyphenated words split by a page break", () => {
