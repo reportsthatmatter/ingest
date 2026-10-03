@@ -65,3 +65,9 @@ export declare function ingestPages(pages: Page[], meta: Metadata): IngestResult
  * may differ, so one global margin is not meaningful across all of them.
  */
 export declare function ingestPageGroups(pageGroups: Page[][], meta: Metadata, resolved?: ResolvedPasses, corrections?: Correction[], context?: PipelineContext): IngestResult;
+/**
+ * `fillPrintedGaps` on the PDF path: inserts, in place, a page marker before
+ * the first block of each page the gap-filler numbers. A page with no block of
+ * its own (a blank or figure-only page) gets none, so markers never stack.
+ */
+export declare function markUnreadPages(chunks: Block[]): void;
