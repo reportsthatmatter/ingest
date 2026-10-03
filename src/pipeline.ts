@@ -42,6 +42,7 @@ import {
   type NotesLine,
   type NotesChapter,
 } from "./footnotes";
+import { applyTypographicHeadings, type TypographicHeadingStats } from "./typographic-headings";
 import { inNoteFace, linkLayoutMarkers, pageDefinesNotes, type LayoutMarkerStats } from "./markers";
 import { LayoutEndnotesReader, chapterOfBlocks } from "./layout-endnotes";
 import { autoFix, findSuspects, rankSuspects, type Suspect } from "./ocr";
@@ -85,6 +86,8 @@ export type IngestResult = {
   layoutMarkers?: LayoutMarkerStats;
   /** `visionStructure`: which pages took the vision model's structure, and why the others did not. */
   vision?: VisionReport;
+  /** What `typographicHeadings` found and cut out, when the report declares it. */
+  typographicHeadings?: TypographicHeadingStats;
 };
 
 export type Metadata = {
@@ -490,6 +493,12 @@ export function ingestPageGroups(
     }
     return near;
   };
+  // Headings the text reading ran into the next paragraph, cut out by their typography,
+  // before the markers are linked and the pages joined (reportsthatmatter-a8l).
+  const headingStats =
+    resolved.typographicHeadings && context.layout
+      ? applyTypographicHeadings(bodyChunks, context.layout, resolved.typographicHeadings)
+      : undefined;
   // Raised markers, read off the PDF's layout: before the text-only linkers,
   // which then leave alone what is already linked.
   let markerStats: LayoutMarkerStats | undefined;
@@ -636,6 +645,7 @@ export function ingestPageGroups(
     pageText,
     ...(markerStats ? { layoutMarkers: markerStats } : {}),
     ...(visionReport ? { vision: visionReport } : {}),
+    ...(headingStats ? { typographicHeadings: headingStats } : {}),
   };
 }
 

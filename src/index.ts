@@ -38,6 +38,7 @@ export {
   quoteListRunOns,
   layoutPageJoins,
   layoutMarkers,
+  typographicHeadings,
   numberedFindings,
   doubleSpaced,
   contentsOutline,
@@ -62,6 +63,7 @@ export type {
   PagePass,
   LayoutPageJoinsPass,
   LayoutMarkersPass,
+  TypographicHeadingsPass,
   PageBreakContinuationsPass,
   BodyPass,
   VolumePass,
@@ -92,6 +94,8 @@ export type { Token } from "./tokens";
 export { linkLayoutMarkers, foldForMatch } from "./markers";
 export type { LayoutMarkerStats, LayoutMarkersOptions, MarkerNotes } from "./markers";
 export { pageDefinesNotes } from "./markers";
+export { applyTypographicHeadings, layoutHeadings } from "./typographic-headings";
+export type { TypographicHeadingsOptions, TypographicHeadingStats } from "./typographic-headings";
 export type { Gutter } from "./columns";
 
 // — Running a build —

@@ -964,15 +964,25 @@ export function fillGaps(edition: Edition, pages: Page[], shadow: ShadowText): {
     const words = fieldsOf([filled], []).flatMap((field) => fieldTokens(field.get()).map((t) => t.word));
     // (a contents entry among others is the contents page's own, and kept)
     const lone = (k: number) => shadow.blocks[k]?.kind !== "contents";
-    const runningHead = filled.kind === "heading" || (filled.kind === "contents" && lone(b - 1) && lone(b + 1));
+    // (a heading the layout showed set in the body's flow, by face and size, is not one: subsection titles recur)
+    const runningHead = (filled.kind === "heading" && !block.layoutHeading) || (filled.kind === "contents" && lone(b - 1) && lone(b + 1));
     // and words the edition prints right there already: the aligner left a repeated phrase unmatched
     // (Hillsborough's terms of reference quote a clause that Appendix 2 quotes again), not text it lacks
     const nearby = ` ${edition.blocks
       .slice(Math.max(0, gapAt[g] - 100), gapAt[g] + 100)
       .flatMap((block) => fieldsOf([block], []).flatMap((field) => fieldTokens(field.get()).map((t) => t.word)))
       .join(" ")} `;
-    const repeated = filled.kind !== "contents" && words.length >= 3 && nearby.includes(` ${words.join(" ")} `);
-    if (!words.some(hasLetter) || (runningHead && titles.has(words.join(" "))) || repeated) {
+    // (not a heading: a short heading's words turn up in prose anywhere, "Lack of leadership", and a heading
+    // the PDF set apart is not a phrase the aligner dropped)
+    const repeated = filled.kind !== "contents" && filled.kind !== "heading" && words.length >= 3 && nearby.includes(` ${words.join(" ")} `);
+    // A heading the edition holds right at the gap's edge, which the PDF repeats at the page where the gap
+    // begins or ends (the web page ended on it): the edition's own is the one to keep.
+    const atEdge =
+      filled.kind === "heading" &&
+      [edition.blocks[gapAt[g] - 1], edition.blocks[gapAt[g] + 1]].some(
+        (neighbour) => neighbour?.kind === "heading" && fieldTokens(neighbour.text).map((t) => t.word).join(" ") === words.join(" ")
+      );
+    if (!words.some(hasLetter) || (runningHead && titles.has(words.join(" "))) || repeated || atEdge) {
       dropped[g]++;
       continue;
     }

@@ -667,6 +667,18 @@ export const layoutMarkers = (options = {}) => ({
     scope: options.scope ?? "page",
     ...(options.textFallback ? { textFallback: true } : {}),
 });
+/**
+ * Subsection headings set only by face and size (Hillsborough's maroon 26pt and 21pt lines), read off the
+ * PDF's layout and cut out of the paragraph the text reading ran them into (reportsthatmatter-a8l):
+ * "Recognition of the disaster 2.4.20 The first essential requirement…" becomes a heading and a paragraph.
+ * See `typographic-headings.ts`. Opt-in; for a PDF read (or the PDF-filled stretches of a hybrid) whose
+ * headings carry no textual convention.
+ */
+export const typographicHeadings = (options = {}) => ({
+    name: "typographicHeadings",
+    stage: "page",
+    options,
+});
 export const layoutPageJoins = (options = {}) => ({
     name: "layoutPageJoins",
     stage: "page",

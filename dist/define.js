@@ -67,6 +67,7 @@ export function resolvePasses(def) {
         quoteListRunOns: passes.some((pass) => pass.name === "quoteListRunOns"),
         layoutPageJoins: layoutPageJoinsOf(passes),
         layoutMarkers: layoutMarkersOf(passes),
+        typographicHeadings: passes.find((p) => p.name === "typographicHeadings")?.options,
         unlistedHeadingsMinor: passes.some((pass) => pass.name === "unlistedHeadingsMinor"),
         hangingIndents: passes.some((pass) => pass.name === "hangingIndents"),
         letteredItems: passes.some((pass) => pass.name === "letteredItems"),

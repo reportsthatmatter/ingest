@@ -1,6 +1,7 @@
 import type { Pass, VolumePass, BodyPass } from "./passes.js";
 import type { PageBreakOptions } from "./pagebreaks.js";
 import type { EditionPass } from "./edition.js";
+import type { TypographicHeadingsOptions } from "./typographic-headings.js";
 export type Volume = {
     path: string;
     sha256?: string;
@@ -55,6 +56,8 @@ export type ResolvedPasses = {
         scope: "page" | "document";
         textFallback: boolean;
     };
+    /** `typographicHeadings`: on, with its options. */
+    typographicHeadings?: TypographicHeadingsOptions;
     unlistedHeadingsMinor?: boolean;
     hangingIndents?: boolean;
     letteredItems?: boolean;

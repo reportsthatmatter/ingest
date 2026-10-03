@@ -4,6 +4,7 @@ import type { PipelineContext } from "./context.js";
 import type { Provenance } from "./paragraphs.js";
 import type { EditionPass } from "./edition.js";
 import type { PageBreakReferee } from "./pagebreaks.js";
+import type { TypographicHeadingsOptions } from "./typographic-headings.js";
 /**
  * A pass is one named decision about how to read a source.
  *
@@ -75,7 +76,13 @@ export type LayoutMarkersPass = {
     readonly scope: "page" | "document";
     readonly textFallback?: boolean;
 };
-export type Pass = EditionPass | NumberedHeadingsPass | LayoutMarkersPass | PageBreakContinuationsPass | LayoutPageJoinsPass | PagePass | BodyPass | VolumePass | GeometryPass | QuoteInsetPass | AllCapsHeadingsPass;
+/** `typographicHeadings`, with its options. */
+export type TypographicHeadingsPass = {
+    readonly name: "typographicHeadings";
+    readonly stage: "page";
+    readonly options: TypographicHeadingsOptions;
+};
+export type Pass = EditionPass | TypographicHeadingsPass | NumberedHeadingsPass | LayoutMarkersPass | PageBreakContinuationsPass | LayoutPageJoinsPass | PagePass | BodyPass | VolumePass | GeometryPass | QuoteInsetPass | AllCapsHeadingsPass;
 /**
  * Takes the printed page number off each page. These documents are cited by
  * page ("Report at 62"), so the printed number is the citation unit readers
@@ -673,6 +680,14 @@ export declare const layoutMarkers: (options?: {
     scope?: "page" | "document";
     textFallback?: boolean;
 }) => LayoutMarkersPass;
+/**
+ * Subsection headings set only by face and size (Hillsborough's maroon 26pt and 21pt lines), read off the
+ * PDF's layout and cut out of the paragraph the text reading ran them into (reportsthatmatter-a8l):
+ * "Recognition of the disaster 2.4.20 The first essential requirement…" becomes a heading and a paragraph.
+ * See `typographic-headings.ts`. Opt-in; for a PDF read (or the PDF-filled stretches of a hybrid) whose
+ * headings carry no textual convention.
+ */
+export declare const typographicHeadings: (options?: TypographicHeadingsOptions) => TypographicHeadingsPass;
 export declare const layoutPageJoins: (options?: {
     scanned?: boolean;
     referee?: PageBreakReferee;

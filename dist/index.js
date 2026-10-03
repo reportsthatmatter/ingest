@@ -11,7 +11,7 @@
  */
 // — What a report declares —
 export { pipeline, resolvePasses } from "./define.js";
-export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, escapeNumberedParagraphs, escapeLeadingHash, paragraphNotes, chapterContents, listedHeadings, unlistedHeadingsMinor, hangingIndents, letteredItems, unmarkedHeadings, recoverListedHeadings, endnotes, numberedSections, contentsEntries, shortSubheads, shiftedPages, quoteRunOn, quoteListRunOns, layoutPageJoins, layoutMarkers, numberedFindings, doubleSpaced, contentsOutline, listedDivisions, wrappedHeadings, pageBreakContinuations, citationRunOver, romanFolios, numberedOutsideTables, photoCredits, footnoteGap, footnoteNumbers, runningFurniture, geometry, columns, quoteInset, allCapsHeadings, numberedHeadings, } from "./passes.js";
+export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, escapeNumberedParagraphs, escapeLeadingHash, paragraphNotes, chapterContents, listedHeadings, unlistedHeadingsMinor, hangingIndents, letteredItems, unmarkedHeadings, recoverListedHeadings, endnotes, numberedSections, contentsEntries, shortSubheads, shiftedPages, quoteRunOn, quoteListRunOns, layoutPageJoins, layoutMarkers, typographicHeadings, numberedFindings, doubleSpaced, contentsOutline, listedDivisions, wrappedHeadings, pageBreakContinuations, citationRunOver, romanFolios, numberedOutsideTables, photoCredits, footnoteGap, footnoteNumbers, runningFurniture, geometry, columns, quoteInset, allCapsHeadings, numberedHeadings, } from "./passes.js";
 export { detectGutter, splitColumns } from "./columns.js";
 // — A clean edition as the source (the hybrid mode, edition.ts) —
 export { cleanEdition, inlineMarkdown, inlineText, escapeInline, assembleEdition, fillGaps } from "./edition.js";
@@ -21,6 +21,7 @@ export { align } from "./align.js";
 export { tokens, words, fold, tokensBefore, hasLetter } from "./tokens.js";
 export { linkLayoutMarkers, foldForMatch } from "./markers.js";
 export { pageDefinesNotes } from "./markers.js";
+export { applyTypographicHeadings, layoutHeadings } from "./typographic-headings.js";
 // — Running a build —
 export { extractPages, normaliseWhitespace } from "./extract.js";
 export { ingest, ingestPages, ingestPageGroups } from "./pipeline.js";
