@@ -93,6 +93,25 @@ describe("checkGoldenPage on Hillsborough PDF p.34 (printed 30)", () => {
     expect(r.failing).toEqual(["must_be_quote"]);
   });
 
+  it("a block that continues may hold the next page's markers with a caption after it (qzix)", () => {
+    // Deepwater p.71: "The rig's demise…" runs on to p.72 and cites note 4 there; a sidebar and a credit follow it
+    const at = { volume: 1, pdfIndex: 34, printed: 55 };
+    const made = [
+      { kind: "paragraph" as const, text: "The rig's demise signals the conflicted evolution, in harmony.[^4]", at },
+      { kind: "paragraph" as const, text: "The often competing goals of energy independence.", at },
+      { kind: "paragraph" as const, text: "Mark Wilson/Getty Images", at },
+    ];
+    const page = (rig: string) =>
+      entry(`    blocks:
+      - paragraph: ${rig}
+      - paragraph: {start: "The often competing goals", end: "energy independence."}
+      - paragraph: {start: "Mark Wilson/Getty Images", end: "Mark Wilson/Getty Images"}
+    markers: [1, 2, 3]
+`);
+    expect(checkGoldenPage(page(`{start: "The rig's demise", end: "in harmony."}`), made, []).problems.join(" ")).toContain("markers linked that the page does not have: 4");
+    expect(checkGoldenPage(page(`{start: "The rig's demise", continues: true}`), made, []).problems.join(" ")).not.toContain("does not have");
+  });
+
   it("compares a heading without its enumerator", () => {
     const heading = (text: string) =>
       checkGoldenPage(entry(`    headings: ["${text}"]\n`), [{ kind: "heading", level: 2, text: "THE RESULTS OF THE INVESTIGATION", at: { volume: 1, pdfIndex: 34, printed: 1 } }], []).failing;
