@@ -2,6 +2,7 @@ import type { Layout, LayoutLine, PageLayout } from "./layout";
 import type { Block } from "./paragraphs";
 import type { Footnote } from "./footnotes";
 import { linkInlineMarkers } from "./footnotes";
+import { noteOffPage } from "./noteplace";
 
 /**
  * The layout oracle (quality-harness plan §3.3): what the PDF's own layout
@@ -28,7 +29,8 @@ export type OracleSignal =
   | "paragraphs-oversplit"
   | "paragraphs-merged"
   | "quotes-spurious"
-  | "quotes-missed";
+  | "quotes-missed"
+  | "note-off-page";
 
 export type OracleFinding = { signal: OracleSignal; volume: number; page: number; text: string };
 
@@ -58,6 +60,7 @@ export const ORACLE_SIGNALS: OracleSignal[] = [
   "paragraphs-merged",
   "quotes-spurious",
   "quotes-missed",
+  "note-off-page",
 ];
 
 const zero = (): PageCounts => Object.fromEntries(ORACLE_SIGNALS.map((s) => [s, 0])) as PageCounts;
@@ -276,13 +279,21 @@ function locate(lines: LayoutLine[], text: string, n = 12): LayoutLine | undefin
 export function measureLayout(
   layout: Layout,
   blocks: Block[],
-  footnotes: Array<Pick<Footnote, "number"> & Partial<Pick<Footnote, "text" | "volume" | "pdfIndex">>> = [],
+  footnotes: Array<Pick<Footnote, "number"> & Partial<Pick<Footnote, "text" | "label" | "volume" | "pdfIndex">>> = [],
   /**
    * `relink: false` when `blocks` come from `finalBlocks` and their markers are the pipeline's own.
    * Re-linking them with `linkInlineMarkers` counts links the reader never sees wherever the
    * pipeline did not run it (a report whose layout decides its markers, `layoutMarkers`; paragraph notes).
    */
-  options: { relink?: boolean } = {}
+  options: {
+    relink?: boolean;
+    /**
+     * Count `note-off-page`: references whose rendered note was printed more than a page from the
+     * marker (`noteOffPage`). Only for a report whose notes are page footnotes (`hasPageNotes`), and
+     * needs `blocks` from `finalBlocks`; `footnotes` must be the whole `IngestResult.footnotes`.
+     */
+    noteOffPage?: boolean;
+  } = {}
 ): OracleReport {
   const relink = options.relink ?? true;
   const counts = zero();
@@ -444,6 +455,12 @@ export function measureLayout(
   for (const [k, labels] of pool) {
     const [v, p] = k.split(":").map(Number);
     for (const label of labels) note("markers-unlinked", v, p, label);
+  }
+
+  if (options.noteOffPage) {
+    for (const o of noteOffPage(blocks, footnotes as Footnote[])) {
+      note("note-off-page", o.volume, o.page, `[^${o.label}] opens a note from ${o.definedVolume > 1 || o.volume > 1 ? `vol ${o.definedVolume} ` : ""}p.${o.definedPage}`);
+    }
   }
 
   return { counts, expected, produced, unlocated, pages, findings, unlocatedSamples };

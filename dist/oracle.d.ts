@@ -17,7 +17,7 @@ import type { Footnote } from "./footnotes.js";
  * a contents list, garbled OCR) is counted under `unlocated`, not as a
  * disagreement.
  */
-export type OracleSignal = "headings-missed" | "headings-spurious" | "markers-unlinked" | "markers-spurious" | "paragraphs-oversplit" | "paragraphs-merged" | "quotes-spurious" | "quotes-missed";
+export type OracleSignal = "headings-missed" | "headings-spurious" | "markers-unlinked" | "markers-spurious" | "paragraphs-oversplit" | "paragraphs-merged" | "quotes-spurious" | "quotes-missed" | "note-off-page";
 export type OracleFinding = {
     signal: OracleSignal;
     volume: number;
@@ -86,7 +86,7 @@ export declare const ORACLE: {
  * `footnotes` supplies the note numbers a marker may link to, as the pipeline
  * itself links them (`linkInlineMarkers`).
  */
-export declare function measureLayout(layout: Layout, blocks: Block[], footnotes?: Array<Pick<Footnote, "number"> & Partial<Pick<Footnote, "text" | "volume" | "pdfIndex">>>, 
+export declare function measureLayout(layout: Layout, blocks: Block[], footnotes?: Array<Pick<Footnote, "number"> & Partial<Pick<Footnote, "text" | "label" | "volume" | "pdfIndex">>>, 
 /**
  * `relink: false` when `blocks` come from `finalBlocks` and their markers are the pipeline's own.
  * Re-linking them with `linkInlineMarkers` counts links the reader never sees wherever the
@@ -94,4 +94,10 @@ export declare function measureLayout(layout: Layout, blocks: Block[], footnotes
  */
 options?: {
     relink?: boolean;
+    /**
+     * Count `note-off-page`: references whose rendered note was printed more than a page from the
+     * marker (`noteOffPage`). Only for a report whose notes are page footnotes (`hasPageNotes`), and
+     * needs `blocks` from `finalBlocks`; `footnotes` must be the whole `IngestResult.footnotes`.
+     */
+    noteOffPage?: boolean;
 }): OracleReport;

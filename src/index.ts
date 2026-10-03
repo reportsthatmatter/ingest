@@ -112,6 +112,8 @@ export type { PageBreakLines, PageBreakDecision, PageBreakCase, PageBreakReferee
 export type { PipelineContext } from "./context";
 export { measureLayout, ORACLE_SIGNALS, ORACLE } from "./oracle";
 export type { OracleReport, OracleSignal, OracleFinding, PageCounts } from "./oracle";
+export { noteOffPage, hasPageNotes } from "./noteplace";
+export type { NoteOffPage } from "./noteplace";
 export { parseGolden, checkGoldenPage, scoreOracle, finalBlocks } from "./golden";
 export { ASSERTION_KINDS } from "./golden";
 export type { Golden, GoldenPage, GoldenBlock, GoldenResult, SignalScore, AssertionKind } from "./golden";

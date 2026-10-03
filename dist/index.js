@@ -31,6 +31,7 @@ export { computeBaseline, diffBaselines } from "./baseline.js";
 export { openLayout, buildLayout, parseLayoutXml, layoutXml, indentVersus } from "./layout.js";
 export { decidePageBreak, findPageBreakLines, layoutJoins, pageBreakKey, isJustified, sameFace, letters } from "./pagebreaks.js";
 export { measureLayout, ORACLE_SIGNALS, ORACLE } from "./oracle.js";
+export { noteOffPage, hasPageNotes } from "./noteplace.js";
 export { parseGolden, checkGoldenPage, scoreOracle, finalBlocks } from "./golden.js";
 export { ASSERTION_KINDS } from "./golden.js";
 export { renderPage, draftGolden, pageFixture, pageBlocks, pageFootnotes } from "./pageview.js";

@@ -1,4 +1,5 @@
 import { linkInlineMarkers } from "./footnotes.js";
+import { noteOffPage } from "./noteplace.js";
 export const ORACLE_SIGNALS = [
     "headings-missed",
     "headings-spurious",
@@ -8,6 +9,7 @@ export const ORACLE_SIGNALS = [
     "paragraphs-merged",
     "quotes-spurious",
     "quotes-missed",
+    "note-off-page",
 ];
 const zero = () => Object.fromEntries(ORACLE_SIGNALS.map((s) => [s, 0]));
 /** Thresholds, in one place so a measurement can say what it measured with. */
@@ -391,6 +393,11 @@ options = {}) {
         const [v, p] = k.split(":").map(Number);
         for (const label of labels)
             note("markers-unlinked", v, p, label);
+    }
+    if (options.noteOffPage) {
+        for (const o of noteOffPage(blocks, footnotes)) {
+            note("note-off-page", o.volume, o.page, `[^${o.label}] opens a note from ${o.definedVolume > 1 || o.volume > 1 ? `vol ${o.definedVolume} ` : ""}p.${o.definedPage}`);
+        }
     }
     return { counts, expected, produced, unlocated, pages, findings, unlocatedSamples };
 }
