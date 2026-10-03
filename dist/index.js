@@ -57,3 +57,4 @@ export { extractPassages } from "./passages.js";
 // — Publishing rendered content to reportsthatmatter (see src/publish.ts) —
 export { contentHash, manifestFor, fileHash, tokenFor, authorises, manifestProblems, isPublishablePath, isReportId, } from "./publish.js";
 export { markPrintedNumbers } from "./printed-numbers.js";
+export { strayFolios, folioReport } from "./folios.js";

@@ -79,3 +79,5 @@ export type { Passage } from "./passages.js";
 export { contentHash, manifestFor, fileHash, tokenFor, authorises, manifestProblems, isPublishablePath, isReportId, } from "./publish.js";
 export type { PublishFile, Manifest } from "./publish.js";
 export { markPrintedNumbers } from "./printed-numbers.js";
+export { strayFolios, folioReport } from "./folios.js";
+export type { FolioRead, FolioRow, FolioPage, FolioRun, FolioReport, FolioSource } from "./folios.js";
