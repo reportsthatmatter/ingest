@@ -86,4 +86,12 @@ export declare const ORACLE: {
  * `footnotes` supplies the note numbers a marker may link to, as the pipeline
  * itself links them (`linkInlineMarkers`).
  */
-export declare function measureLayout(layout: Layout, blocks: Block[], footnotes?: Array<Pick<Footnote, "number"> & Partial<Pick<Footnote, "text" | "volume" | "pdfIndex">>>): OracleReport;
+export declare function measureLayout(layout: Layout, blocks: Block[], footnotes?: Array<Pick<Footnote, "number"> & Partial<Pick<Footnote, "text" | "volume" | "pdfIndex">>>, 
+/**
+ * `relink: false` when `blocks` come from `finalBlocks` and their markers are the pipeline's own.
+ * Re-linking them with `linkInlineMarkers` counts links the reader never sees wherever the
+ * pipeline did not run it (a report whose layout decides its markers, `layoutMarkers`; paragraph notes).
+ */
+options?: {
+    relink?: boolean;
+}): OracleReport;

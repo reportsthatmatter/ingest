@@ -612,6 +612,32 @@ export const quoteListRunOns = () => ({ name: "quoteListRunOns", stage: "page" }
  * line to compare with) — in practice a lookup in a committed cache keyed by
  * `PageBreakCase.key` (38s.11). An `undefined` answer leaves the rules' call.
  */
+/**
+ * Links the footnote markers the PDF sets as small raised digits
+ * (reportsthatmatter-b94): "companies.7", "Corp,12", "community.”1",
+ * "IS.”1410", which the text-only linkers leave bare because nothing but a
+ * word or a quotation mark sits before them. Each raised run is found in the
+ * page's blocks by the words printed before it, and linked only when a note
+ * with its number was collected (`scope: "page"`, near the page, for
+ * footnotes; `"document"`, anywhere, for endnotes) and it is in sequence with
+ * the page's other markers. See `markers.ts`.
+ *
+ * The layout is then the authority on which numbers are markers: the
+ * text-only linkers (`linkInlineMarkers`, `flushFootnoteMarkers`, the
+ * endnotes chapter linker) do not run, because what they would add is the
+ * numbers the PDF does not raise ("105 dailies, 24 Sundays", "In short, 25
+ * people"). `textFallback: true` runs them after it, for a report whose
+ * layout misses markers.
+ *
+ * Opt-in: it reads `context.layout`, and a report whose markers are not
+ * raised (a scan's OCR layer) gains nothing from it.
+ */
+export const layoutMarkers = (options = {}) => ({
+    name: "layoutMarkers",
+    stage: "page",
+    scope: options.scope ?? "page",
+    ...(options.textFallback ? { textFallback: true } : {}),
+});
 export const layoutPageJoins = (options = {}) => ({
     name: "layoutPageJoins",
     stage: "page",
