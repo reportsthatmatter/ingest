@@ -220,7 +220,9 @@ type Heading = { lines: LayoutLine[]; text: string };
 
 function expectedHeadings(page: PageLayout, bodyFont: { size: number; color: string }, skip: Set<LayoutLine>): Heading[] {
   const bodyLine = page.lines.find((l) => l.body);
-  const size = bodyLine?.size ?? bodyFont.size;
+  // (a page that is mostly footnotes takes their face for its body; its text, at the document's
+  // size, is not "bigger" than that: measure against the larger of the two)
+  const size = Math.max(bodyLine?.size ?? bodyFont.size, bodyFont.size);
   const color = bodyLine?.color ?? bodyFont.color;
   const out: Heading[] = [];
   let cur: LayoutLine[] = [];

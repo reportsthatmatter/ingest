@@ -160,7 +160,9 @@ function furniture(layout) {
 }
 function expectedHeadings(page, bodyFont, skip) {
     const bodyLine = page.lines.find((l) => l.body);
-    const size = bodyLine?.size ?? bodyFont.size;
+    // (a page that is mostly footnotes takes their face for its body; its text, at the document's
+    // size, is not "bigger" than that: measure against the larger of the two)
+    const size = Math.max(bodyLine?.size ?? bodyFont.size, bodyFont.size);
     const color = bodyLine?.color ?? bodyFont.color;
     const out = [];
     let cur = [];
