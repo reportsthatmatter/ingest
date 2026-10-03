@@ -2409,9 +2409,14 @@ function interposedTarget(
     if (b.at.pdfIndex < at.pdfIndex - MAX_PAGES_PAST) return undefined;
     const earlier = b.at.pdfIndex < at.pdfIndex;
     if (b.kind === "paragraph" && b.finding === undefined && earlier && !isCaption(b.text) && !isPhotoCredit(b.text) && isBodyParagraph(b.text, b.at, layout)) {
-      if (!between || endsSentence(b.text) || endsSentence(b.text.replace(MARKER_AFTER_STOP, "$1"))) return undefined;
+      if (!between || finishedSentence(b.text)) return undefined;
       return { target: b, heading };
     }
+    // The block right in front is a sentence left open itself, of a paragraph's
+    // length: the block may be its rest (Leveson p.352, "…MPS had not “gone the
+    // whole distance”… In this" / "case, by reason of his responsibility…").
+    // A note ending on a reference ("…/news-and-events/", "at pp. 15, 19") is not.
+    if (between === 0 && b.kind === "paragraph" && words(b.text) > OPEN_SENTENCE_WORDS && OPEN_ON_A_WORD.test(b.text.trim())) return undefined;
     if (++between > MAX_INTERPOSED) return undefined;
     if (b.kind === "list" || b.kind === "contents") return undefined;
     // On the new page, ahead of the block: something opening in lower case is
@@ -2441,6 +2446,12 @@ function interposedTarget(
 
 /** A footnote marker after a full stop, not yet linked: "breakdowns.3", "this."246", "seal.[^21]". */
 const MARKER_AFTER_STOP = /([.?!:;]["'\u201d\u2019)\]]*)\s?(?:\d{1,4}|\[\^[\w-]{1,12}\])$/;
+/** A sentence end, with or without a footnote marker after it. */
+const finishedSentence = (text: string) => endsSentence(text) || endsSentence(text.replace(MARKER_AFTER_STOP, "$1"));
+/** Stops on a word, not a stop, a number or a link: "…In this". */
+const OPEN_ON_A_WORD = /(?:^|\s)[A-Za-z][a-z'’]*$/;
+/** A block this long that stops mid-sentence is a sentence of its own, not a caption or a credit. */
+const OPEN_SENTENCE_WORDS = 20;
 /** A chart's axis label or a lone mark ("10,000", "Water Depth", "*"): this many words or fewer. */
 const CHART_LABEL_WORDS = 6;
 /** A printed paragraph number: "2.32 ", "57. ", "9.4.1 ". */
