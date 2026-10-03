@@ -17,6 +17,8 @@ export type Block = (
       text: string;
       /** A numbered finding's number (`numberedFindings`). */
       finding?: number;
+      /** The text opens with a printed paragraph number to escape (`markPrintedNumbers`). */
+      printedNumber?: true;
     }
   | { kind: "list"; items: string[]; quoted: boolean }
   | { kind: "heading"; level: number; text: string }
@@ -2341,9 +2343,10 @@ export function blocksToMarkdown(
       if (
         block.kind === "paragraph" &&
         (block.finding !== undefined ||
+          block.printedNumber ||
           (options.escapeNumberedParagraphs && /^\d{1,4}\.\s/.test(block.text)))
       ) {
-        return block.text.replace(/^(\d+)\./, "$1\\.");
+        return block.text.replace(/^(\d+)([.)])/, "$1\\$2");
       }
       const markdown = blockToMarkdown(block);
       return options.escapeLeadingHash ? escapeHash(block, markdown) : markdown;

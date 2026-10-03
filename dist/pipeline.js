@@ -1,5 +1,6 @@
 import { extractPages, normaliseWhitespace } from "./extract.js";
 import { splitPage, takePrintedNumber, collapseDoubleSpacing } from "./clean.js";
+import { markPrintedNumbers } from "./printed-numbers.js";
 import { extractParagraphNotes } from "./paragraph-notes.js";
 import { applyCorrections } from "./corrections.js";
 import { rejoinHyphenated, vocabulary } from "./hyphens.js";
@@ -340,7 +341,10 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         layout: context.layout,
     });
     const corrected = applyCorrections(resolved.chapterContents ? contentsHeadings(joined) : joined, corrections, meta.title, footnotes);
-    let body = blocksToMarkdown(corrected.blocks, {
+    // Printed paragraph numbers are escaped (and a year split off its sentence
+    // rejoined) so Markdown does not read them as list items: see printed-numbers.ts.
+    const outBlocks = markPrintedNumbers(corrected.blocks);
+    let body = blocksToMarkdown(outBlocks, {
         escapeNumberedParagraphs: resolved.escapeNumberedParagraphs,
         escapeLeadingHash: resolved.escapeLeadingHash,
     });
@@ -398,7 +402,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         .concat("\n");
     // Blocks are joined with one blank line and none holds one, so the final body splits back into them,
     // except where the hyphen rejoin closed a paragraph into the next ("fol-" / "lowing").
-    const linkedText = alignChunks(corrected.blocks, body.split("\n\n"));
+    const linkedText = alignChunks(outBlocks, body.split("\n\n"));
     return {
         markdown,
         sourceText,
@@ -407,7 +411,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         autoFixes: fixed.applied + noteFixes,
         corrections: corrected.applied,
         pages: pages.length,
-        blocks: corrected.blocks,
+        blocks: outBlocks,
         linkedText,
         pageText,
         ...(markerStats ? { layoutMarkers: markerStats } : {}),

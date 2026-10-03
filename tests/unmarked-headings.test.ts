@@ -36,7 +36,7 @@ describe("unmarkedHeadings (reportsthatmatter-ixe)", () => {
     const markdown = run([numberedParagraphs(), listedHeadings(), unmarkedHeadings()]);
     expect(headings(markdown)).toContain("### UK policy before 9/11");
     // The paragraph after it is untouched, and starts clean.
-    expect(markdown).toMatch(/^26\. Before the attacks on the US on 11 September 2001/m);
+    expect(markdown).toMatch(/^26\\\. Before the attacks on the US on 11 September 2001/m);
     expect(markdown).not.toContain("UK policy before 9/11 26.");
   });
 

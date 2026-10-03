@@ -157,3 +157,4 @@ export {
   isReportId,
 } from "./publish";
 export type { PublishFile, Manifest } from "./publish";
+export { markPrintedNumbers } from "./printed-numbers";
