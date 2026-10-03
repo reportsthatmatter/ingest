@@ -43,7 +43,7 @@ export function splitSections(html: string, minChars = MIN_SECTION_CHARS): Secti
     const heading = part.match(/<h([23])\b[^>]*>([\s\S]*?)<\/h\1>/);
 
     // Anything before the first heading is front matter for the report.
-    const title = heading ? stripTags(heading[2]) : "Front matter";
+    const title = heading ? stripTags(withoutSidenotes(heading[2])) : "Front matter";
     if (!part.trim()) continue;
 
     const base = slugify(title) || "section";
@@ -170,6 +170,20 @@ function mergeSlivers(parts: string[], minChars: number): string[] {
 
 function textLength(html: string): number {
   return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().length;
+}
+
+/**
+ * A heading that carries a footnote marker renders its note beside it
+ * (`withSidenotes`); the title is the heading's words, not the note's. Without
+ * this a linked marker on a heading ("…Cigarette[^19]") put the whole note, and its
+ * page furniture, into the section's title in the contents and the page head
+ * (Philip Morris, reportsthatmatter-y0w9).
+ */
+function withoutSidenotes(html: string): string {
+  return html
+    .replace(/<label class="sidenote-toggle"[\s\S]*?<\/label>/g, "")
+    .replace(/<input class="sidenote-checkbox"[^>]*>/g, "")
+    .replace(/<span class="sidenote[^"]*">[\s\S]*?<\/span>/g, "");
 }
 
 function stripTags(value: string): string {
