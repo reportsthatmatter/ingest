@@ -236,3 +236,16 @@ describe("strandedMarkers (reportsthatmatter-kvxj)", () => {
     expect(strandedMarkers().run(["a line of text", "   289", "efforts. For"], { layout }, { volume: 1, pdfIndex: 1, printed: 89 })).toEqual(["a line of text", "   289", "efforts. For"]);
   });
 });
+
+describe("a PDF page the edition has no word of (reportsthatmatter-bt5d)", () => {
+  it("raises a suspect of its own inside the stretch the edition covers", () => {
+    const missing = Array.from({ length: 12 }, (_, i) => `Missing page sentence ${i} has words.`).join(" ");
+    const pages = [page(1, [LONG(1)]), page(2, [missing]), page(3, [LONG(3)])];
+    const printed: PrintedPage[] = [1, 2, 3].map((n) => ({ volume: 1, pdfIndex: n, number: n }));
+    const ed: Edition = { blocks: [{ kind: "paragraph", text: LONG(1) }, { kind: "paragraph", text: LONG(3) }], notes: [] };
+    const { suspects } = assembleEdition(ed, pages, printed, []);
+    const found = suspects.filter((s) => s.pattern === "PDF page not in the edition");
+    expect(found).toHaveLength(1);
+    expect(found[0].pdfIndex).toBe(2);
+  });
+});

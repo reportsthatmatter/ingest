@@ -86,6 +86,9 @@ export type Edition = {
 
 export type EditionSource = { path: string; sha256: string };
 
+/** A PDF page with at least this many body words and none the edition aligns to is a page the edition lacks. */
+const PAGE_NOT_IN_EDITION_WORDS = 40;
+
 /** `cleanEdition`: declares the edition a report's text and structure come from. */
 export type EditionPass = {
   readonly name: "cleanEdition";
@@ -642,6 +645,33 @@ export function assembleEdition(
     } else gap.push(j);
   }
   flushGap();
+  // A whole PDF page the edition has no word of, inside the stretch it covers, raises a suspect of its
+  // own: the stretch scan above only reads pages that hold an aligned word, so a page the edition lacks
+  // (a web page never archived, a gap an adapter forgot to declare) was silent (reportsthatmatter-bt5d).
+  if (covered.size) {
+    const wordsOn = new Map<number, number[]>();
+    pdf.forEach((t, j) => {
+      if (!wordsOn.has(t.page)) wordsOn.set(t.page, []);
+      wordsOn.get(t.page)!.push(j);
+    });
+    const first = Math.min(...covered);
+    const last = Math.max(...covered);
+    for (let p = first + 1; p < last; p++) {
+      const on = wordsOn.get(p) ?? [];
+      if (covered.has(p) || on.length < PAGE_NOT_IN_EDITION_WORDS) continue;
+      const text = pageText[p].slice(pdf[on[0]].start, pdf[on[on.length - 1]].end).replace(/\s+/g, " ");
+      const entry = marked.find((x) => x.p === p)?.entry;
+      suspects.push({
+        pattern: "PDF page not in the edition",
+        match: text.slice(0, 120),
+        context: `${on.length} words, none in the edition: ${text.slice(0, 300)}`,
+        page: pageNumber(entry),
+        volume: pages[p].volume,
+        pdfIndex: pages[p].pdfIndex,
+        confidence: "possible",
+      });
+    }
+  }
 
   // serialise, joining a paragraph that a float interrupted mid-sentence
   const joins = new Map<number, number>();
