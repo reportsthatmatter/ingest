@@ -6,6 +6,7 @@ import { applyCorrections } from "./corrections.js";
 import { rejoinHyphenated, vocabulary } from "./hyphens.js";
 import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, spacedContentsBlocks, shortSubheadAt, isIllustrationList, mergeAcrossPages, contentsHeadings, contentsTitles, headingKey, numberedContents, emptyOutline, readContentsOutline, learnOutline, outlineContentsBlocks, divisionContents, bodyIndent, } from "./paragraphs.js";
 import { parseFootnotes, linkInlineMarkers, linkFlushMarkers, renderEndnotes, isNotesChapterHead, parseNotesAppendix, linkFlushMarkersByChapter, } from "./footnotes.js";
+import { applyTypographicHeadings } from "./typographic-headings.js";
 import { inNoteFace, linkLayoutMarkers, pageDefinesNotes } from "./markers.js";
 import { autoFix, findSuspects, rankSuspects } from "./ocr.js";
 import { assembleEdition, fillGaps, fillPrintedGaps } from "./edition.js";
@@ -318,6 +319,11 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         }
         return near;
     };
+    // Headings the text reading ran into the next paragraph, cut out by their typography,
+    // before the markers are linked and the pages joined (reportsthatmatter-a8l).
+    const headingStats = resolved.typographicHeadings && context.layout
+        ? applyTypographicHeadings(bodyChunks, context.layout, resolved.typographicHeadings)
+        : undefined;
     // Raised markers, read off the PDF's layout: before the text-only linkers,
     // which then leave alone what is already linked.
     let markerStats;
@@ -430,6 +436,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         linkedText,
         pageText,
         ...(markerStats ? { layoutMarkers: markerStats } : {}),
+        ...(headingStats ? { typographicHeadings: headingStats } : {}),
     };
 }
 /**

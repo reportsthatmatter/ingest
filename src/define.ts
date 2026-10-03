@@ -8,10 +8,12 @@ import type {
   NumberedHeadingsPass,
   LayoutPageJoinsPass,
   LayoutMarkersPass,
+  TypographicHeadingsPass,
 } from "./passes";
 import type { PageBreakOptions } from "./pagebreaks";
 import type { EditionPass } from "./edition";
 import type { VisionStructurePass } from "./vision/hybrid";
+import type { TypographicHeadingsOptions } from "./typographic-headings";
 
 export type Volume = { path: string; sha256?: string };
 
@@ -65,6 +67,8 @@ export type ResolvedPasses = {
   layoutMarkers?: { scope: "page" | "document" | "chapter"; textFallback: boolean };
   /** `layoutEndnotes`: notes sections read off the layout, labelled by chapter. */
   layoutEndnotes?: boolean;
+  /** `typographicHeadings`: on, with its options. */
+  typographicHeadings?: TypographicHeadingsOptions;
   unlistedHeadingsMinor?: boolean;
   hangingIndents?: boolean;
   letteredItems?: boolean;
@@ -190,6 +194,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     quoteListRunOns: passes.some((pass) => pass.name === "quoteListRunOns"),
     layoutPageJoins: layoutPageJoinsOf(passes),
     layoutMarkers: layoutMarkersOf(passes),
+    typographicHeadings: passes.find((p): p is TypographicHeadingsPass => p.name === "typographicHeadings")?.options,
     unlistedHeadingsMinor: passes.some((pass) => pass.name === "unlistedHeadingsMinor"),
     hangingIndents: passes.some((pass) => pass.name === "hangingIndents"),
     letteredItems: passes.some((pass) => pass.name === "letteredItems"),

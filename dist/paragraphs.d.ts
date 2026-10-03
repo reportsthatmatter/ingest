@@ -55,6 +55,12 @@ export type Block = ({
      */
     source?: "edition" | "pdf";
     /**
+     * A heading `typographicHeadings` cut out of the text by its face and size, in the body's flow: a real
+     * subsection heading, not a running head or a divider page repeating a title (`fillGaps` keeps it
+     * though the edition has a heading with the same words).
+     */
+    layoutHeading?: true;
+    /**
      * Nothing may be joined across this block. Set where one column of a page
      * ends and the next begins — they are adjacent in the stream but not in the
      * reading order of the sentence.

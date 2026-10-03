@@ -3,6 +3,7 @@ import type { ResolvedPasses } from "./define.js";
 import { type Correction } from "./corrections.js";
 import { type Block } from "./paragraphs.js";
 import { type Footnote } from "./footnotes.js";
+import { type TypographicHeadingStats } from "./typographic-headings.js";
 import { type LayoutMarkerStats } from "./markers.js";
 import { type Suspect } from "./ocr.js";
 import type { PipelineContext } from "./context.js";
@@ -46,6 +47,8 @@ export type IngestResult = {
     }>;
     /** What `layoutMarkers` saw and linked, when the report declares it. */
     layoutMarkers?: LayoutMarkerStats;
+    /** What `typographicHeadings` found and cut out, when the report declares it. */
+    typographicHeadings?: TypographicHeadingStats;
 };
 export type Metadata = {
     title: string;

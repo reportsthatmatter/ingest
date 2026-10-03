@@ -87,6 +87,53 @@ describe("fillGaps (reportsthatmatter-ivg.3)", () => {
   });
 });
 
+describe("fillGaps and headings (reportsthatmatter-a8l)", () => {
+  // sentences with nothing in common, so the aligner has no cheaper pairing than the right one
+  const T = [
+    "The turnstiles at the Leppings Lane end could not admit the crowd that gathered before the kick-off.",
+    "Ambulance officers waited beside the pitch, believing the disturbance to be nothing more than hooliganism.",
+    "Briefing papers prepared for the Home Office listed settlement payments totalling several million pounds.",
+    "Statements were amended by solicitors before reaching the inquiry, removing criticism of senior officers.",
+    "Coroners decided against relying upon evidence gathered after the cut-off time of three fifteen.",
+    "Families campaigned for decades, demanding disclosure of documents long withheld from public view.",
+  ];
+  const tpages = [page(1, [T[0], "", T[1]]), page(2, [T[2], "", T[3]]), page(3, [T[4], "", T[5]])];
+  const heading = (text: string, extra: Partial<Block> = {}): Block => ({ kind: "heading", level: 4, text, at: at(2), ...extra }) as Block;
+  const para = (i: number): Block => ({ kind: "paragraph", text: T[i], at: at(Math.floor(i / 2) + 1) });
+  // the shadow's page 2 reads: heading, T[2], heading, T[3]
+  const shadowOf = (first?: Block, second?: Block): { blocks: Block[]; footnotes: [] } => ({
+    blocks: [para(0), para(1), ...(first ? [first] : []), para(2), ...(second ? [second] : []), para(3), para(4), para(5)],
+    footnotes: [],
+  });
+  const gapped = (before: Edition["blocks"], prose = ""): Edition => ({
+    blocks: [
+      ...before,
+      { kind: "paragraph", text: T[0] },
+      { kind: "paragraph", text: T[1] },
+      { kind: "gap", reason: "gap" },
+      { kind: "paragraph", text: T[4] },
+      { kind: "paragraph", text: `${T[5]}${prose}` },
+    ],
+    notes: [],
+  });
+  const headingTexts = (e: Edition) => e.blocks.flatMap((b) => (b.kind === "heading" ? [b.text] : []));
+  const tp = [tpages[0], page(2, ["Lack of leadership", T[2], "", "Settlement of the claims", T[3]]), tpages[2]];
+
+  it("keeps a subsection heading the layout showed even when the edition has the same title elsewhere, or the words in its prose", () => {
+    const shadowH = shadowOf(heading("Lack of leadership", { layoutHeading: true }), heading("Settlement of the claims", { layoutHeading: true }));
+    const e = gapped([{ kind: "heading", level: 4, text: "Settlement of the claims" }], " There was a lack of leadership at the scene.");
+    const { edition: out } = fillGaps(e, tp, shadowH);
+    expect(headingTexts(out)).toEqual(["Settlement of the claims", "Lack of leadership", "Settlement of the claims"]);
+  });
+
+  it("still drops a heading that is not one of those and repeats an edition title (a running head, a divider page)", () => {
+    const shadowH = shadowOf(heading("Lack of leadership"), heading("Settlement of the claims"));
+    const e = gapped([{ kind: "heading", level: 4, text: "Settlement of the claims" }]);
+    const { edition: out } = fillGaps(e, tp, shadowH);
+    expect(headingTexts(out)).toEqual(["Settlement of the claims", "Lack of leadership"]);
+  });
+});
+
 describe("footnoteNumbers('period') (reportsthatmatter-ivg.3)", () => {
   const lines = [
     "2.1.87 In October 1987 Sheffield City Council wrote to SWFC drawing attention to the",
