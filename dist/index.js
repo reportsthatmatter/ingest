@@ -30,6 +30,8 @@ export { runChecks, structuralChecks, losslessCheck, retentionCheck, severedSent
 export { computeBaseline, diffBaselines } from "./baseline.js";
 export { openLayout, buildLayout, parseLayoutXml, layoutXml, indentVersus } from "./layout.js";
 export { decidePageBreak, findPageBreakLines, layoutJoins, pageBreakKey, isJustified, sameFace, letters } from "./pagebreaks.js";
+export { pageBreakCache, readPageBreakCache, writePageBreakCache, isCachedReferee, refereeEntry, describeCase, refereeRequests, parseRefereeAnswers, refereePageBreaks, refereeCost, REFEREE_SYSTEM, REFEREE_PROMPT_ID, REFEREE_PRICES, requestHash, replayTransport, recordingTransport, } from "./referee.js";
+export { REFEREE_EXAMPLES } from "./referee-examples.js";
 export { measureLayout, ORACLE_SIGNALS, ORACLE } from "./oracle.js";
 export { noteOffPage, hasPageNotes } from "./noteplace.js";
 export { parseGolden, checkGoldenPage, scoreOracle, finalBlocks } from "./golden.js";

@@ -268,7 +268,8 @@ export function fillPrintedGaps(printed: PrintedPage[]): PrintedPage[] {
 
 export type PrintedPage = { volume: number; pdfIndex: number; number: number | string; occurrence?: number };
 
-type Field = { block: number; note: boolean; get(): string; set(text: string): void };
+/** One piece of text the edition holds; a table cell also says which row it is in, so a page can start at a row. */
+type Field = { block: number; note: boolean; row?: number; get(): string; set(text: string): void };
 
 /** Tokens of inline Markdown, with note markers masked so their digits are not words. */
 function fieldTokens(text: string): Token[] {
@@ -278,13 +279,14 @@ function fieldTokens(text: string): Token[] {
 function fieldsOf(blocks: EditionBlock[], notes: EditionNote[]): Field[] {
   const fields: Field[] = [];
   blocks.forEach((block, b) => {
-    const add = (get: () => string, set: (t: string) => void) => fields.push({ block: b, note: false, get, set });
+    const add = (get: () => string, set: (t: string) => void, row?: number) =>
+      fields.push({ block: b, note: false, ...(row === undefined ? {} : { row }), get, set });
     switch (block.kind) {
       case "list":
         block.items.forEach((_, k) => add(() => block.items[k], (t) => (block.items[k] = t)));
         break;
       case "table":
-        block.rows.forEach((row, r) => row.forEach((_, c) => add(() => block.rows[r][c], (t) => (block.rows[r][c] = t))));
+        block.rows.forEach((row, r) => row.forEach((_, c) => add(() => block.rows[r][c], (t) => (block.rows[r][c] = t), r)));
         break;
       case "contents":
         add(() => block.text, (t) => (block.text = t));
@@ -459,6 +461,19 @@ export function assembleEdition(
     const b = fields[clean[c].field].block;
     if (!blockPage.has(b) && map[c] >= 0) blockPage.set(b, pdf[map[c]].page);
   }
+  // a table's rows are placed one by one: the PDF page each row's first aligned word is on, and the
+  // first token of each row, so a page that begins inside a table is stamped at its row
+  const rowPage = new Map<number, Map<number, number>>();
+  const rowStart = new Map<number, Map<number, number>>();
+  for (let c = 0; c < bodyEnd; c++) {
+    const f = fields[clean[c].field];
+    if (f.row === undefined) continue;
+    if (!rowStart.has(f.block)) rowStart.set(f.block, new Map());
+    if (!rowStart.get(f.block)!.has(f.row)) rowStart.get(f.block)!.set(f.row, c);
+    if (map[c] < 0) continue;
+    if (!rowPage.has(f.block)) rowPage.set(f.block, new Map());
+    if (!rowPage.get(f.block)!.has(f.row)) rowPage.get(f.block)!.set(f.row, pdf[map[c]].page);
+  }
   // a block none of whose words aligned (a caption the PDF prints in another order) is placed
   // by its opening words where the PDF prints them exactly once
   const grams = new Map<string, number[]>();
@@ -483,6 +498,8 @@ export function assembleEdition(
     if (close.length === 1) blockPage.set(b, pdf[close[0]].page);
   }
   const markersBefore = new Map<number, PrintedPage[]>();
+  // markers that fall inside a table: block -> row the page opens at -> pages (the table is cut there)
+  const markersInTable = new Map<number, Map<number, PrintedPage[]>>();
   let lastBefore = 0;
   for (let i = 0; i < marked.length; i++) {
     let before: number;
@@ -491,6 +508,22 @@ export function assembleEdition(
       const c = pos[i];
       const b = fields[clean[c].field].block;
       const start = firstToken.get(b)!;
+      const inRow = fields[clean[c].field].row;
+      if (inRow !== undefined && b >= lastBefore) {
+        // a page that begins inside a table is stamped before the row it begins in (the row after,
+        // when it begins mid-row), not after the whole table; the first row is the block's own start
+        const rows = (blocks[b] as { rows: string[][] }).rows;
+        const atRowStart = rowStart.get(b)?.get(inRow) === c;
+        const row = atRowStart ? inRow : inRow + 1;
+        if (row > 0 && row < rows.length) {
+          if (!markersInTable.has(b)) markersInTable.set(b, new Map());
+          const cuts = markersInTable.get(b)!;
+          if (!cuts.has(row)) cuts.set(row, []);
+          cuts.get(row)!.push(marked[i].entry);
+          lastBefore = b;
+          continue;
+        }
+      }
       // the page opens this block if no earlier word of the block aligned (to an earlier page)
       let opens = true;
       for (let k = start; k < c; k++) if (map[k] >= 0) opens = false;
@@ -613,6 +646,18 @@ export function assembleEdition(
     for (const p of [...carried, ...(markersBefore.get(b) ?? [])]) out.push(marker(p));
     carried = [];
     const j = joins.get(b);
+    const cuts = markersInTable.get(b);
+    if (cuts && blocks[b].kind === "table") {
+      // a table a page turn falls inside is written as one table per page, the stamps between them
+      const table = blocks[b] as Extract<EditionBlock, { kind: "table" }>;
+      const at = [0, ...[...cuts.keys()].sort((x, y) => x - y), table.rows.length];
+      for (let k = 0; k + 1 < at.length; k++) {
+        if (k > 0) for (const p of cuts.get(at[k])!) out.push(marker(p));
+        out.push(blockMarkdown({ ...table, rows: table.rows.slice(at[k], at[k + 1]), header: k === 0 ? table.header : false }));
+      }
+      order.push({ block: blocks[b], source: b });
+      continue;
+    }
     if (j === undefined) {
       out.push(blockMarkdown(blocks[b]));
       order.push({ block: blocks[b], source: b });
@@ -655,16 +700,20 @@ export function assembleEdition(
   const asBlocks: Block[] = [];
   const linkedText: string[] = [];
   order.forEach(({ block, source: b }) => {
+    const placed = (p: number | undefined) =>
+      p === undefined ? {} : { at: { volume: pages[p].volume, pdfIndex: pages[p].pdfIndex, printed: typeof printedAt.get(p) === "number" ? (printedAt.get(p) as number) : null } };
     const p = placedAt.get(b);
-    const at = p === undefined ? undefined : { volume: pages[p].volume, pdfIndex: pages[p].pdfIndex, printed: typeof printedAt.get(p) === "number" ? (printedAt.get(p) as number) : null };
-    const common = { ...(at ? { at } : {}), ...(block.source && "pdf" in block.source ? { source: "pdf" as const } : { source: "edition" as const }) };
+    const source = block.source && "pdf" in block.source ? { source: "pdf" as const } : { source: "edition" as const };
+    const common = { ...placed(p), ...source };
     if (block.kind === "table") {
-      // one block per row, as a reader takes a table row: a unit of its own
-      for (const row of block.rows) {
+      // one block per row, as a reader takes a table row: a unit of its own, on the page its own words are on
+      let rowAt = p;
+      block.rows.forEach((row, r) => {
+        rowAt = rowPage.get(b)?.get(r) ?? rowAt;
         const text = row.filter(Boolean).join(" ");
-        asBlocks.push({ kind: "paragraph", text, ...common });
+        asBlocks.push({ kind: "paragraph", text, ...placed(rowAt), ...source });
         linkedText.push(text);
-      }
+      });
       return;
     }
     else if (block.kind === "list") asBlocks.push({ kind: "list", items: [...block.items], quoted: Boolean(block.quoted), ...common });

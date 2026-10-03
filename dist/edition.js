@@ -165,13 +165,13 @@ function fieldTokens(text) {
 function fieldsOf(blocks, notes) {
     const fields = [];
     blocks.forEach((block, b) => {
-        const add = (get, set) => fields.push({ block: b, note: false, get, set });
+        const add = (get, set, row) => fields.push({ block: b, note: false, ...(row === undefined ? {} : { row }), get, set });
         switch (block.kind) {
             case "list":
                 block.items.forEach((_, k) => add(() => block.items[k], (t) => (block.items[k] = t)));
                 break;
             case "table":
-                block.rows.forEach((row, r) => row.forEach((_, c) => add(() => block.rows[r][c], (t) => (block.rows[r][c] = t))));
+                block.rows.forEach((row, r) => row.forEach((_, c) => add(() => block.rows[r][c], (t) => (block.rows[r][c] = t), r)));
                 break;
             case "contents":
                 add(() => block.text, (t) => (block.text = t));
@@ -350,6 +350,25 @@ export function assembleEdition(edition, pages, printed, sources) {
         if (!blockPage.has(b) && map[c] >= 0)
             blockPage.set(b, pdf[map[c]].page);
     }
+    // a table's rows are placed one by one: the PDF page each row's first aligned word is on, and the
+    // first token of each row, so a page that begins inside a table is stamped at its row
+    const rowPage = new Map();
+    const rowStart = new Map();
+    for (let c = 0; c < bodyEnd; c++) {
+        const f = fields[clean[c].field];
+        if (f.row === undefined)
+            continue;
+        if (!rowStart.has(f.block))
+            rowStart.set(f.block, new Map());
+        if (!rowStart.get(f.block).has(f.row))
+            rowStart.get(f.block).set(f.row, c);
+        if (map[c] < 0)
+            continue;
+        if (!rowPage.has(f.block))
+            rowPage.set(f.block, new Map());
+        if (!rowPage.get(f.block).has(f.row))
+            rowPage.get(f.block).set(f.row, pdf[map[c]].page);
+    }
     // a block none of whose words aligned (a caption the PDF prints in another order) is placed
     // by its opening words where the PDF prints them exactly once
     const grams = new Map();
@@ -381,6 +400,8 @@ export function assembleEdition(edition, pages, printed, sources) {
             blockPage.set(b, pdf[close[0]].page);
     }
     const markersBefore = new Map();
+    // markers that fall inside a table: block -> row the page opens at -> pages (the table is cut there)
+    const markersInTable = new Map();
     let lastBefore = 0;
     for (let i = 0; i < marked.length; i++) {
         let before;
@@ -390,6 +411,24 @@ export function assembleEdition(edition, pages, printed, sources) {
             const c = pos[i];
             const b = fields[clean[c].field].block;
             const start = firstToken.get(b);
+            const inRow = fields[clean[c].field].row;
+            if (inRow !== undefined && b >= lastBefore) {
+                // a page that begins inside a table is stamped before the row it begins in (the row after,
+                // when it begins mid-row), not after the whole table; the first row is the block's own start
+                const rows = blocks[b].rows;
+                const atRowStart = rowStart.get(b)?.get(inRow) === c;
+                const row = atRowStart ? inRow : inRow + 1;
+                if (row > 0 && row < rows.length) {
+                    if (!markersInTable.has(b))
+                        markersInTable.set(b, new Map());
+                    const cuts = markersInTable.get(b);
+                    if (!cuts.has(row))
+                        cuts.set(row, []);
+                    cuts.get(row).push(marked[i].entry);
+                    lastBefore = b;
+                    continue;
+                }
+            }
             // the page opens this block if no earlier word of the block aligned (to an earlier page)
             let opens = true;
             for (let k = start; k < c; k++)
@@ -528,6 +567,20 @@ export function assembleEdition(edition, pages, printed, sources) {
             out.push(marker(p));
         carried = [];
         const j = joins.get(b);
+        const cuts = markersInTable.get(b);
+        if (cuts && blocks[b].kind === "table") {
+            // a table a page turn falls inside is written as one table per page, the stamps between them
+            const table = blocks[b];
+            const at = [0, ...[...cuts.keys()].sort((x, y) => x - y), table.rows.length];
+            for (let k = 0; k + 1 < at.length; k++) {
+                if (k > 0)
+                    for (const p of cuts.get(at[k]))
+                        out.push(marker(p));
+                out.push(blockMarkdown({ ...table, rows: table.rows.slice(at[k], at[k + 1]), header: k === 0 ? table.header : false }));
+            }
+            order.push({ block: blocks[b], source: b });
+            continue;
+        }
         if (j === undefined) {
             out.push(blockMarkdown(blocks[b]));
             order.push({ block: blocks[b], source: b });
@@ -575,16 +628,19 @@ export function assembleEdition(edition, pages, printed, sources) {
     const asBlocks = [];
     const linkedText = [];
     order.forEach(({ block, source: b }) => {
+        const placed = (p) => p === undefined ? {} : { at: { volume: pages[p].volume, pdfIndex: pages[p].pdfIndex, printed: typeof printedAt.get(p) === "number" ? printedAt.get(p) : null } };
         const p = placedAt.get(b);
-        const at = p === undefined ? undefined : { volume: pages[p].volume, pdfIndex: pages[p].pdfIndex, printed: typeof printedAt.get(p) === "number" ? printedAt.get(p) : null };
-        const common = { ...(at ? { at } : {}), ...(block.source && "pdf" in block.source ? { source: "pdf" } : { source: "edition" }) };
+        const source = block.source && "pdf" in block.source ? { source: "pdf" } : { source: "edition" };
+        const common = { ...placed(p), ...source };
         if (block.kind === "table") {
-            // one block per row, as a reader takes a table row: a unit of its own
-            for (const row of block.rows) {
+            // one block per row, as a reader takes a table row: a unit of its own, on the page its own words are on
+            let rowAt = p;
+            block.rows.forEach((row, r) => {
+                rowAt = rowPage.get(b)?.get(r) ?? rowAt;
                 const text = row.filter(Boolean).join(" ");
-                asBlocks.push({ kind: "paragraph", text, ...common });
+                asBlocks.push({ kind: "paragraph", text, ...placed(rowAt), ...source });
                 linkedText.push(text);
-            }
+            });
             return;
         }
         else if (block.kind === "list")

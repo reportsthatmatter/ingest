@@ -27,9 +27,13 @@ import type { Layout, LayoutLine, PageLayout } from "./layout";
  * A first line compared with the line under it on its own page, not with the
  * old page: verso and recto text blocks can sit at different lefts (Saville).
  *
- * Deterministic: the same layout and text give the same decision. A decision
- * near a threshold is marked `ambiguous`, which is where an optional referee
- * (38s.11) may be consulted; without one the rules stand.
+ * Deterministic: the same layout and text give the same decision. Each
+ * decision carries a `confidence`: `low` (near a threshold: `ambiguous`),
+ * `medium` (a call the layout makes but the words could overturn: a flush
+ * first line after a finished sentence, a layout-only label after an
+ * unfinished one) or `high`. An optional referee (38s.11) is consulted on the
+ * `low` calls, or on `low` and `medium` with `refer: "medium"`; without one
+ * the rules stand.
  */
 
 /** |first-line indent| below this, in ems, is flush. */
@@ -67,7 +71,14 @@ export type PageBreakOptions = {
   scanned?: boolean;
   /** A second opinion on the low-margin calls. */
   referee?: PageBreakReferee;
+  /**
+   * Which calls the referee is asked about: `low` (the default: the
+   * ambiguous ones) or `medium` (those and the medium-confidence ones).
+   */
+  refer?: "low" | "medium";
 };
+
+export type PageBreakConfidence = "high" | "medium" | "low";
 
 export type PageBreakDecision = {
   join: boolean;
@@ -82,6 +93,8 @@ export type PageBreakDecision = {
    * block's own. A referee, when one is supplied, decides these.
    */
   ambiguous: boolean;
+  /** `low` exactly when `ambiguous`; `medium` for a call the words could overturn; else `high`. */
+  confidence: PageBreakConfidence;
 };
 
 /** One page-break pair, as a referee sees it. */
@@ -177,36 +190,48 @@ export function decidePageBreak(
   options: PageBreakOptions = {}
 ): PageBreakDecision {
   const { prev, next, under } = lines;
-  const label = next.label || TEXT_LABEL.test(nextText.trim());
-  if (label) return { join: false, rule: "split", reason: "next opens on a label", ambiguous: false };
-  if (!sameFace(prev, next, options.scanned)) return { join: false, rule: "split", reason: "font changes across the break", ambiguous: false };
+  const decided = (d: Omit<PageBreakDecision, "confidence" | "ambiguous">, confidence: PageBreakConfidence): PageBreakDecision => ({
+    ...d,
+    ambiguous: confidence === "low",
+    confidence,
+  });
+  const finished = endsSentence(prevText);
+  if (TEXT_LABEL.test(nextText.trim())) return decided({ join: false, rule: "split", reason: "next opens on a label" }, "high");
+  // The layout's own label test also takes a bare number and a space ("24 hours”,2 and…", Saville p.302):
+  // after an unfinished sentence that may be the sentence running on.
+  if (next.label) return decided({ join: false, rule: "split", reason: "next opens on a label (layout)" }, finished ? "high" : "medium");
+  if (!sameFace(prev, next, options.scanned)) return decided({ join: false, rule: "split", reason: "font changes across the break" }, "high");
   const indentEm = under && next.size > 0 ? Math.round(((next.left - under.left) / next.size) * 100) / 100 : undefined;
   const flush = indentEm !== undefined && Math.abs(indentEm) < FLUSH_EM;
   const near = indentEm !== undefined && Math.abs(Math.abs(indentEm) - FLUSH_EM) < MARGIN_EM;
   const shaky = near || !lines.underContinues;
-  if (!endsSentence(prevText)) {
+  if (!finished) {
     // A line that stops well short of the margin without ending a sentence is
     // a list's or an index's entry, a date line or a map label, not prose run
     // over the page: "June 25, 2001–September 4, 2001" / "Thomas Pickering".
     if (flush && Math.abs(prev.rightGapEm) >= SHORT_LINE_EM) {
-      return { join: false, rule: "split", reason: "unfinished, but a short last line", indentEm, ambiguous: true };
+      return decided({ join: false, rule: "split", reason: "unfinished, but a short last line", indentEm }, "low");
     }
-    if (flush) return { join: true, rule: "R1", reason: "unfinished, next line flush", indentEm, ambiguous: shaky };
-    if (LOWER.test(nextText.trim())) return { join: true, rule: "R1", reason: "unfinished, next opens lower case", indentEm, ambiguous: false };
-    return {
-      join: false,
-      rule: "split",
-      reason: indentEm === undefined ? "unfinished, no line under next" : "unfinished, next line indented",
-      indentEm,
-      ambiguous: indentEm === undefined || near,
-    };
+    if (flush) return decided({ join: true, rule: "R1", reason: "unfinished, next line flush", indentEm }, shaky ? "low" : "high");
+    if (LOWER.test(nextText.trim())) return decided({ join: true, rule: "R1", reason: "unfinished, next opens lower case", indentEm }, "high");
+    return decided(
+      {
+        join: false,
+        rule: "split",
+        reason: indentEm === undefined ? "unfinished, no line under next" : "unfinished, next line indented",
+        indentEm,
+      },
+      indentEm === undefined || near ? "low" : "high"
+    );
   }
   const justified = isJustified(lines.prevPage);
   const full = Math.abs(prev.rightGapEm) < FULL_LINE_EM;
   if (justified && full && flush && words(next.text) > R2_MIN_WORDS) {
-    return { join: true, rule: "R2", reason: "finished, but a full justified line and a flush next line", indentEm, ambiguous: true };
+    return decided({ join: true, rule: "R2", reason: "finished, but a full justified line and a flush next line", indentEm }, "low");
   }
-  return { join: false, rule: "split", reason: "finished", indentEm, ambiguous: false };
+  // A finished sentence and a flush first line in the same face: a new paragraph in a document that sets
+  // them flush, or the paragraph running on (Saville p.162, p.487; Chilcot p.112). Only the words can say.
+  return decided({ join: false, rule: "split", reason: flush ? "finished, next line flush" : "finished", indentEm }, flush ? "medium" : "high");
 }
 
 /**
@@ -315,7 +340,8 @@ export function layoutJoins(
   const lines = findPageBreakLines(layout, prevText, nextText, at);
   if (!lines) return false;
   const decision = decidePageBreak(lines, prevText, nextText, options);
-  if (options.referee && decision.ambiguous) {
+  const refer = decision.confidence === "low" || (decision.confidence === "medium" && options.refer === "medium");
+  if (options.referee && refer) {
     const answer = options.referee({
       key: pageBreakKey(lines.prev.text, lines.next.text),
       prevText,

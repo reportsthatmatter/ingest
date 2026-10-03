@@ -98,6 +98,7 @@ function layoutPageJoinsOf(passes) {
     return {
         ...(pass.scanned ? { scanned: true } : {}),
         ...(pass.referee ? { referee: pass.referee } : {}),
+        ...(pass.refer ? { refer: pass.refer } : {}),
     };
 }
 function layoutMarkersOf(passes) {
