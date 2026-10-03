@@ -138,3 +138,14 @@ export declare function layoutJoins(layout: Layout, prevText: string, nextText: 
     volume?: number;
     pdfIndex: number;
 }, options?: PageBreakOptions): boolean;
+/**
+ * Whether a block left on a page is not set in the body face: the run-over of
+ * a footnote that began on the page before (no number of its own), which the
+ * page's parse read as a paragraph of the body (Lehman PDF p.59,
+ * reportsthatmatter-j6qm). Found by the block's text against the page's
+ * lines; false when the lines cannot be found.
+ */
+export declare function isOffFaceBlock(layout: Layout, text: string, at: {
+    volume?: number;
+    pdfIndex: number;
+}): boolean;

@@ -250,3 +250,26 @@ export function layoutJoins(layout, prevText, nextText, at, options = {}) {
     }
     return decision.join;
 }
+const CAPTION = /^(?:figure|fig\.|table|chart|map|photo|source|image|exhibit|box|graph|diagram)\b/i;
+/**
+ * Whether a block left on a page is not set in the body face: the run-over of
+ * a footnote that began on the page before (no number of its own), which the
+ * page's parse read as a paragraph of the body (Lehman PDF p.59,
+ * reportsthatmatter-j6qm). Found by the block's text against the page's
+ * lines; false when the lines cannot be found.
+ */
+export function isOffFaceBlock(layout, text, at) {
+    // A figure's or table's caption is off the body face too, and what follows it
+    // on the next page may be chart debris, not the paragraph's rest (Columbia).
+    if (CAPTION.test(text.trim()))
+        return false;
+    const head = letters(text.slice(0, 200));
+    if (head.length < MIN_MATCH)
+        return false;
+    for (const line of layout.lines(at.volume ?? 1, at.pdfIndex)) {
+        const n = letters(line.text);
+        if (n.length >= MIN_MATCH && head.startsWith(n))
+            return !line.body;
+    }
+    return false;
+}

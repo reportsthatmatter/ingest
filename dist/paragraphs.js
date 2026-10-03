@@ -1,4 +1,4 @@
-import { layoutJoins } from "./pagebreaks.js";
+import { isOffFaceBlock, layoutJoins } from "./pagebreaks.js";
 import { normaliseWhitespace } from "./extract.js";
 import { COLUMN_BREAK } from "./columns.js";
 const HEADING_MAX_WORDS = 14;
@@ -1721,6 +1721,8 @@ export function isPhotoCredit(text) {
 }
 /** Lower case, or punctuation no sentence opens on. */
 const CONTINUATION = /^[a-z,;]/;
+/** A lone OCR glyph (a degree sign for a raised digit) before a lower-case word. */
+const STRAY_GLYPH = /^[°º˚]\s+(?=[a-z])/;
 /**
  * A quotation opening a page that is really the rest of the sentence above:
  * a skewed scan insets a page's first lines, so they read as a quotation.
@@ -1775,6 +1777,21 @@ export function mergeAcrossPages(blocks, options = {}) {
                 markerIndex -= 1;
         }
         const previous = merged[markerIndex === -1 ? merged.length - 1 : markerIndex - 1];
+        // A scan's stray glyph between two lines of one paragraph: the OCR read
+        // the raised digits of a footnote marker ("mate.140") as a lone "°" on a
+        // line of its own, which parsed as a paragraph break, and left "° running
+        // mate." opening a block (Jack Smith p.36, reportsthatmatter-ky1o). A
+        // lone glyph and then lower case, after a paragraph that stops mid-
+        // sentence, is the paragraph carrying on: drop the glyph and let the
+        // lower-case rule below join it.
+        if (options.layoutJoins?.scanned &&
+            block.kind === "paragraph" &&
+            block.finding === undefined &&
+            previous?.kind === "paragraph" &&
+            !endsSentence(previous.text) &&
+            STRAY_GLYPH.test(block.text)) {
+            block.text = block.text.replace(STRAY_GLYPH, "");
+        }
         // A word broken by the page break. Whether the hyphen belongs to the word
         // or to the typesetter cannot be known for certain, but the case of what
         // follows is a good guide: "Co-" + "Conspirator" is a real compound,
@@ -1812,6 +1829,22 @@ export function mergeAcrossPages(blocks, options = {}) {
                         ? above.text.replace(/[-­‐]$/, "") + block.text
                         : `${above.text} ${block.text}`;
                     continue;
+                }
+                // A list item whose run-over opens the next page inset: the page
+                // parser reads its hanging indent as a quotation (9/11 p.415), so
+                // the quotation is the rest of the item.
+                if (block.kind === "quote" &&
+                    above?.kind === "list" &&
+                    above.items.length > 0 &&
+                    CONTINUATION.test(block.text) &&
+                    !ITEM_LABEL.test(block.text)) {
+                    const last = above.items[above.items.length - 1];
+                    if (!endsSentence(last) && !/;\s*(?:and|or)$/.test(last.trim())) {
+                        above.items[above.items.length - 1] = /[-­‐]$/.test(last)
+                            ? last.replace(/[-­‐]$/, "") + block.text
+                            : `${last} ${block.text}`;
+                        continue;
+                    }
                 }
                 if (block.kind === "list" &&
                     above?.kind === "list" &&
@@ -1978,6 +2011,38 @@ export function mergeAcrossPages(blocks, options = {}) {
             layoutJoins(options.layout, previous.text, block.text, block.at, options.layoutJoins)) {
             previous.text = `${previous.text} ${block.text}`;
             continue;
+        }
+        // The same, past a footnote's run-over: the foot of the page leaves the
+        // paragraph, then (in a smaller face, with no number) the rest of a note
+        // begun on the page before, then the new page. The run-over stays where it
+        // is; the continuation joins the paragraph above it. Same rules, same
+        // layout test, on the paragraph and the block (reportsthatmatter-j6qm).
+        if (options.layoutJoins &&
+            options.layout &&
+            block.kind === "paragraph" &&
+            block.finding === undefined &&
+            block.at !== undefined &&
+            previous?.kind === "paragraph" &&
+            previous.at !== undefined &&
+            previous.at.pdfIndex !== block.at.pdfIndex &&
+            opensPage(blocks, index) &&
+            !(options.letteredItems && ITEM_LABEL.test(block.text)) &&
+            isOffFaceBlock(options.layout, previous.text, previous.at)) {
+            let target = (markerIndex === -1 ? merged.length : markerIndex) - 2;
+            while (target >= 0 &&
+                merged[target].kind === "paragraph" &&
+                merged[target].at?.pdfIndex === previous.at.pdfIndex &&
+                isOffFaceBlock(options.layout, merged[target].text, previous.at)) {
+                target -= 1;
+            }
+            const above = target >= 0 ? merged[target] : undefined;
+            if (above?.kind === "paragraph" &&
+                above.finding === undefined &&
+                above.at?.pdfIndex === previous.at.pdfIndex &&
+                layoutJoins(options.layout, above.text, block.text, block.at, options.layoutJoins)) {
+                above.text = `${above.text} ${block.text}`;
+                continue;
+            }
         }
         merged.push(block);
     }

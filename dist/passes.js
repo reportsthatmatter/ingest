@@ -578,7 +578,9 @@ export const pageBreakContinuations = (options = {}) => ({
  * Quote and quote, or list and list, across a page marker, when the first
  * stops mid-sentence and the second opens in lower case (or on `,` `;`) with
  * no label of its own ("b. On 4 November", "(c) the"). A list item that ends
- * "; and" is finished. Text only, no layout; independent of
+ * "; and" is finished. A quotation opening the page inset, after a list item
+ * that stops mid-sentence, is the rest of that item (the page parser reads the
+ * item's hanging indent as an inset: 9/11 p.415, reportsthatmatter-2hn). Text only, no layout; independent of
  * `pageBreakContinuations`, which it does not need.
  *
  * Opt-in because it joins into a quotation: declare it for a report whose
@@ -599,7 +601,13 @@ export const quoteListRunOns = () => ({ name: "quoteListRunOns", stage: "page" }
  * 0.6 em), not a label ("57.", "(b)", "9.88", "•"), in the same font. R2: it
  * ends a sentence, but the page is justified, its last line runs to the right
  * margin, and the next is flush, unlabelled, same font, more than four words.
- * Paragraph and paragraph only; a numbered finding never joins.
+ * Paragraph and paragraph only; a numbered finding never joins. The same
+ * test is applied past a footnote's run-over (a smaller-face block with no
+ * number, left between the paragraph and the new page: Lehman p.59,
+ * reportsthatmatter-j6qm), not past a figure's caption; the run-over stays
+ * where it is. With `scanned`, a lone "°" opening a block, followed by lower
+ * case, after a paragraph that stops mid-sentence, is an OCR misreading of a
+ * footnote marker's digits and is dropped (Jack Smith p.44, ky1o).
  *
  * Needs the layout (`openLayout`, on the pipeline context); without it, does
  * nothing. Opt-in: declare it for a report whose paragraphs are marked by a
