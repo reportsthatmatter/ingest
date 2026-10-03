@@ -8,6 +8,11 @@ export type Page = {
   /** 1-based index within its own PDF. What you open the file at to check. */
   pdfIndex: number;
   lines: string[];
+  /**
+   * `cleanEdition` with `notes: "page-foot"`: how many of the trailing lines are
+   * the page's notes (set by the PDF's pages' own order: body, then notes).
+   */
+  footLines?: number;
 };
 
 /**

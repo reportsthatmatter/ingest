@@ -45,6 +45,21 @@ const NAMED: Record<string, string> = {
   plusmn: "±",
   middot: "·",
   bull: "•",
+  pound: "£",
+  frac12: "½",
+  frac14: "¼",
+  frac34: "¾",
+  deg: "°",
+  Eacute: "É",
+  Oacute: "Ó",
+  Aacute: "Á",
+  Iacute: "Í",
+  Uacute: "Ú",
+  uacute: "ú",
+  agrave: "à",
+  iuml: "ï",
+  Ouml: "Ö",
+  Uuml: "Ü",
 };
 
 /** Windows-1252's 0x80-0x9F, which old pages emit as numeric references. */
@@ -61,7 +76,7 @@ export function decodeEntities(text: string): string {
       if (!Number.isFinite(code)) return whole;
       return CP1252[code] ?? String.fromCodePoint(code);
     }
-    return NAMED[body.toLowerCase()] ?? whole;
+    return NAMED[body] ?? NAMED[body.toLowerCase()] ?? whole;
   });
 }
 

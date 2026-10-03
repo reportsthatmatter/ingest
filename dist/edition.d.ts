@@ -54,6 +54,14 @@ export type EditionPass = {
     readonly name: "cleanEdition";
     readonly stage: "edition";
     readonly sources: readonly EditionSource[];
+    /**
+     * Where the PDF prints the edition's notes. `"back"` (the default): in the
+     * body stream, as endnotes are (9/11). `"page-foot"`: under the paragraph
+     * that cites them, which the PDF shadow lifts out of the text and holds
+     * as its notes; the edition's notes are then aligned to those, not to the
+     * body (Saville).
+     */
+    readonly notes: "back" | "page-foot";
     /** Reads and checks the edition's files and returns its blocks. */
     read(): Edition;
 };
@@ -70,6 +78,7 @@ export declare function cleanEdition(options: {
     dir: string;
     files: EditionSource[];
     encoding?: BufferEncoding;
+    notes?: "back" | "page-foot";
     read(files: Array<{
         path: string;
         text: string;
@@ -110,6 +119,7 @@ export type EditionReport = {
     pages: {
         anchored: number;
         placedByNeighbour: number;
+        frontMatterSkipped?: number;
     };
     dashesRestored: number;
     /** A space after punctuation the PDF prints and the edition omits ("Timeline,"Dec."). */
@@ -121,6 +131,14 @@ export type EditionReport = {
         pdfNotInEdition: number;
     };
 };
+/**
+ * Pages the PDF ingest read no printed number off (a page of a figure, a page
+ * whose header it did not read) that sit between two it did, with the numbers
+ * in step with the PDF's own page order (printed 47 on PDF page 52, printed 50
+ * on PDF page 55: 48 and 49 are the pages between). A gap whose numbers do not
+ * run in step is left unmarked.
+ */
+export declare function fillPrintedGaps(printed: PrintedPage[]): PrintedPage[];
 export type PrintedPage = {
     volume: number;
     pdfIndex: number;
@@ -140,4 +158,5 @@ export declare function assembleEdition(edition: Edition, pages: Page[], printed
     suspects: Suspect[];
     blocks: Block[];
     linkedText: string[];
+    notePages: Array<number | undefined>;
 };
