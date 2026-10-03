@@ -76,7 +76,20 @@ export type EditionBlock = (
 
 export type BlockSource = { file: string } | { pdf: { volume: number; pdfIndex: number }; gap: string };
 
-export type EditionNote = { label: string; text: string };
+export type EditionNote = {
+  label: string;
+  text: string;
+  /**
+   * Where the PDF prints this note in its reading order: after the edition
+   * block at this index. A report whose notes close each chapter (the January
+   * 6th Committee's "ENDNOTES" after every part) sets it to the chapter's last
+   * block, so the edition's words are aligned to the PDF in the order the PDF
+   * prints them, notes included. Left out, a note follows the whole body, as
+   * a notes section at the back does (9/11). It moves only the alignment: the
+   * notes are served as before.
+   */
+  after?: number;
+};
 
 export type Edition = {
   blocks: EditionBlock[];
@@ -322,12 +335,32 @@ export function assembleEdition(
 
   // the edition's word stream: body fields, then notes
   type CTok = Token & { field: number };
+  // in the PDF's reading order: a note with `after` follows that block, the others follow the body
   const clean: CTok[] = [];
+  const push = (f: number) => {
+    for (const t of fieldTokens(fields[f].get())) clean.push({ ...t, field: f });
+  };
+  const notesAfter = new Map<number, number[]>();
+  const trailing: number[] = [];
   fields.forEach((field, f) => {
-    for (const t of fieldTokens(field.get())) clean.push({ ...t, field: f });
+    if (!field.note) return;
+    const after = notes[field.block].after;
+    if (after === undefined || after < 0 || after >= blocks.length) trailing.push(f);
+    else notesAfter.set(after, [...(notesAfter.get(after) ?? []), f]);
   });
-  const bodyTokens = clean.findIndex((t) => fields[t.field].note);
-  const bodyEnd = bodyTokens === -1 ? clean.length : bodyTokens;
+  const bodyFields = new Map<number, number[]>();
+  fields.forEach((field, f) => {
+    if (!field.note) bodyFields.set(field.block, [...(bodyFields.get(field.block) ?? []), f]);
+  });
+  for (let b = 0; b < blocks.length; b++) {
+    for (const f of bodyFields.get(b) ?? []) push(f);
+    for (const f of notesAfter.get(b) ?? []) push(f);
+  }
+  for (const f of trailing) push(f);
+  /** A note's token: with notes placed among the body, "body" is a property of the token, not a range. */
+  const isNote = (c: number) => fields[clean[c].field].note;
+  /** Past every body token: a page marker placed here follows the last block. */
+  const END = clean.length;
 
   // the PDF's word stream, page by page
   type PTok = Token & { page: number };
@@ -416,7 +449,7 @@ export function assembleEdition(
   const firstOnPage = new Map<number, number>();
   for (let j = 0; j < pdf.length; j++) {
     const c = inv[j];
-    if (c < 0 || c >= bodyEnd) continue;
+    if (c < 0 || isNote(c)) continue;
     if (!firstOnPage.has(pdf[j].page)) firstOnPage.set(pdf[j].page, c);
   }
   const everyPage = printed
@@ -440,7 +473,7 @@ export function assembleEdition(
   // a page with no word of its own (a full-page figure) sits where the next page does;
   // positions only move forward, so a stray alignment cannot reorder the pages
   const pos = new Array<number>(marked.length);
-  let next = bodyEnd;
+  let next = END;
   for (let i = marked.length - 1; i >= 0; i--) {
     pos[i] = Math.min(own[i] ?? next, next);
     next = pos[i];
@@ -451,13 +484,15 @@ export function assembleEdition(
 
   // token → block (body), and each block's first token
   const firstToken = new Map<number, number>();
-  for (let c = 0; c < bodyEnd; c++) {
+  for (let c = 0; c < clean.length; c++) {
+    if (isNote(c)) continue;
     const b = fields[clean[c].field].block;
     if (!firstToken.has(b)) firstToken.set(b, c);
   }
   // the PDF page each block's first aligned word is on
   const blockPage = new Map<number, number>();
-  for (let c = 0; c < bodyEnd; c++) {
+  for (let c = 0; c < clean.length; c++) {
+    if (isNote(c)) continue;
     const b = fields[clean[c].field].block;
     if (!blockPage.has(b) && map[c] >= 0) blockPage.set(b, pdf[map[c]].page);
   }
@@ -465,9 +500,9 @@ export function assembleEdition(
   // first token of each row, so a page that begins inside a table is stamped at its row
   const rowPage = new Map<number, Map<number, number>>();
   const rowStart = new Map<number, Map<number, number>>();
-  for (let c = 0; c < bodyEnd; c++) {
+  for (let c = 0; c < clean.length; c++) {
     const f = fields[clean[c].field];
-    if (f.row === undefined) continue;
+    if (f.note || f.row === undefined) continue;
     if (!rowStart.has(f.block)) rowStart.set(f.block, new Map());
     if (!rowStart.get(f.block)!.has(f.row)) rowStart.get(f.block)!.set(f.row, c);
     if (map[c] < 0) continue;
@@ -486,7 +521,7 @@ export function assembleEdition(
   for (const [b, start] of firstToken) {
     if (blockPage.has(b)) continue;
     let end = start;
-    while (end < bodyEnd && end - start < 8 && fields[clean[end].field].block === b) end++;
+    while (end < clean.length && !isNote(end) && end - start < 8 && fields[clean[end].field].block === b) end++;
     if (end - start < 3) continue;
     const want = clean.slice(start, end).map((t) => t.word);
     const hits = (grams.get(want.slice(0, 3).join(" ")) ?? []).filter((j) => want.every((w, k) => pdf[j + k]?.word === w));
@@ -500,10 +535,23 @@ export function assembleEdition(
   const markersBefore = new Map<number, PrintedPage[]>();
   // markers that fall inside a table: block -> row the page opens at -> pages (the table is cut there)
   const markersInTable = new Map<number, Map<number, PrintedPage[]>>();
+  // A page that prints only notes placed among the body (`EditionNote.after`: a chapter's endnotes) has no
+  // place in the served text, whose notes are set beside the paragraphs that cite them: its marker would only
+  // pile up, with every other notes page of the chapter, at the start of the next chapter.
+  const notesOnly = new Set<number>();
+  const bodyPages = new Set<number>();
+  for (let j = 0; j < pdf.length; j++) {
+    const c = inv[j];
+    if (c < 0) continue;
+    if (!isNote(c)) bodyPages.add(pdf[j].page);
+    else if (notes[fields[clean[c].field].block].after !== undefined) notesOnly.add(pdf[j].page);
+  }
+  for (const p of bodyPages) notesOnly.delete(p);
   let lastBefore = 0;
   for (let i = 0; i < marked.length; i++) {
+    if (notesOnly.has(marked[i].p)) continue;
     let before: number;
-    if (pos[i] >= bodyEnd) before = blocks.length;
+    if (pos[i] >= END) before = blocks.length;
     else {
       const c = pos[i];
       const b = fields[clean[c].field].block;
@@ -838,12 +886,22 @@ export function fillGaps(edition: Edition, pages: Page[], shadow: ShadowText): {
   const editionBlockOf: number[] = [];
   const editionWords: string[] = [];
   const blocks = structuredClone(edition.blocks);
-  fieldsOf(blocks, []).forEach((field) => {
-    for (const t of fieldTokens(field.get())) {
-      editionWords.push(t.word);
-      editionBlockOf.push(field.block);
+  // a note the PDF prints among the body (`EditionNote.after`) is aligned there, as part of the block it follows,
+  // so a gap after a chapter does not take the chapter's endnotes for text the edition lacks
+  const notesAfter = new Map<number, EditionNote[]>();
+  for (const note of edition.notes) {
+    if (note.after !== undefined && note.after >= 0 && note.after < blocks.length) notesAfter.set(note.after, [...(notesAfter.get(note.after) ?? []), note]);
+  }
+  const bodyFields = fieldsOf(blocks, []);
+  for (let b = 0; b < blocks.length; b++) {
+    const texts = [...bodyFields.filter((field) => field.block === b).map((field) => field.get()), ...(notesAfter.get(b) ?? []).map((note) => note.text)];
+    for (const text of texts) {
+      for (const t of fieldTokens(text)) {
+        editionWords.push(t.word);
+        editionBlockOf.push(b);
+      }
     }
-  });
+  }
   const { map: editionMap } = align(editionWords, pdfWords);
 
   // each gap's PDF stretch: after the last aligned edition word before it, before the first after it
@@ -1035,16 +1093,23 @@ export function fillGaps(edition: Edition, pages: Page[], shadow: ShadowText): {
   const insertAfter: number[] = [];
   let lastCited = -1;
   let g = 0;
+  // a note's `after` names a block of the edition as read: where that block is now, or (a gap) where its fill ends
+  const movedTo: number[] = [];
   for (const block of blocks) {
     if (block.kind === "gap") {
       out.push(...fills[g]);
+      movedTo.push(out.length - 1);
       insertAfter.push(lastCited);
       g++;
       continue;
     }
     for (const label of cited(block)) lastCited = Math.max(lastCited, noteIndex.get(label) ?? -1);
     out.push(block);
+    movedTo.push(out.length - 1);
   }
+  notes.forEach((note, n) => {
+    if (note.after !== undefined && movedTo[note.after] !== undefined) notes[n] = { ...note, after: movedTo[note.after] };
+  });
   const allNotes: EditionNote[] = [];
   const byPosition = new Map<number, EditionNote[]>();
   insertAfter.forEach((after, k) => byPosition.set(after, [...(byPosition.get(after) ?? []), ...notesFor[k]]));
