@@ -48,6 +48,7 @@ export {
   numberedOutsideTables,
   photoCredits,
   footnoteGap,
+  footnoteNumbers,
   runningFurniture,
   geometry,
   columns,
@@ -71,8 +72,8 @@ export type {
 export { detectGutter, splitColumns } from "./columns";
 
 // — A clean edition as the source (the hybrid mode, edition.ts) —
-export { cleanEdition, inlineMarkdown, inlineText, escapeInline, assembleEdition } from "./edition";
-export type { Edition, EditionBlock, EditionNote, EditionPass, EditionSource, EditionReport, InlinePiece, PrintedPage } from "./edition";
+export { cleanEdition, inlineMarkdown, inlineText, escapeInline, assembleEdition, fillGaps } from "./edition";
+export type { Edition, EditionBlock, EditionNote, EditionPass, EditionSource, EditionReport, InlinePiece, PrintedPage, BlockSource, FilledGap, ShadowText } from "./edition";
 export { htmlEvents, decodeEntities } from "./html";
 export type { HtmlEvent } from "./html";
 // Monotone word alignment (promoted from the site's scorer, src/lib/score)
@@ -108,7 +109,38 @@ export type { Baseline } from "./baseline";
 export { openLayout, buildLayout, parseLayoutXml, layoutXml, indentVersus } from "./layout";
 export type { Layout, LayoutLine, PageLayout, BodyFont, RaisedRun } from "./layout";
 export { decidePageBreak, findPageBreakLines, layoutJoins, pageBreakKey, isJustified, sameFace, letters } from "./pagebreaks";
-export type { PageBreakLines, PageBreakDecision, PageBreakCase, PageBreakReferee, PageBreakOptions } from "./pagebreaks";
+export type { PageBreakLines, PageBreakDecision, PageBreakCase, PageBreakReferee, PageBreakOptions, PageBreakConfidence } from "./pagebreaks";
+export {
+  pageBreakCache,
+  readPageBreakCache,
+  writePageBreakCache,
+  isCachedReferee,
+  refereeEntry,
+  describeCase,
+  refereeRequests,
+  parseRefereeAnswers,
+  refereePageBreaks,
+  refereeCost,
+  REFEREE_SYSTEM,
+  REFEREE_PROMPT_ID,
+  REFEREE_PRICES,
+  requestHash,
+  replayTransport,
+  recordingTransport,
+} from "./referee";
+export type {
+  CachedReferee,
+  RefereeEntry,
+  PageBreakCacheFile,
+  RefereeRequest,
+  RefereeContent,
+  RefereeUsage,
+  RefereeTransport,
+  RefereeOptions,
+  RefereeRun,
+  RefereeRecording,
+} from "./referee";
+export { REFEREE_EXAMPLES } from "./referee-examples";
 export type { PipelineContext } from "./context";
 export { measureLayout, ORACLE_SIGNALS, ORACLE } from "./oracle";
 export type { OracleReport, OracleSignal, OracleFinding, PageCounts } from "./oracle";

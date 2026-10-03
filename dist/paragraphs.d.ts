@@ -50,6 +50,11 @@ export type Block = ({
 }) & {
     at?: Provenance;
     /**
+     * `cleanEdition` only: whether the block's text is the clean edition's, or
+     * the PDF shadow's, filled into a gap the edition declared (`fillGaps`).
+     */
+    source?: "edition" | "pdf";
+    /**
      * Nothing may be joined across this block. Set where one column of a page
      * ends and the next begins — they are adjacent in the stream but not in the
      * reading order of the sentence.

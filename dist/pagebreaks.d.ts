@@ -24,9 +24,13 @@ import type { Layout, LayoutLine, PageLayout } from "./layout.js";
  * A first line compared with the line under it on its own page, not with the
  * old page: verso and recto text blocks can sit at different lefts (Saville).
  *
- * Deterministic: the same layout and text give the same decision. A decision
- * near a threshold is marked `ambiguous`, which is where an optional referee
- * (38s.11) may be consulted; without one the rules stand.
+ * Deterministic: the same layout and text give the same decision. Each
+ * decision carries a `confidence`: `low` (near a threshold: `ambiguous`),
+ * `medium` (a call the layout makes but the words could overturn: a flush
+ * first line after a finished sentence, a layout-only label after an
+ * unfinished one) or `high`. An optional referee (38s.11) is consulted on the
+ * `low` calls, or on `low` and `medium` with `refer: "medium"`; without one
+ * the rules stand.
  */
 /** |first-line indent| below this, in ems, is flush. */
 export declare const FLUSH_EM = 0.6;
@@ -59,7 +63,13 @@ export type PageBreakOptions = {
     scanned?: boolean;
     /** A second opinion on the low-margin calls. */
     referee?: PageBreakReferee;
+    /**
+     * Which calls the referee is asked about: `low` (the default: the
+     * ambiguous ones) or `medium` (those and the medium-confidence ones).
+     */
+    refer?: "low" | "medium";
 };
+export type PageBreakConfidence = "high" | "medium" | "low";
 export type PageBreakDecision = {
     join: boolean;
     /** Which rule joined, or why not. */
@@ -73,6 +83,8 @@ export type PageBreakDecision = {
      * block's own. A referee, when one is supplied, decides these.
      */
     ambiguous: boolean;
+    /** `low` exactly when `ambiguous`; `medium` for a call the words could overturn; else `high`. */
+    confidence: PageBreakConfidence;
 };
 /** One page-break pair, as a referee sees it. */
 export type PageBreakCase = {

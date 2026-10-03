@@ -317,6 +317,18 @@ export const photoCredits = () => ({ name: "photoCredits", stage: "page" });
  */
 export const footnoteGap = () => ({ name: "footnoteGap", stage: "page" });
 /**
+ * How the report numbers its page-foot notes, where that is not the usual bare
+ * "104 Letter from…": `"period"` reads "104. Letter from…" (Hillsborough,
+ * reportsthatmatter-ivg.3), whose notes were otherwise printed in the body as
+ * a paragraph with every marker bare. Opt-in: a numbered list item at a page
+ * foot has the same shape.
+ */
+export const footnoteNumbers = (numbers) => ({
+    name: "footnoteNumbers",
+    stage: "page",
+    numbers,
+});
+/**
  * Reads the report's chapter-and-section numbering from its contents
  * ("8.1   The Summer of Threat 254") and takes each numbered section's heading
  * from there (reportsthatmatter-w8g).
@@ -623,7 +635,11 @@ export const quoteListRunOns = () => ({ name: "quoteListRunOns", stage: "page" }
  * `referee`: an optional, deterministic second opinion on the low-margin
  * calls (an indent near the threshold, an R2 join, no line under the first
  * line to compare with) — in practice a lookup in a committed cache keyed by
- * `PageBreakCase.key` (38s.11). An `undefined` answer leaves the rules' call.
+ * `PageBreakCase.key` (38s.11): `pageBreakCache(new URL("./referee/pagebreaks.json",
+ * import.meta.url))`, filled offline by the host (`src/referee.ts`). An
+ * `undefined` answer leaves the rules' call. `refer: "medium"` also puts the
+ * medium-confidence calls to it (a flush first line after a finished
+ * sentence; a layout-only label after an unfinished one).
  */
 /**
  * Links the footnote markers the PDF sets as small raised digits
@@ -656,6 +672,7 @@ export const layoutPageJoins = (options = {}) => ({
     stage: "page",
     ...(options.scanned ? { scanned: true } : {}),
     ...(options.referee ? { referee: options.referee } : {}),
+    ...(options.referee && options.refer === "medium" ? { refer: "medium" } : {}),
 });
 /**
  * Whether a numbered or lettered line ("1. Withdrawing the Army", "C. The

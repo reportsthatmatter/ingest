@@ -42,6 +42,7 @@ export type IngestResult = {
         volume: number;
         pdfIndex: number;
         lines: string[];
+        noteLines?: number;
     }>;
     /** What `layoutMarkers` saw and linked, when the report declares it. */
     layoutMarkers?: LayoutMarkerStats;

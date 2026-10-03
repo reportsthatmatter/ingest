@@ -32,8 +32,10 @@ export type SplitPage = {
  * thousands.
  */
 export declare const FOOTNOTE_INLINE: RegExp;
+/** How a report numbers its page-foot notes: "104 Letter…" (bare) or "104. Letter…" (period). */
+export type FootnoteNumbers = "bare" | "period";
 /** Candidate note openings on a page, in either layout. */
-export declare function noteCandidates(lines: string[]): Array<{
+export declare function noteCandidates(lines: string[], numbers?: FootnoteNumbers): Array<{
     line: number;
     note: number;
 }>;
@@ -70,6 +72,7 @@ export declare function takePrintedNumber(input: string[], options?: {
 export declare function splitFootnoteBlock(lines: string[], expectedNote: number, options?: {
     citationRunOver?: boolean;
     footnoteGap?: boolean;
+    footnoteNumbers?: FootnoteNumbers;
 }): {
     body: string[];
     footnotes: string[];
@@ -85,6 +88,7 @@ export declare function splitPage(page: Page, expectedNote: number, options?: {
     citationRunOver?: boolean;
     footnoteGap?: boolean;
     romanFolios?: boolean;
+    footnoteNumbers?: FootnoteNumbers;
 }): SplitPage;
 export type FurnitureOptions = {
     /**
