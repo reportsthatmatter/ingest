@@ -168,3 +168,57 @@ describe("declaring layoutPageJoins", () => {
     expect(resolvePasses(def([layoutPageJoins({ scanned: true, referee })])).layoutPageJoins).toEqual({ scanned: true, referee });
   });
 });
+
+describe("a footnote's run-over between the paragraph and its continuation (reportsthatmatter-j6qm)", () => {
+  // Lehman p.59/60: the paragraph stops at the page foot ("primarily Fuld, Joseph"), then the run-over of
+  // a note begun on the page before (smaller face, no number) reads as a body paragraph, then the new page
+  // opens on "Gregory (Lehman's President…".
+  const f = fixture("lehman-p60") as ReturnType<typeof fixture> & { note: string };
+  const at = (pdfIndex: number) => ({ volume: 1, pdfIndex, printed: pdfIndex });
+  const stream = (): Block[] => [
+    { kind: "paragraph", text: f.prev, at: at(59) },
+    { kind: "paragraph", text: f.note, at: at(59) },
+    { kind: "page", number: 60, at: at(60) },
+    { kind: "paragraph", text: f.next, at: at(60) },
+  ];
+
+  it("joins the continuation to the paragraph above the note, which stays where it is", () => {
+    const merged = mergeAcrossPages(stream(), { layout: f.layout, layoutJoins: {} });
+    expect(merged.map((b) => b.kind)).toEqual(["paragraph", "paragraph", "page"]);
+    expect((merged[0] as { text: string }).text).toBe(`${f.prev} ${f.next}`);
+    expect((merged[1] as { text: string }).text).toBe(f.note);
+  });
+
+  it("not past a figure's caption, which is off the body face too", () => {
+    const b = stream();
+    (b[1] as { text: string }).text = `Figure 3.4-6. ${f.note}`;
+    expect(mergeAcrossPages(b, { layout: f.layout, layoutJoins: {} })).toHaveLength(4);
+  });
+
+  it("not without the pass", () => {
+    expect(mergeAcrossPages(stream(), { layout: f.layout })).toHaveLength(4);
+  });
+});
+
+describe("a scan's stray glyph inside a paragraph (reportsthatmatter-ky1o, Jack Smith p.44)", () => {
+  const at = (pdfIndex: number) => ({ volume: 1, pdfIndex, printed: pdfIndex });
+  const stream = (): Block[] => [
+    { kind: "paragraph", text: "House official who engaged with Mr. Trump, and even his own", at: at(44) },
+    { kind: "paragraph", text: "° running mate.[^14] For example, Mr. Trump's Campaign Manager informed him.", at: at(44) },
+  ];
+
+  it("drops the degree sign and joins, on a scan", () => {
+    const merged = mergeAcrossPages(stream(), { layoutJoins: { scanned: true } });
+    expect(merged).toHaveLength(1);
+    expect((merged[0] as { text: string }).text).toBe(
+      "House official who engaged with Mr. Trump, and even his own running mate.[^14] For example, Mr. Trump's Campaign Manager informed him."
+    );
+  });
+
+  it("leaves a born-digital page, and a finished paragraph, alone", () => {
+    expect(mergeAcrossPages(stream(), { layoutJoins: {} })).toHaveLength(2);
+    const done = stream();
+    (done[0] as { text: string }).text = "He was told so.";
+    expect(mergeAcrossPages(done, { layoutJoins: { scanned: true } })).toHaveLength(2);
+  });
+});

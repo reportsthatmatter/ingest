@@ -100,3 +100,31 @@ describe("quoteListRunOns (reportsthatmatter-38s.9, cgr)", () => {
     expect(resolvePasses(def).quoteListRunOns).toBe(true);
   });
 });
+
+describe("a list item's run-over opening the next page inset (reportsthatmatter-2hn, 9/11 p.415)", () => {
+  it("joins a lower-case quotation into the last item of the list above", () => {
+    const merged = mergeAcrossPages(
+      [
+        list(["The CIA will be one among several claimants.", "Covert operations are tactical. The Director should rely on the relevant joint"], 3),
+        marker(4),
+        quote("mission center to oversee these details.", 4),
+      ],
+      on
+    );
+    expect(merged.map((b) => b.kind)).toEqual(["list", "page"]);
+    expect(merged[0]).toMatchObject({
+      items: ["The CIA will be one among several claimants.", "Covert operations are tactical. The Director should rely on the relevant joint mission center to oversee these details."],
+    });
+  });
+
+  it("not after a finished item, a capital opening, or an item's own label", () => {
+    const l = () => list(["It was finished."], 3);
+    expect(mergeAcrossPages([l(), marker(4), quote("and then more", 4)], on)).toHaveLength(3);
+    expect(mergeAcrossPages([list(["It stopped and"], 3), marker(4), quote("Then a new quotation.", 4)], on)).toHaveLength(3);
+    expect(mergeAcrossPages([list(["It stopped and"], 3), marker(4), quote("b. an item", 4)], on)).toHaveLength(3);
+  });
+
+  it("not without the pass", () => {
+    expect(mergeAcrossPages([list(["It stopped and"], 3), marker(4), quote("went on.", 4)])).toHaveLength(3);
+  });
+});
