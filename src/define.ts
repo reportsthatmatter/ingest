@@ -9,7 +9,9 @@ import type {
   LayoutPageJoinsPass,
   LayoutMarkersPass,
   TypographicHeadingsPass,
+  PageHeadFoliosPass,
 } from "./passes";
+import type { PageHeadFolio } from "./clean";
 import type { PageBreakOptions } from "./pagebreaks";
 import type { EditionPass } from "./edition";
 import type { VisionStructurePass } from "./vision/hybrid";
@@ -82,6 +84,10 @@ export type ResolvedPasses = {
   pageBreakQuoteTails?: boolean;
   citationRunOver?: boolean;
   romanFolios?: boolean;
+  parenFolios?: boolean;
+  /** `pageHeadFolios`: on, with the line that goes with the "Page N" head. */
+  pageHeadFolios?: PageHeadFolio;
+  foliosInStep?: boolean;
   numberedOutsideTables?: boolean;
   photoCredits?: boolean;
   footnoteGap?: boolean;
@@ -209,6 +215,9 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     ),
     citationRunOver: passes.some((pass) => pass.name === "citationRunOver"),
     romanFolios: passes.some((pass) => pass.name === "romanFolios"),
+    parenFolios: passes.some((pass) => pass.name === "parenFolios"),
+    pageHeadFolios: passes.find((pass): pass is PageHeadFoliosPass => pass.name === "pageHeadFolios")?.options ?? undefined,
+    foliosInStep: passes.some((pass) => pass.name === "foliosInStep"),
     numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),
     photoCredits: passes.some((pass) => pass.name === "photoCredits"),
     footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),

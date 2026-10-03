@@ -2,6 +2,8 @@ import { normaliseWhitespace } from "./extract.js";
 const PAGE_EDGE_DEPTH = 3;
 const MIN_REPEATED_FURNITURE = 3;
 const PAGE_NUMBER = /^\s*(\d{1,4}|[ivxlcdm]{1,8})\s*$/i;
+/** A folio set in parentheses, "(3)" (`parenFolios`). */
+const PAREN_NUMBER = /^\s*\(\s*(\d{1,4})\s*\)\s*$/;
 /**
  * Two layouts, both common.
  *
@@ -70,7 +72,7 @@ export function takePrintedNumber(input, options = {}) {
     const lines = [...input];
     let printed = null;
     const takeNumber = (index) => {
-        const value = Number.parseInt(lines[index].trim(), 10);
+        const value = Number.parseInt(lines[index].trim().replace(/^\(\s*|\s*\)$/g, ""), 10);
         if (Number.isNaN(value))
             return;
         printed = value;
@@ -103,15 +105,17 @@ export function takePrintedNumber(input, options = {}) {
             else if (PAGE_NUMBER.test(lines[i]))
                 takeNumber(i);
         }
-        else if (PAGE_NUMBER.test(lines[i]))
+        else if (PAGE_NUMBER.test(lines[i]) || (options.paren && PAREN_NUMBER.test(lines[i])))
             takeNumber(i);
         break;
     }
+    if (printed === null && options.head)
+        printed = takePageHead(lines, options.head);
     if (printed === null) {
         for (let i = 0; i < Math.min(3, lines.length); i++) {
             if (!lines[i].trim())
                 continue;
-            if (PAGE_NUMBER.test(lines[i]))
+            if (PAGE_NUMBER.test(lines[i]) || (options.paren && PAREN_NUMBER.test(lines[i])))
                 takeNumber(i);
             break;
         }
@@ -122,6 +126,24 @@ export function takePrintedNumber(input, options = {}) {
             return { printed, roman, lines };
     }
     return { printed, lines };
+}
+const PAGE_HEAD = /^\s*Page\s+(\d{1,4})\s*$/;
+function takePageHead(lines, head) {
+    const at = [];
+    for (let i = 0; i < lines.length && at.length < 2; i++)
+        if (lines[i].trim())
+            at.push(i);
+    const pageLine = at.find((i, k) => k < 2 && PAGE_HEAD.test(lines[i]));
+    if (pageLine === undefined)
+        return null;
+    const k = at.indexOf(pageLine);
+    if (k === 1 && !(head.above && head.above.test(lines[at[0]])))
+        return null;
+    const value = Number.parseInt(PAGE_HEAD.exec(lines[pageLine])[1], 10);
+    lines.splice(pageLine, 1);
+    if (k === 1)
+        lines.splice(at[0], 1);
+    return value;
 }
 /**
  * A lowercase roman folio alone on a line at the head or foot, possibly set
@@ -435,7 +457,7 @@ function provenance(page) {
  * stacked note opening.
  */
 export function splitPage(page, expectedNote, options = {}) {
-    const { printed, roman, lines } = takePrintedNumber(page.lines, { roman: options.romanFolios });
+    const { printed, roman, lines } = takePrintedNumber(page.lines, { roman: options.romanFolios, paren: options.parenFolios, head: options.pageHeadFolios });
     const { body, footnotes, runOver } = splitFootnoteBlock(lines, expectedNote, options);
     return { ...provenance(page), printed, ...(roman ? { roman } : {}), body, footnotes, ...(runOver.length ? { runOver } : {}) };
 }
