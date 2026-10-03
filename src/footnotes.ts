@@ -585,9 +585,8 @@ export function linkFlushMarkersByChapter(
   return out;
 }
 
-export function renderEndnotes(notes: Footnote[]): string {
-  if (!notes.length) return "";
-
+/** The notes as `renderEndnotes` prints them: consecutive notes with one label are one note (a note that runs over a page). */
+export function mergeFootnotes(notes: Footnote[]): Footnote[] {
   const merged: Footnote[] = [];
   for (const note of notes) {
     const previous = merged[merged.length - 1];
@@ -597,8 +596,14 @@ export function renderEndnotes(notes: Footnote[]): string {
     }
     merged.push({ ...note });
   }
+  return merged;
+}
 
-  return merged.map((note) => `[^${note.label ?? note.number}]: ${note.text}`).join("\n\n");
+export function renderEndnotes(notes: Footnote[]): string {
+  if (!notes.length) return "";
+  return mergeFootnotes(notes)
+    .map((note) => `[^${note.label ?? note.number}]: ${note.text}`)
+    .join("\n\n");
 }
 
 /**
