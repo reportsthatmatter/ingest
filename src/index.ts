@@ -29,6 +29,7 @@ export {
   unmarkedHeadings,
   recoverListedHeadings,
   endnotes,
+  layoutEndnotes,
   numberedSections,
   contentsEntries,
   shortSubheads,

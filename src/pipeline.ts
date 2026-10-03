@@ -43,6 +43,7 @@ import {
   type NotesChapter,
 } from "./footnotes";
 import { inNoteFace, linkLayoutMarkers, pageDefinesNotes, type LayoutMarkerStats } from "./markers";
+import { LayoutEndnotesReader, chapterOfBlocks } from "./layout-endnotes";
 import { autoFix, findSuspects, rankSuspects, type Suspect } from "./ocr";
 import type { PipelineContext } from "./context";
 import { assembleEdition, fillGaps, fillPrintedGaps, type EditionReport, type PrintedPage } from "./edition";
@@ -173,6 +174,10 @@ export function ingestPageGroups(
   // text follows it.
   let notesStarted = false;
   const notesLines: NotesLine[] = [];
+  // `layoutEndnotes`: notes sections read off the layout, page by page.
+  const endnotesReader =
+    resolved.layoutEndnotes && context.layout ? new LayoutEndnotesReader(context.layout) : undefined;
+  const endnotesHeadings = new Map<string, string[]>();
 
   let pageOffset = 0;
   const splitGroups = pageGroups.map((group) =>
@@ -186,8 +191,8 @@ export function ingestPageGroups(
         footnoteGap: resolved.footnoteGap,
         footnoteNumbers: resolved.footnoteNumbers,
       };
-      let split = resolved.paragraphNotes || resolved.endnotes
-        ? splitPageNumberOnly(page)
+      let split = resolved.paragraphNotes || resolved.endnotes || resolved.layoutEndnotes
+        ? splitPageNumberOnly(page, { romanFolios: resolved.romanFolios })
         : splitPage(page, expectedNote, splitOptions);
       // `footnoteNumbers("period")`: a block opening "8. In all of the above cases" in the body's face is
       // the body's own numbered paragraphs (an appendix's), not notes: the page is read without them.
@@ -207,6 +212,15 @@ export function ingestPageGroups(
       ) {
         split.body = [...split.body, ...split.footnotes];
         split.footnotes = [];
+      }
+
+      // A page of a notes section: its notes are read off the layout, and its body keeps only what
+      // is printed above the section's heading, the heading and the preamble.
+      const read = endnotesReader?.page(split, split.body);
+      if (read) {
+        split.body = read.body;
+        if (read.heading.length) endnotesHeadings.set(`${split.volume}:${split.pdfIndex}`, read.heading);
+        footnotes.push(...read.notes);
       }
 
       // A note that ran over the page break: its tail opens this page's
@@ -253,6 +267,11 @@ export function ingestPageGroups(
   const cleanedGroups = splitGroups.map((group) =>
     resolved.volumePasses.reduce((pages, pass) => pass.run(pages, context), group)
   );
+  // `layoutEndnotes`: a notes section's heading and preamble join the page's body once its furniture is off.
+  for (const split of endnotesHeadings.size ? cleanedGroups.flat() : []) {
+    const heading = endnotesHeadings.get(`${split.volume}:${split.pdfIndex}`);
+    if (heading) split.body = [...split.body, ...heading];
+  }
   // Each page's own text once its furniture is off, for `cleanEdition` to align against.
   const pageText = cleanedGroups.flat().map((split) => ({
     volume: split.volume,
@@ -451,10 +470,15 @@ export function ingestPageGroups(
   let markerStats: LayoutMarkerStats | undefined;
   if (resolved.layoutMarkers && context.layout) {
     const known = new Set(footnotes.map((note) => note.number));
+    const chapters = resolved.layoutMarkers.scope === "chapter" && endnotesReader
+      ? chapterOfBlocks(bodyChunks, endnotesReader.chapters)
+      : undefined;
     markerStats = linkLayoutMarkers(
       bodyChunks,
       context.layout,
-      resolved.layoutMarkers.scope === "document"
+      chapters
+        ? { scope: "chapter", chapterOf: (block) => chapters.get(block) }
+        : resolved.layoutMarkers.scope === "document"
         ? { scope: "document", known }
         : { scope: "page", onPage: (volume, pdfIndex) => notesByPage.get(pageKey(volume, pdfIndex)) ?? new Set() }
     );
@@ -513,7 +537,8 @@ export function ingestPageGroups(
   // above them; a document-wide number lookup would only relink stray
   // numbers to notes whose "1" means something different on every page.
   if (!resolved.paragraphNotes && textLinkers) {
-    const known = new Set(notes.map((note) => note.number));
+    // A labelled note ("3-5", `layoutEndnotes`) is not what a bare [^3] would open.
+    const known = new Set(notes.filter((note) => !note.label).map((note) => note.number));
     body = linkInlineMarkers(body, known);
     // An endnotes appendix's own markers are flush against the word before
     // them far more often than not ("Airport.1") — `linkInlineMarkers` alone
@@ -537,6 +562,11 @@ export function ingestPageGroups(
   // Footnote and citation text is where the scan degrades worst, so the same
   // certain-substitution pass matters more here than it does in the body.
   let noteFixes = 0;
+  // Notes read off the layout keep each printed line's end: rejoin the typesetter's hyphens as the body's are.
+  if (endnotesReader) {
+    const words = vocabulary(sourceText);
+    for (const note of notes) if (note.label) note.text = rejoinHyphenated(note.text, words);
+  }
   for (const note of notes) {
     const result = autoFix(note.text);
     note.text = result.text;
@@ -662,13 +692,14 @@ const NUMBERED_OPENER = /^\s{0,8}\d{1,2}\.\d{1,3}[ \uFFFD]{2,}(?=\S)/;
 const PAGE_MARGIN_MIN_LINES = 8;
 
 /** The printed page number off, and nothing else: no page-foot note block. */
-function splitPageNumberOnly(page: Page): SplitPage {
-  const { printed, lines } = takePrintedNumber(page.lines);
+function splitPageNumberOnly(page: Page, options: { romanFolios?: boolean } = {}): SplitPage {
+  const { printed, roman, lines } = takePrintedNumber(page.lines, { roman: options.romanFolios });
   return {
     index: page.index,
     volume: page.volume,
     pdfIndex: page.pdfIndex,
     printed,
+    ...(roman ? { roman } : {}),
     body: lines,
     footnotes: [],
   };

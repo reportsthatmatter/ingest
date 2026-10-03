@@ -61,7 +61,9 @@ export type ResolvedPasses = {
   /** `layoutPageJoins`: on, with its options. */
   layoutPageJoins?: PageBreakOptions;
   /** `layoutMarkers`: on, with where its notes are. */
-  layoutMarkers?: { scope: "page" | "document"; textFallback: boolean };
+  layoutMarkers?: { scope: "page" | "document" | "chapter"; textFallback: boolean };
+  /** `layoutEndnotes`: notes sections read off the layout, labelled by chapter. */
+  layoutEndnotes?: boolean;
   unlistedHeadingsMinor?: boolean;
   hangingIndents?: boolean;
   letteredItems?: boolean;
@@ -165,6 +167,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
       passes.some((pass) => pass.name === "unmarkedHeadings") &&
       passes.some((pass) => pass.name === "listedHeadings"),
     endnotes: passes.some((pass) => pass.name === "endnotes"),
+    layoutEndnotes: passes.some((pass) => pass.name === "layoutEndnotes"),
     numberedSections: passes.some((pass) => pass.name === "numberedSections"),
     contentsEntries: passes.some((pass) => pass.name === "contentsEntries"),
     shortSubheads: passes.some((pass) => pass.name === "shortSubheads"),
@@ -218,7 +221,7 @@ function layoutPageJoinsOf(passes: Pass[]): PageBreakOptions | undefined {
   };
 }
 
-function layoutMarkersOf(passes: Pass[]): { scope: "page" | "document"; textFallback: boolean } | undefined {
+function layoutMarkersOf(passes: Pass[]): { scope: "page" | "document" | "chapter"; textFallback: boolean } | undefined {
   const pass = passes.find((p): p is LayoutMarkersPass => p.name === "layoutMarkers");
   return pass ? { scope: pass.scope ?? "page", textFallback: pass.textFallback === true } : undefined;
 }
