@@ -188,6 +188,28 @@ describe("what each signal counts, on a page built to show it", () => {
     expect(measureLayout(layout, counted, [{ number: 9 }], { relink: false }).counts["markers-spurious"]).toBe(0);
   });
 
+  it("headings-missed: on a page that is mostly footnotes, text at the document's body size is not a heading (PSI p.407)", () => {
+    // the notes outweigh the text, so the page takes their 11pt face for its body; the 18pt text is
+    // bigger than that, and a line carrying a raised marker cut it into short "headings"
+    const notes = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => f(600 + i * 14, 100, 700, `${i + 1} ${"note text ".repeat(9)}`, 2));
+    const doc = parseLayoutXml(
+      `<pdf2xml producer="poppler" version="26.08.0"><page number="1" position="absolute" top="0" left="0" height="1000" width="800">\n${fonts}\n${[
+        f(160, 100, 700, "In internal documents, Goldman described itself as the leader"),
+        f(181, 100, 700, "and principal driver in the creation of the index."),
+        f(181 + 21, 100, 690, "divisions."),
+        f(198, 690, 700, "7", 2),
+        f(223, 100, 700, "The Mortgage Department personnel wrote that it was short."),
+        ...notes,
+      ].join("\n")}\n</page></pdf2xml>`
+    );
+    // the document's body is the 18pt face (the other pages set it); this one page is notes-heavy
+    const layout = buildLayout([[...page(lines), ...doc.map((l) => ({ ...l, page: 2 }))]]);
+    expect(layout.page(1, 2)!.bodyFont).toBe("Times|11|#000000");
+    const at2 = { volume: 1, pdfIndex: 2, printed: 2 };
+    const r = measureLayout(layout, [...clean, { kind: "paragraph", text: "In internal documents, Goldman described itself", at: at2 }]);
+    expect(r.findings.filter((x) => x.signal === "headings-missed" && x.page === 2)).toEqual([]);
+  });
+
   it("counts per page, only where something disagrees", () => {
     const r = measureLayout(layout, clean.slice(1));
     expect(Object.keys(r.pages)).toEqual(["1:1"]);
