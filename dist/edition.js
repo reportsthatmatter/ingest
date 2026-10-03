@@ -34,7 +34,7 @@ import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { align } from "./align.js";
-import { tokens } from "./tokens.js";
+import { hasLetter, tokens } from "./tokens.js";
 /**
  * Declares that this report's text and structure come from a clean edition,
  * and its PDF volumes only supply printed pages and the fidelity check.
@@ -69,6 +69,8 @@ const MARK_OPEN = "\u0003";
 const MARK_CLOSE = "\u0004";
 const STRONG_OPEN = "\u0005";
 const STRONG_CLOSE = "\u0006";
+const STRIKE_OPEN = "\u000e";
+const STRIKE_CLOSE = "\u000f";
 /** Escapes what Markdown would read as syntax inside running text. */
 export function escapeInline(text) {
     return text.replace(/([\\`*_])/g, "\\$1").replace(/\[(?=\^)/g, "\\[");
@@ -101,6 +103,8 @@ function inline(pieces, plain) {
             text = `${EM_OPEN}${text}${EM_CLOSE}`;
         if (piece.strong && !plain)
             text = `${STRONG_OPEN}${text}${STRONG_CLOSE}`;
+        if (piece.strike && !plain)
+            text = `${STRIKE_OPEN}${text}${STRIKE_CLOSE}`;
         s += text;
     }
     s = s.replace(/[\s\u00a0]+/g, " ");
@@ -108,7 +112,7 @@ function inline(pieces, plain) {
     let before;
     do {
         before = s;
-        for (const [open, close] of [[EM_OPEN, EM_CLOSE], [STRONG_OPEN, STRONG_CLOSE]]) {
+        for (const [open, close] of [[EM_OPEN, EM_CLOSE], [STRONG_OPEN, STRONG_CLOSE], [STRIKE_OPEN, STRIKE_CLOSE]]) {
             s = s
                 .replace(new RegExp(`${close}( ?)${open}`, "g"), "$1")
                 .replace(new RegExp(`${open} `, "g"), ` ${open}`)
@@ -118,7 +122,7 @@ function inline(pieces, plain) {
     } while (s !== before);
     // Markdown only closes emphasis that ends on punctuation if a space or punctuation follows:
     // "*Economist'*s" stays literal, so the punctuation moves outside ("*Economist*'s")
-    for (const [open, close] of [[EM_OPEN, EM_CLOSE], [STRONG_OPEN, STRONG_CLOSE]]) {
+    for (const [open, close] of [[EM_OPEN, EM_CLOSE], [STRONG_OPEN, STRONG_CLOSE], [STRIKE_OPEN, STRIKE_CLOSE]]) {
         s = s
             .replace(new RegExp(`([^\\s${open}])([.,;:'"!?)\\]]+)${close}(?=[\\p{L}\\p{N}])`, "gu"), `$1${close}$2`)
             .replace(new RegExp(`(?<=[\\p{L}\\p{N}])${open}(['"(\\[]+)`, "gu"), `$1${open}`);
@@ -126,6 +130,7 @@ function inline(pieces, plain) {
     s = s.replace(new RegExp(` +${MARK_OPEN}`, "g"), MARK_OPEN);
     s = s.replace(/ {2,}/g, " ").trim();
     return s
+        .replace(new RegExp(`[${STRIKE_OPEN}${STRIKE_CLOSE}]`, "g"), "~~")
         .replace(new RegExp(`[${STRONG_OPEN}${STRONG_CLOSE}]`, "g"), "**")
         .replace(new RegExp(`[${EM_OPEN}${EM_CLOSE}]`, "g"), "*")
         .replace(new RegExp(`${MARK_OPEN}([^${MARK_CLOSE}]*)${MARK_CLOSE}`, "g"), "[^$1]");
@@ -170,6 +175,8 @@ function fieldsOf(blocks, notes) {
                 break;
             case "contents":
                 add(() => block.text, (t) => (block.text = t));
+                break;
+            case "gap":
                 break;
             default:
                 add(() => block.text, (t) => (block.text = t));
@@ -599,6 +606,22 @@ export function assembleEdition(edition, pages, printed, sources) {
     }
     for (const p of [...carried, ...(markersBefore.get(blocks.length) ?? [])])
         out.push(marker(p));
+    const placedAt = new Map(blockPage);
+    // For `at` only, once the page markers are placed: a block still unplaced (a short heading, "Introduction", whose words the aligner left to a
+    // neighbour) is on the page of the block it heads, or else of the block before it
+    for (let b = 0; b < blocks.length; b++) {
+        if (placedAt.has(b) || !firstToken.has(b))
+            continue;
+        let next = b + 1;
+        while (next < blocks.length && !placedAt.has(next))
+            next++;
+        let prev = b - 1;
+        while (prev >= 0 && !placedAt.has(prev))
+            prev--;
+        const page = blocks[b].kind === "heading" && next < blocks.length ? placedAt.get(next) : prev >= 0 ? placedAt.get(prev) : placedAt.get(next);
+        if (page !== undefined)
+            placedAt.set(b, page);
+    }
     // the blocks as the PDF pipeline reports its own, each on the PDF page its first word is printed on,
     // for the layout oracle and golden pages
     const printedAt = new Map(marked.map((x) => [x.p, x.entry.number]));
@@ -606,23 +629,26 @@ export function assembleEdition(edition, pages, printed, sources) {
     const linkedText = [];
     order.forEach(({ block, source: b }) => {
         const placed = (p) => p === undefined ? {} : { at: { volume: pages[p].volume, pdfIndex: pages[p].pdfIndex, printed: typeof printedAt.get(p) === "number" ? printedAt.get(p) : null } };
-        const p = blockPage.get(b);
-        const common = placed(p);
+        const p = placedAt.get(b);
+        const source = block.source && "pdf" in block.source ? { source: "pdf" } : { source: "edition" };
+        const common = { ...placed(p), ...source };
         if (block.kind === "table") {
             // one block per row, as a reader takes a table row: a unit of its own, on the page its own words are on
             let rowAt = p;
             block.rows.forEach((row, r) => {
                 rowAt = rowPage.get(b)?.get(r) ?? rowAt;
                 const text = row.filter(Boolean).join(" ");
-                asBlocks.push({ kind: "paragraph", text, ...placed(rowAt) });
+                asBlocks.push({ kind: "paragraph", text, ...placed(rowAt), ...source });
                 linkedText.push(text);
             });
             return;
         }
         else if (block.kind === "list")
             asBlocks.push({ kind: "list", items: [...block.items], quoted: Boolean(block.quoted), ...common });
-        else
-            asBlocks.push({ ...block, ...common });
+        else {
+            const { source: _source, float: _float, ...rest } = block;
+            asBlocks.push({ ...rest, ...common });
+        }
         linkedText.push(blockMarkdown(block));
     });
     return {
@@ -648,6 +674,306 @@ export function assembleEdition(edition, pages, printed, sources) {
         },
     };
 }
+/** The first label number for notes a gap-fill carries over: "104-9001" renders as 104 and is never an edition's label. */
+const GAP_NOTE_BASE = 9000;
+/** A shadow block's own text as inline Markdown, without its block prefix. */
+function shadowText(block, linked) {
+    switch (block.kind) {
+        case "page":
+            return undefined;
+        case "list":
+            if (linked)
+                return linked.split("\n").map((line) => line.replace(/^(?:> )?- /, ""));
+            return [...block.items];
+        case "contents":
+            return block.text;
+        case "heading":
+            return linked ? linked.replace(/^#{1,6} /, "") : block.text;
+        case "quote":
+            return linked
+                ? linked
+                    .split(/\n>\n/)
+                    .map((paragraph) => paragraph.replace(/^> ?/gm, "").replace(/\n/g, " "))
+                    .join("\n\n")
+                : block.text;
+        default:
+            return linked ?? block.text;
+    }
+}
+/**
+ * Fills each `gap` block of an edition with the PDF shadow's own blocks: the
+ * text the PDF prints between the last word of the edition before the gap and
+ * its first word after it, as the PDF ingest read it (reportsthatmatter-ivg.3).
+ *
+ * The edition says where it is incomplete (a gap block, placed by its adapter,
+ * which knows which of its files are missing); the alignment says what is
+ * missing, to the word. A shadow block that straddles a gap's edge is cut at
+ * the first (or after the last) of its words inside the gap, so neither side
+ * is duplicated. The notes the filled blocks cite come with them, from the
+ * shadow's notes on their pages, relabelled "N-90xx" so they never collide with
+ * the edition's; a marker whose note is not found is left as its bare number,
+ * as the PDF prints it. Every filled block carries its PDF page as `source`.
+ *
+ * Text the PDF prints and the edition lacks *outside* a declared gap is not
+ * filled: it stays a "PDF text not in the edition" suspect (a map legend, a
+ * diagram's labels), because an edition that leaves something out on purpose
+ * looks the same to the alignment as one that lost it.
+ */
+export function fillGaps(edition, pages, shadow) {
+    const gapAt = edition.blocks.flatMap((block, b) => (block.kind === "gap" ? [b] : []));
+    if (!gapAt.length)
+        return { edition, filled: [] };
+    const pdf = [];
+    pages.forEach((page, p) => {
+        const foot = page.footLines ?? 0;
+        const text = page.lines.join("\n");
+        const footStart = foot > 0 ? page.lines.slice(0, page.lines.length - foot).join("\n").length : text.length;
+        for (const t of tokens(text))
+            if (t.start < footStart)
+                pdf.push({ ...t, page: p });
+    });
+    const pdfWords = pdf.map((t) => t.word);
+    // the edition's body words, each with its block
+    const editionBlockOf = [];
+    const editionWords = [];
+    const blocks = structuredClone(edition.blocks);
+    fieldsOf(blocks, []).forEach((field) => {
+        for (const t of fieldTokens(field.get())) {
+            editionWords.push(t.word);
+            editionBlockOf.push(field.block);
+        }
+    });
+    const { map: editionMap } = align(editionWords, pdfWords);
+    // each gap's PDF stretch: after the last aligned edition word before it, before the first after it
+    const bounds = gapAt.map((g) => {
+        let lo = -1;
+        let hi = pdf.length;
+        for (let c = 0; c < editionWords.length; c++) {
+            if (editionMap[c] < 0)
+                continue;
+            if (editionBlockOf[c] < g)
+                lo = Math.max(lo, editionMap[c]);
+            else if (editionBlockOf[c] > g && editionMap[c] < hi)
+                hi = editionMap[c];
+        }
+        return { lo, hi };
+    });
+    const gapOfPdf = (j) => bounds.findIndex(({ lo, hi }) => j > lo && j < hi);
+    const pieces = [];
+    const shadowWords = [];
+    const shadowOwner = [];
+    const texts = shadow.blocks.map((block, b) => shadowText(block, shadow.linkedText?.[b]));
+    texts.forEach((text, b) => {
+        if (text === undefined)
+            return;
+        (Array.isArray(text) ? text : [text]).forEach((field, f) => {
+            const toks = fieldTokens(field);
+            toks.forEach((t, k) => {
+                shadowWords.push(t.word);
+                shadowOwner.push({ piece: pieces.length, tok: k });
+            });
+            pieces.push({ b, field: f, text: field, toks });
+        });
+    });
+    const { map: shadowMap } = align(shadowWords, pdfWords);
+    const pdfOf = pieces.map((piece) => new Array(piece.toks.length).fill(-1));
+    shadowOwner.forEach(({ piece, tok }, k) => (pdfOf[piece][tok] = shadowMap[k]));
+    // which gap each shadow block belongs to: where most of its placed words are
+    const blockGap = new Map();
+    const placed = new Map();
+    pieces.forEach((piece, i) => {
+        const list = placed.get(piece.b) ?? [];
+        for (const j of pdfOf[i])
+            if (j >= 0)
+                list.push(j);
+        placed.set(piece.b, list);
+    });
+    const order = [...placed.keys()].sort((a, b) => a - b);
+    for (const b of order) {
+        const js = placed.get(b);
+        if (!js.length)
+            continue;
+        const votes = new Map();
+        for (const j of js)
+            votes.set(gapOfPdf(j), (votes.get(gapOfPdf(j)) ?? 0) + 1);
+        const [best, n] = [...votes].sort((x, y) => y[1] - x[1])[0];
+        if (best >= 0 && n * 2 >= js.length)
+            blockGap.set(b, best);
+        else if (best >= 0 || votes.has(-1)) {
+            // straddles an edge: kept, and cut to its words inside the gap, if a gap holds any of them
+            const inside = [...votes].filter(([g]) => g >= 0).sort((x, y) => y[1] - x[1])[0];
+            if (inside)
+                blockGap.set(b, inside[0]);
+        }
+    }
+    // a block none of whose words placed (a heading the contents supplied) goes with both neighbours, if they agree
+    for (let k = 0; k < order.length; k++) {
+        const b = order[k];
+        if (placed.get(b).length)
+            continue;
+        let prev = k - 1;
+        while (prev >= 0 && !placed.get(order[prev]).length)
+            prev--;
+        let next = k + 1;
+        while (next < order.length && !placed.get(order[next]).length)
+            next++;
+        const gp = prev >= 0 ? blockGap.get(order[prev]) : undefined;
+        const gn = next < order.length ? blockGap.get(order[next]) : undefined;
+        if (gp !== undefined && gp === gn)
+            blockGap.set(b, gp);
+    }
+    // the filled blocks, gap by gap, in the shadow's order
+    const titles = new Set(edition.blocks.flatMap((block) => (block.kind === "heading" ? [fieldTokens(block.text).map((t) => t.word).join(" ")] : [])));
+    const dropped = gapAt.map(() => 0);
+    const fills = gapAt.map(() => []);
+    const fillPages = gapAt.map(() => []);
+    const wordsIn = gapAt.map(() => 0);
+    for (const b of order) {
+        const g = blockGap.get(b);
+        if (g === undefined)
+            continue;
+        const block = shadow.blocks[b];
+        const own = pieces.flatMap((piece, i) => (piece.b === b ? [i] : []));
+        // cut a paragraph or quotation at the gap's edge: from its first word inside, to after its last
+        const cut = (i) => {
+            const piece = pieces[i];
+            const inside = pdfOf[i].map((j) => j >= 0 && gapOfPdf(j) === g);
+            const first = inside.indexOf(true);
+            const last = inside.lastIndexOf(true);
+            if (first < 0)
+                return undefined;
+            const allInside = pdfOf[i].every((j, k) => inside[k] || j < 0);
+            if (allInside)
+                return piece.text;
+            const start = first === 0 ? 0 : piece.toks[first].start;
+            const end = last === piece.toks.length - 1 ? piece.text.length : piece.toks[last + 1].start;
+            return piece.text.slice(start, end).trim();
+        };
+        const page = (() => {
+            const js = own.flatMap((i) => pdfOf[i].filter((j) => j >= 0 && gapOfPdf(j) === g));
+            return js.length ? pages[pdf[Math.min(...js)].page] : block.at ? pages.find((p) => p.volume === block.at.volume && p.pdfIndex === block.at.pdfIndex) : undefined;
+        })();
+        const source = page
+            ? { pdf: { volume: page.volume, pdfIndex: page.pdfIndex }, gap: edition.blocks[gapAt[g]].reason }
+            : undefined;
+        let filled;
+        if (block.kind === "paragraph" || block.kind === "quote") {
+            const text = own.length ? cut(own[0]) : shadowText(block, shadow.linkedText?.[b]);
+            if (text)
+                filled = { kind: block.kind, text };
+        }
+        else if (block.kind === "heading")
+            filled = { kind: "heading", level: block.level, text: shadowText(block, shadow.linkedText?.[b]) };
+        else if (block.kind === "contents")
+            filled = { kind: "contents", text: block.text, page: block.page };
+        else if (block.kind === "list") {
+            const items = own.length ? own.map((i) => cut(i)).filter((t) => Boolean(t)) : [...block.items];
+            if (items.length)
+                filled = { kind: "list", items, ...(block.quoted ? { quoted: true } : {}) };
+        }
+        if (!filled)
+            continue;
+        // what is not text the edition lacks: a bare number (a page number, a marker on its own line), and a
+        // title the edition already holds (the PDF's running head, a divider page repeating a chapter's title)
+        const words = fieldsOf([filled], []).flatMap((field) => fieldTokens(field.get()).map((t) => t.word));
+        // (a contents entry among others is the contents page's own, and kept)
+        const lone = (k) => shadow.blocks[k]?.kind !== "contents";
+        const runningHead = filled.kind === "heading" || (filled.kind === "contents" && lone(b - 1) && lone(b + 1));
+        // and words the edition prints right there already: the aligner left a repeated phrase unmatched
+        // (Hillsborough's terms of reference quote a clause that Appendix 2 quotes again), not text it lacks
+        const nearby = ` ${edition.blocks
+            .slice(Math.max(0, gapAt[g] - 100), gapAt[g] + 100)
+            .flatMap((block) => fieldsOf([block], []).flatMap((field) => fieldTokens(field.get()).map((t) => t.word)))
+            .join(" ")} `;
+        const repeated = filled.kind !== "contents" && words.length >= 3 && nearby.includes(` ${words.join(" ")} `);
+        if (!words.some(hasLetter) || (runningHead && titles.has(words.join(" "))) || repeated) {
+            dropped[g]++;
+            continue;
+        }
+        if (source) {
+            filled.source = source;
+            fillPages[g].push(source.pdf);
+        }
+        wordsIn[g] += fieldsOf([filled], []).reduce((n, field) => n + fieldTokens(field.get()).length, 0);
+        fills[g].push(filled);
+    }
+    // the notes the filled blocks cite, from the shadow's notes on and after their pages
+    const notes = [...edition.notes];
+    const labelOf = (note) => note.label ?? String(note.number);
+    const used = new Set();
+    const noteCount = gapAt.map(() => 0);
+    const pagePos = new Map(pages.map((page, p) => [`${page.volume}:${page.pdfIndex}`, p]));
+    const notesFor = gapAt.map(() => []);
+    fills.forEach((list, g) => {
+        for (const block of list) {
+            const at = block.source && "pdf" in block.source ? pagePos.get(`${block.source.pdf.volume}:${block.source.pdf.pdfIndex}`) : undefined;
+            const relink = (text) => text.replace(/\[\^([^\]]+)\]/g, (_whole, label) => {
+                // the first unused note with this label on the block's page or a few after it (a paragraph runs on)
+                const k = shadow.footnotes.findIndex((note, n) => {
+                    if (used.has(n) || labelOf(note) !== label)
+                        return false;
+                    const p = pagePos.get(`${note.volume}:${note.pdfIndex}`);
+                    return at === undefined || p === undefined || (p >= at && p <= at + 3);
+                });
+                if (k < 0)
+                    return label.replace(/-\d+$/, "");
+                used.add(k);
+                const note = shadow.footnotes[k];
+                const fresh = `${String(note.number)}-${GAP_NOTE_BASE + g + 1}`;
+                notesFor[g].push({ label: fresh, text: note.text });
+                noteCount[g]++;
+                return `[^${fresh}]`;
+            });
+            if (block.kind === "list")
+                block.items = block.items.map(relink);
+            else if (block.kind !== "gap" && block.kind !== "table")
+                block.text = relink(block.text);
+        }
+    });
+    // splice: each gap's fill where the gap was, its notes after the last note cited before it
+    const out = [];
+    const cited = (block) => {
+        const text = block.kind === "list" ? block.items.join(" ") : block.kind === "table" ? block.rows.flat().join(" ") : block.kind === "gap" ? "" : block.text;
+        return [...text.matchAll(/\[\^([^\]]+)\]/g)].map((m) => m[1]);
+    };
+    const noteIndex = new Map(notes.map((note, n) => [note.label, n]));
+    const insertAfter = [];
+    let lastCited = -1;
+    let g = 0;
+    for (const block of blocks) {
+        if (block.kind === "gap") {
+            out.push(...fills[g]);
+            insertAfter.push(lastCited);
+            g++;
+            continue;
+        }
+        for (const label of cited(block))
+            lastCited = Math.max(lastCited, noteIndex.get(label) ?? -1);
+        out.push(block);
+    }
+    const allNotes = [];
+    const byPosition = new Map();
+    insertAfter.forEach((after, k) => byPosition.set(after, [...(byPosition.get(after) ?? []), ...notesFor[k]]));
+    allNotes.push(...(byPosition.get(-1) ?? []));
+    notes.forEach((note, n) => {
+        allNotes.push(note);
+        allNotes.push(...(byPosition.get(n) ?? []));
+    });
+    const filled = gapAt.map((at, k) => {
+        const first = fills[k][0];
+        const opening = first ? fieldsOf([first], [])[0]?.get().split(/\s+/).slice(0, 8).join(" ") : undefined;
+        return {
+            reason: edition.blocks[at].reason,
+            blocks: fills[k].length,
+            ...(dropped[k] ? { dropped: dropped[k] } : {}),
+            words: wordsIn[k],
+            notes: noteCount[k],
+            ...(fillPages[k].length ? { from: fillPages[k][0], to: fillPages[k][fillPages[k].length - 1] } : {}),
+            ...(opening ? { opening } : {}),
+        };
+    });
+    return { edition: { blocks: out, notes: allNotes }, filled };
+}
 /** Text that stops mid-sentence: no closing punctuation once its note markers and emphasis are off. */
 function unfinished(text) {
     const end = text.replace(/(\[\^[^\]]*\])+$/, "").replace(/[*_]+$/, "").trimEnd();
@@ -659,6 +985,8 @@ function escapeOpening(text) {
 }
 function blockMarkdown(block) {
     switch (block.kind) {
+        case "gap":
+            throw new Error(`cleanEdition: an unfilled gap reached the output (${block.reason})`);
         case "heading":
             return `${"#".repeat(block.level)} ${block.text}`;
         case "quote":

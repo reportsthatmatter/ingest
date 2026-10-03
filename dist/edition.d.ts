@@ -9,6 +9,16 @@ export type EditionBlock = ({
     kind: "heading";
     level: number;
     text: string;
+}
+/**
+ * Where the edition is known to lack text the PDF prints (a web page the
+ * archive never captured, front matter it does not carry): the PDF shadow's
+ * own blocks between the edition's words either side fill it (`fillGaps`).
+ * `reason` says what is missing, for the fidelity report.
+ */
+ | {
+    kind: "gap";
+    reason: string;
 } | {
     kind: "paragraph";
     text: string;
@@ -35,6 +45,20 @@ export type EditionBlock = ({
      * it (`assembleEdition`). The edition's own order is what is aligned.
      */
     float?: boolean;
+    /**
+     * Where the block's text came from: a file of the edition (set by the
+     * adapter), or a PDF page, for a block `fillGaps` took from the PDF shadow.
+     */
+    source?: BlockSource;
+};
+export type BlockSource = {
+    file: string;
+} | {
+    pdf: {
+        volume: number;
+        pdfIndex: number;
+    };
+    gap: string;
 };
 export type EditionNote = {
     label: string;
@@ -84,10 +108,13 @@ export declare function cleanEdition(options: {
         text: string;
     }>): Edition;
 }): EditionPass;
-export type InlinePiece = {
+export type InlinePiece = 
+/** `strike`: text the source prints struck through (a deletion shown in a quoted document), as `~~…~~`. */
+{
     text: string;
     em?: boolean;
     strong?: boolean;
+    strike?: boolean;
 } | {
     marker: string;
 };
@@ -130,6 +157,8 @@ export type EditionReport = {
         editionNotInPdf: number;
         pdfNotInEdition: number;
     };
+    /** The edition's gaps and what the PDF shadow filled each with (`fillGaps`). */
+    filled?: FilledGap[];
 };
 /**
  * Pages the PDF ingest read no printed number off (a page of a figure, a page
@@ -159,4 +188,60 @@ export declare function assembleEdition(edition: Edition, pages: Page[], printed
     blocks: Block[];
     linkedText: string[];
     notePages: Array<number | undefined>;
+};
+/** One gap of the edition and what filled it. */
+export type FilledGap = {
+    reason: string;
+    /** Blocks taken from the PDF shadow (a block cut at the gap's edge counts once). */
+    blocks: number;
+    /** Shadow blocks in the gap left out: a bare number, a title the edition already has (a running head), or words the edition prints next to the gap. */
+    dropped?: number;
+    words: number;
+    notes: number;
+    /** The PDF pages the filled blocks start on, first and last (absent when nothing was filled). */
+    from?: {
+        volume: number;
+        pdfIndex: number;
+    };
+    to?: {
+        volume: number;
+        pdfIndex: number;
+    };
+    /** The opening words of the first filled block. */
+    opening?: string;
+};
+/** What `fillGaps` reads of the PDF ingest run as the shadow. */
+export type ShadowText = {
+    blocks: Block[];
+    linkedText?: Array<string | undefined>;
+    footnotes: Array<{
+        number: number;
+        label?: string;
+        text: string;
+        volume?: number;
+        pdfIndex?: number;
+    }>;
+};
+/**
+ * Fills each `gap` block of an edition with the PDF shadow's own blocks: the
+ * text the PDF prints between the last word of the edition before the gap and
+ * its first word after it, as the PDF ingest read it (reportsthatmatter-ivg.3).
+ *
+ * The edition says where it is incomplete (a gap block, placed by its adapter,
+ * which knows which of its files are missing); the alignment says what is
+ * missing, to the word. A shadow block that straddles a gap's edge is cut at
+ * the first (or after the last) of its words inside the gap, so neither side
+ * is duplicated. The notes the filled blocks cite come with them, from the
+ * shadow's notes on their pages, relabelled "N-90xx" so they never collide with
+ * the edition's; a marker whose note is not found is left as its bare number,
+ * as the PDF prints it. Every filled block carries its PDF page as `source`.
+ *
+ * Text the PDF prints and the edition lacks *outside* a declared gap is not
+ * filled: it stays a "PDF text not in the edition" suspect (a map legend, a
+ * diagram's labels), because an edition that leaves something out on purpose
+ * looks the same to the alignment as one that lost it.
+ */
+export declare function fillGaps(edition: Edition, pages: Page[], shadow: ShadowText): {
+    edition: Edition;
+    filled: FilledGap[];
 };

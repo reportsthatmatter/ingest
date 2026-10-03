@@ -11,11 +11,11 @@
  */
 export { pipeline, resolvePasses } from "./define.js";
 export type { PipelineDef, Volume, ResolvedPasses } from "./define.js";
-export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, escapeNumberedParagraphs, escapeLeadingHash, paragraphNotes, chapterContents, listedHeadings, unlistedHeadingsMinor, hangingIndents, letteredItems, unmarkedHeadings, recoverListedHeadings, endnotes, numberedSections, contentsEntries, shortSubheads, shiftedPages, quoteRunOn, quoteListRunOns, layoutPageJoins, layoutMarkers, numberedFindings, doubleSpaced, contentsOutline, listedDivisions, wrappedHeadings, pageBreakContinuations, citationRunOver, romanFolios, numberedOutsideTables, photoCredits, footnoteGap, runningFurniture, geometry, columns, quoteInset, allCapsHeadings, numberedHeadings, } from "./passes.js";
+export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, escapeNumberedParagraphs, escapeLeadingHash, paragraphNotes, chapterContents, listedHeadings, unlistedHeadingsMinor, hangingIndents, letteredItems, unmarkedHeadings, recoverListedHeadings, endnotes, numberedSections, contentsEntries, shortSubheads, shiftedPages, quoteRunOn, quoteListRunOns, layoutPageJoins, layoutMarkers, numberedFindings, doubleSpaced, contentsOutline, listedDivisions, wrappedHeadings, pageBreakContinuations, citationRunOver, romanFolios, numberedOutsideTables, photoCredits, footnoteGap, footnoteNumbers, runningFurniture, geometry, columns, quoteInset, allCapsHeadings, numberedHeadings, } from "./passes.js";
 export type { Pass, PagePass, LayoutPageJoinsPass, LayoutMarkersPass, PageBreakContinuationsPass, BodyPass, VolumePass, GeometryPass, QuoteInsetPass, AllCapsHeadingsPass, NumberedHeadingsPass, } from "./passes.js";
 export { detectGutter, splitColumns } from "./columns.js";
-export { cleanEdition, inlineMarkdown, inlineText, escapeInline, assembleEdition } from "./edition.js";
-export type { Edition, EditionBlock, EditionNote, EditionPass, EditionSource, EditionReport, InlinePiece, PrintedPage } from "./edition.js";
+export { cleanEdition, inlineMarkdown, inlineText, escapeInline, assembleEdition, fillGaps } from "./edition.js";
+export type { Edition, EditionBlock, EditionNote, EditionPass, EditionSource, EditionReport, InlinePiece, PrintedPage, BlockSource, FilledGap, ShadowText } from "./edition.js";
 export { htmlEvents, decodeEntities } from "./html.js";
 export type { HtmlEvent } from "./html.js";
 export { align } from "./align.js";
