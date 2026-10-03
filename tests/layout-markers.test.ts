@@ -97,6 +97,33 @@ describe("linkLayoutMarkers on real pages", () => {
     expect(texts(blocks).join("\n")).toMatch(/I broke my phone\.["”]\[\^1585\] He also/);
   });
 
+  it("Litvinenko p.22: a marker after a closing quote in an italic quotation (4ef1)", () => {
+    // `<text left=136 width=477><i>"looking into the possibility of assassinating Berezovsky" </i></text>
+    //  <text left=610 width=12 font=small>33</text><text left=622> and in her initial oral </text>`:
+    // the marker starts 3px inside the italic fragment's box (its trailing space), so it was a line of its own.
+    const { layout, blocks, footnotes } = fixture("litvinenko-v1-p22");
+    const line = layout.lines(1, 22).find((l) => /assassinating\s+Berezovsky/.test(l.text))!;
+    expect(line.raised.map((r) => r.text)).toEqual(["33"]);
+    expect(layout.lines(1, 22).some((l) => l.text.trim() === "33" && l.top < 110)).toBe(false);
+    const stats = linkLayoutMarkers(blocks, layout, { scope: "page", onPage: onPage(footnotes) });
+    expect(stats.unplaced).toBe(0);
+    const all = texts(blocks).join("\n");
+    expect(all).toMatch(/assassinating Berezovsky["”]\[\^33\] and in her initial oral/);
+    expect(all).toMatch(/unaccountable unit["”]\.\[\^35\]/);
+    // the page's other markers still link, and nothing else gained one
+    expect(all.match(/\[\^\d+\]/g)).toHaveLength(6);
+  });
+
+  it("Litvinenko p.18: the same, at the end of the quotation's last line (4ef1)", () => {
+    // `<text left=162 width=486><i>incident resulted in Litvinenko and I becoming close friends." </i></text><text left=645>14 </text>`
+    const { layout, blocks, footnotes } = fixture("litvinenko-v1-p18");
+    expect(layout.lines(1, 18).some((l) => l.text.trim() === "14")).toBe(false);
+    const stats = linkLayoutMarkers(blocks, layout, { scope: "page", onPage: onPage(footnotes) });
+    // (note 13 closes the paragraph that opens on p.17: these blocks are the merged ones, as in Chilcot p.11)
+    expect(stats.misses.map((m) => m.note)).toEqual([13]);
+    expect(texts(blocks).join("\n")).toMatch(/becoming close friends\.["”]\[\^14\]/);
+  });
+
   it("a contents page read as notes defines none; a footnoted page does", () => {
     expect(pageDefinesNotes(fixture("leveson-v1-p6").layout, 1, 6)).toBe(false);
     expect(pageDefinesNotes(fixture("leveson-v1-p111").layout, 1, 111)).toBe(true);
