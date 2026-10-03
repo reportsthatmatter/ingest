@@ -115,6 +115,11 @@ export declare const numberedParagraphs: () => PagePass;
  * `numberedParagraphs` has already decided the line opens a paragraph, so
  * whatever number happens to be there is the paragraph's own.
  *
+ * Since reportsthatmatter-mv1t every report gets this by default: `markPrintedNumbers`
+ * (printed-numbers.ts) decides from the text which numbered runs are paragraphs, so
+ * declaring this pass is no longer needed (it still escapes every numbered block
+ * `numberedParagraphs` split on, and stays valid for existing ingest.ts files).
+ *
  * Opt-in on top of `numberedParagraphs`, and only meaningful with it —
  * declaring this without it is rejected by `pipeline()`. Not the default
  * behaviour of `numberedParagraphs` itself: Litvinenko, Leveson, Hillsborough
