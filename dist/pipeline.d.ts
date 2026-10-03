@@ -7,6 +7,7 @@ import { type LayoutMarkerStats } from "./markers.js";
 import { type Suspect } from "./ocr.js";
 import type { PipelineContext } from "./context.js";
 import { type EditionReport } from "./edition.js";
+import { type VisionReport } from "./vision/hybrid.js";
 export type IngestResult = {
     markdown: string;
     corrections: number;
@@ -42,10 +43,11 @@ export type IngestResult = {
         volume: number;
         pdfIndex: number;
         lines: string[];
-        noteLines?: number;
     }>;
     /** What `layoutMarkers` saw and linked, when the report declares it. */
     layoutMarkers?: LayoutMarkerStats;
+    /** `visionStructure`: which pages took the vision model's structure, and why the others did not. */
+    vision?: VisionReport;
 };
 export type Metadata = {
     title: string;
@@ -66,9 +68,3 @@ export declare function ingestPages(pages: Page[], meta: Metadata): IngestResult
  * may differ, so one global margin is not meaningful across all of them.
  */
 export declare function ingestPageGroups(pageGroups: Page[][], meta: Metadata, resolved?: ResolvedPasses, corrections?: Correction[], context?: PipelineContext): IngestResult;
-/**
- * `fillPrintedGaps` on the PDF path: inserts, in place, a page marker before
- * the first block of each page the gap-filler numbers. A page with no block of
- * its own (a blank or figure-only page) gets none, so markers never stack.
- */
-export declare function markUnreadPages(chunks: Block[]): void;

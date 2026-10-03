@@ -24,13 +24,9 @@ import { createHash } from "node:crypto";
  * A first line compared with the line under it on its own page, not with the
  * old page: verso and recto text blocks can sit at different lefts (Saville).
  *
- * Deterministic: the same layout and text give the same decision. Each
- * decision carries a `confidence`: `low` (near a threshold: `ambiguous`),
- * `medium` (a call the layout makes but the words could overturn: a flush
- * first line after a finished sentence, a layout-only label after an
- * unfinished one) or `high`. An optional referee (38s.11) is consulted on the
- * `low` calls, or on `low` and `medium` with `refer: "medium"`; without one
- * the rules stand.
+ * Deterministic: the same layout and text give the same decision. A decision
+ * near a threshold is marked `ambiguous`, which is where an optional referee
+ * (38s.11) may be consulted; without one the rules stand.
  */
 /** |first-line indent| below this, in ems, is flush. */
 export const FLUSH_EM = 0.6;
@@ -70,8 +66,6 @@ function endsSentence(text) {
  */
 const TEXT_LABEL = /^(?:\d{1,4}(?:\.\d{1,4})+[.)]?\s|\d{1,4}[.)]\s|\(?(?:[a-z]|[ivxlc]{1,5})[.)]\s|\([a-z0-9]{1,4}\)\s|[A-Z]\.\s|[•·▪●○◦■□➢►–-]\s?)/;
 const words = (s) => s.trim().split(/\s+/).filter(Boolean).length;
-/** A number and a space, no stop or bracket: the layout reads it as a label, the text does not. */
-const BARE_NUMBER = /^\d{1,4}\s/;
 /**
  * The same face either side of the break: family, colour, weight and slant,
  * and size. On a scan (`scanned`) the size may differ by a point: an OCR text
@@ -109,57 +103,40 @@ export function isJustified(page) {
  */
 export function decidePageBreak(lines, prevText, nextText, options = {}) {
     const { prev, next, under } = lines;
-    const decided = (d, confidence) => ({
-        ...d,
-        ambiguous: confidence === "low",
-        confidence,
-    });
-    const finished = endsSentence(prevText);
-    if (TEXT_LABEL.test(nextText.trim()))
-        return decided({ join: false, rule: "split", reason: "next opens on a label" }, "high");
-    // The layout's own label test also takes a bare number and a space. That is not a label to the text
-    // (TEXT_LABEL: "1972 and to mount…"), and after an unfinished sentence it is the sentence running on
-    // ("…what had occurred in the past" / "24 hours”,2 and…", Saville p.302, reportsthatmatter-hfrd): the
-    // rules below decide it, as for any other first line, and the call is never more than medium.
-    const bareNumber = next.label && BARE_NUMBER.test(next.text.trim()) && !finished;
-    if (next.label && !bareNumber)
-        return decided({ join: false, rule: "split", reason: "next opens on a label (layout)" }, finished ? "high" : "medium");
-    if (bareNumber) {
-        const d = decidePageBreak({ ...lines, next: { ...next, label: false } }, prevText, nextText, options);
-        return d.confidence === "high" ? { ...d, reason: `${d.reason} (a bare number)`, confidence: "medium" } : { ...d, reason: `${d.reason} (a bare number)` };
-    }
+    const label = next.label || TEXT_LABEL.test(nextText.trim());
+    if (label)
+        return { join: false, rule: "split", reason: "next opens on a label", ambiguous: false };
     if (!sameFace(prev, next, options.scanned))
-        return decided({ join: false, rule: "split", reason: "font changes across the break" }, "high");
+        return { join: false, rule: "split", reason: "font changes across the break", ambiguous: false };
     const indentEm = under && next.size > 0 ? Math.round(((next.left - under.left) / next.size) * 100) / 100 : undefined;
     const flush = indentEm !== undefined && Math.abs(indentEm) < FLUSH_EM;
     const near = indentEm !== undefined && Math.abs(Math.abs(indentEm) - FLUSH_EM) < MARGIN_EM;
     const shaky = near || !lines.underContinues;
-    if (!finished) {
+    if (!endsSentence(prevText)) {
         // A line that stops well short of the margin without ending a sentence is
         // a list's or an index's entry, a date line or a map label, not prose run
         // over the page: "June 25, 2001–September 4, 2001" / "Thomas Pickering".
         if (flush && Math.abs(prev.rightGapEm) >= SHORT_LINE_EM) {
-            return decided({ join: false, rule: "split", reason: "unfinished, but a short last line", indentEm }, "low");
+            return { join: false, rule: "split", reason: "unfinished, but a short last line", indentEm, ambiguous: true };
         }
         if (flush)
-            return decided({ join: true, rule: "R1", reason: "unfinished, next line flush", indentEm }, shaky ? "low" : "high");
+            return { join: true, rule: "R1", reason: "unfinished, next line flush", indentEm, ambiguous: shaky };
         if (LOWER.test(nextText.trim()))
-            return decided({ join: true, rule: "R1", reason: "unfinished, next opens lower case", indentEm }, "high");
-        return decided({
+            return { join: true, rule: "R1", reason: "unfinished, next opens lower case", indentEm, ambiguous: false };
+        return {
             join: false,
             rule: "split",
             reason: indentEm === undefined ? "unfinished, no line under next" : "unfinished, next line indented",
             indentEm,
-        }, indentEm === undefined || near ? "low" : "high");
+            ambiguous: indentEm === undefined || near,
+        };
     }
     const justified = isJustified(lines.prevPage);
     const full = Math.abs(prev.rightGapEm) < FULL_LINE_EM;
     if (justified && full && flush && words(next.text) > R2_MIN_WORDS) {
-        return decided({ join: true, rule: "R2", reason: "finished, but a full justified line and a flush next line", indentEm }, "low");
+        return { join: true, rule: "R2", reason: "finished, but a full justified line and a flush next line", indentEm, ambiguous: true };
     }
-    // A finished sentence and a flush first line in the same face: a new paragraph in a document that sets
-    // them flush, or the paragraph running on (Saville p.162, p.487; Chilcot p.112). Only the words can say.
-    return decided({ join: false, rule: "split", reason: flush ? "finished, next line flush" : "finished", indentEm }, flush ? "medium" : "high");
+    return { join: false, rule: "split", reason: "finished", indentEm, ambiguous: false };
 }
 /**
  * Letters only, lower case, ligatures and diacritics folded: the two texts
@@ -175,47 +152,6 @@ export function letters(s) {
 }
 /** A line's text, compared against a block's, has to be at least this long to count as found. */
 const MIN_MATCH = 6;
-/**
- * A block's text may carry a few letters its printed line does not: a raised
- * ordinal suffix the layout sets as a line of its own ("(7th Cir. 1996)",
- * Philip Morris p.1581). A line is found when its letters run at the head (or
- * tail) of the block's with at most this many of the block's skipped.
- */
-const SKIP_LETTERS = 4;
-/** `text` opens with `line`, skipping up to `SKIP_LETTERS` of `text`'s letters; `anywhere`: within its first few letters. */
-function startsLoosely(text, line, anywhere = false) {
-    for (let start = 0; start <= (anywhere ? SKIP_LETTERS : 0); start++) {
-        let i = start;
-        let skipped = start;
-        let j = 0;
-        while (j < line.length && i < text.length && skipped <= SKIP_LETTERS) {
-            if (text[i] === line[j]) {
-                i++;
-                j++;
-            }
-            else if (j < MIN_MATCH) {
-                // The line's first letters must meet the text's own: skipping there
-                // would find a line ending a few letters early (Philip Morris p.1545,
-                // "…Racketeering Act" for a paragraph ending "Act Nos. 36, 37…").
-                break;
-            }
-            else {
-                i++;
-                skipped++;
-            }
-        }
-        if (j === line.length && skipped <= SKIP_LETTERS)
-            return true;
-        if (j < MIN_MATCH && !anywhere)
-            return false;
-    }
-    return false;
-}
-/** `text` ends with `line`, skipping up to `SKIP_LETTERS` of `text`'s letters. */
-function endsLoosely(text, line) {
-    const rev = (x) => [...x].reverse().join("");
-    return startsLoosely(rev(text), rev(line));
-}
 /**
  * Finds the layout lines either side of a page break: the paragraph's last
  * line on the old page (searched on the pages before the new one, latest
@@ -238,18 +174,6 @@ export function findPageBreakLines(layout, prevText, nextText, at) {
             break;
         }
     }
-    // A line whose letters differ from the block's further along: a raised "th" the
-    // layout sets on a line of its own ("(7th Cir. 1996)", Philip Morris p.1581).
-    // Its opening letters still find it.
-    if (nextIdx === -1) {
-        for (let i = 0; i < nextLines.length; i++) {
-            const n = letters(nextLines[i].text);
-            if (n.length >= MIN_MATCH && startsLoosely(head, n)) {
-                nextIdx = i;
-                break;
-            }
-        }
-    }
     if (nextIdx === -1)
         return undefined;
     const next = nextLines[nextIdx];
@@ -270,9 +194,7 @@ export function findPageBreakLines(layout, prevText, nextText, at) {
         break;
     }
     const rest = head.slice(letters(next.text).length);
-    const underLetters = under === undefined ? "" : letters(under.text);
-    const underContinues = underLetters.length > 0 &&
-        (rest.startsWith(underLetters) || (underLetters.length >= MIN_MATCH && startsLoosely(rest, underLetters, true)));
+    const underContinues = under !== undefined && letters(under.text).length > 0 && rest.startsWith(letters(under.text));
     // The old page: the nearest earlier page that carries the paragraph's last line.
     const pages = layout.pages(volume);
     const candidates = [];
@@ -290,7 +212,7 @@ export function findPageBreakLines(layout, prevText, nextText, at) {
             const n = letters(lines[i].text);
             if (n.length < MIN_MATCH && n !== tail)
                 continue;
-            if (!tail.endsWith(n) && !(n.length >= MIN_MATCH && endsLoosely(tail, n)))
+            if (!tail.endsWith(n))
                 continue;
             const prevPage = layout.page(v, p);
             if (!prevPage)
@@ -315,8 +237,7 @@ export function layoutJoins(layout, prevText, nextText, at, options = {}) {
     if (!lines)
         return false;
     const decision = decidePageBreak(lines, prevText, nextText, options);
-    const refer = decision.confidence === "low" || (decision.confidence === "medium" && options.refer === "medium");
-    if (options.referee && refer) {
+    if (options.referee && decision.ambiguous) {
         const answer = options.referee({
             key: pageBreakKey(lines.prev.text, lines.next.text),
             prevText,
@@ -330,10 +251,6 @@ export function layoutJoins(layout, prevText, nextText, at, options = {}) {
     return decision.join;
 }
 const CAPTION = /^(?:figure|fig\.|table|chart|map|photo|source|image|exhibit|box|graph|diagram)\b/i;
-/** "FIGURE 2.4: Wells Drilled…", "Source: Commission staff…": a figure's or table's caption or source line. */
-export function isCaption(text) {
-    return CAPTION.test(text.trim());
-}
 /**
  * Whether a block left on a page is not set in the body face: the run-over of
  * a footnote that began on the page before (no number of its own), which the

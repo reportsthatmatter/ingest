@@ -56,7 +56,7 @@ describe("layoutPageJoins on real page breaks", () => {
     // "…the well's new bottom cement seal.21" / "According to the BP team's plan…": flush, but finished,
     // and the page is not justified, so R2 cannot apply either. Read as unfinished, R1 joined it.
     const d = decide("deepwater-p20");
-    expect(d).toMatchObject({ join: false, reason: "finished, next line flush", confidence: "medium", ambiguous: false });
+    expect(d).toMatchObject({ join: false, reason: "finished" });
   });
 
   it("never joins into a numbered paragraph (Saville p.122, '7.44')", () => {
@@ -189,18 +189,9 @@ describe("a footnote's run-over between the paragraph and its continuation (repo
     expect((merged[1] as { text: string }).text).toBe(f.note);
   });
 
-  // Since reportsthatmatter-y7ix a caption between the halves is looked past like a note; what must not join
-  // is a chart's label after it (Columbia), which is not the paragraph's rest.
-  it("past a figure's caption, which is off the body face too", () => {
+  it("not past a figure's caption, which is off the body face too", () => {
     const b = stream();
     (b[1] as { text: string }).text = `Figure 3.4-6. ${f.note}`;
-    expect(mergeAcrossPages(b, { layout: f.layout, layoutJoins: {} })).toHaveLength(3);
-  });
-
-  it("not onto a chart's label after the caption", () => {
-    const b = stream();
-    (b[1] as { text: string }).text = `Figure 3.4-6. ${f.note}`;
-    (b[3] as { text: string }).text = "Gregory (Lehman's President";
     expect(mergeAcrossPages(b, { layout: f.layout, layoutJoins: {} })).toHaveLength(4);
   });
 

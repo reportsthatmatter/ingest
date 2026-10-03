@@ -1,6 +1,7 @@
 import type { Pass, VolumePass, BodyPass } from "./passes.js";
 import type { PageBreakOptions } from "./pagebreaks.js";
 import type { EditionPass } from "./edition.js";
+import type { VisionStructurePass } from "./vision/hybrid.js";
 export type Volume = {
     path: string;
     sha256?: string;
@@ -71,8 +72,6 @@ export type ResolvedPasses = {
     numberedOutsideTables?: boolean;
     photoCredits?: boolean;
     footnoteGap?: boolean;
-    /** `footnoteNumbers`: how page-foot notes are numbered. */
-    footnoteNumbers?: "bare" | "period";
     quoteInset?: number;
     allCapsHeadings: boolean;
     numberedHeadings?: boolean;
@@ -83,6 +82,11 @@ export type ResolvedPasses = {
      * the PDF passes still run, as the shadow ingest that supplies printed pages.
      */
     edition?: EditionPass;
+    /**
+     * `visionStructure`: block structure from a vision model's verified reading
+     * of the page images, on the pages that pass its gate (vision/hybrid.ts).
+     */
+    vision?: VisionStructurePass;
 };
 /** Validates a report's definition. Throws rather than ingesting nonsense. */
 export declare function pipeline(def: PipelineDef): PipelineDef;

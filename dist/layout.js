@@ -18,14 +18,6 @@ const LABEL = /^(?:\d{1,4}(?:\.\d{1,4})*[.)]?|[a-z][.)]|[A-Z]\.|[ivxlc]{1,5}[.)]
 const LABEL_ONLY = /^\s*(?:\d{1,4}(?:\.\d{1,4})*[.)]?|[a-z][.)]|\([a-z0-9]{1,4}\)|[•·▪–-])\s*$/;
 /** A footnote-marker shape: digits, or the usual symbols. */
 const MARKER = /^\s*(?:\d{1,4}|[*†‡§])\s*$/;
-/**
- * How far a footnote marker's box may start inside the box before it. A fragment's box includes its
- * trailing space, and an italic one's is wider still, so a marker set after a closing quotation mark
- * in an italic quotation starts a pixel or three inside it: "Berezovsky\u201d 33 and" (Litvinenko
- * p.22), "becoming close friends.\u201d 14" (p.18). Without the allowance it was a line of its own
- * and its number stayed bare (reportsthatmatter-4ef1).
- */
-const markerOverlap = (lineHeight) => Math.max(2, 0.25 * lineHeight);
 /** Parses one `pdftohtml -xml` document into raw lines (no per-page statistics yet). */
 export function parseLayoutXml(xml) {
     const lines = [];
@@ -65,9 +57,7 @@ export function parseLayoutXml(xml) {
                     (f.top >= base.top - base.height / 2 && f.top + f.height <= base.top + base.height + 2 && f.height < base.height);
                 // A paragraph label ("2.4") often stands off from its text by an indent's width.
                 const reach = LABEL_ONLY.test(parts[parts.length - 1].text) ? 100 : 24;
-                // (a marker-shaped fragment smaller than the line may overlap the one before: see `markerOverlap`)
-                const tolerance = MARKER.test(f.text) && f.height < base.height ? markerOverlap(base.height) : 2;
-                if (sameLine && f.left >= right - tolerance && f.left - right < reach) {
+                if (sameLine && f.left >= right - 2 && f.left - right < reach) {
                     parts.push(f);
                     used.add(j);
                     right = f.left + f.width;
@@ -86,8 +76,7 @@ export function parseLayoutXml(xml) {
                     continue;
                 if (f.top < base.top - base.height / 2 || f.top + f.height > base.top + base.height + 2)
                     continue;
-                const overlap = markerOverlap(base.height);
-                const k = parts.findIndex((p, n) => n < parts.length - 1 && f.left >= p.left + p.width - overlap && f.left + f.width <= parts[n + 1].left + overlap);
+                const k = parts.findIndex((p, n) => n < parts.length - 1 && f.left >= p.left + p.width - 2 && f.left + f.width <= parts[n + 1].left + 2);
                 if (k < 0)
                     continue;
                 parts.splice(k + 1, 0, f);

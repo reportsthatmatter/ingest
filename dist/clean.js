@@ -18,26 +18,15 @@ const PAGE_NUMBER = /^\s*(\d{1,4}|[ivxlcdm]{1,8})\s*$/i;
  */
 export const FOOTNOTE_INLINE = /^\s{0,8}(\d{1,4})\s{0,3}(?=[A-Za-z"“(])/;
 const FOOTNOTE_STACKED = /^\s{0,10}(\d{1,4})\s*$/;
-/**
- * `footnoteNumbers("period")`: a page-foot note numbered "104. Letter from…"
- * (Hillsborough), the number followed by a full stop, flush at the page's
- * edge. Its own style, never tried on a report that has not declared it: a
- * numbered list has the same shape, and only its inset tells it apart
- * (Hillsborough's summary findings, "    16. This mindset, …", four columns in,
- * were read as notes 16-21 of their page until the number had to be flush).
- */
-const FOOTNOTE_INLINE_PERIOD = /^\s{0,1}(\d{1,4})\.\s{1,6}(?=[A-Za-z"“‘'(])/;
 /** Candidate note openings on a page, in either layout. */
-export function noteCandidates(lines, numbers = "bare") {
+export function noteCandidates(lines) {
     const candidates = [];
     for (let i = 0; i < lines.length; i++) {
-        const inline = lines[i].match(numbers === "period" ? FOOTNOTE_INLINE_PERIOD : FOOTNOTE_INLINE);
+        const inline = lines[i].match(FOOTNOTE_INLINE);
         if (inline) {
             candidates.push({ line: i, note: Number.parseInt(inline[1], 10) });
             continue;
         }
-        if (numbers === "period")
-            continue;
         const stacked = lines[i].match(FOOTNOTE_STACKED);
         if (!stacked)
             continue;
@@ -76,34 +65,10 @@ export function takePrintedNumber(input, options = {}) {
         printed = value;
         lines.splice(index, 1);
     };
-    // A thumb-index tab sets a capital letter at the foot of the page edge, on the folio's line or the line below
-    // it (Leveson, Part L: "1803" then "L", or "L        1804"); the folio is read past it, and the tab goes
-    // with it (reportsthatmatter-d662).
-    const withTab = (line) => {
-        const m = /^\s*(?:[A-Z]\s{2,}(\d{1,4})|(\d{1,4})\s{2,}[A-Z])\s*$/.exec(line);
-        return m ? Number.parseInt(m[1] ?? m[2], 10) : null;
-    };
     for (let i = lines.length - 1; i >= 0 && i >= lines.length - 4; i--) {
         if (!lines[i].trim())
             continue;
-        const tabbed = withTab(lines[i]);
-        if (tabbed !== null) {
-            printed = tabbed;
-            lines.splice(i, 1);
-        }
-        else if (/^\s*[A-Z]\s*$/.test(lines[i])) {
-            // a lone tab letter: the folio is the nearest line above it, if that is a number
-            let j = i - 1;
-            while (j >= 0 && !lines[j].trim())
-                j--;
-            if (j >= 0 && /^\s*\d{1,4}\s*$/.test(lines[j])) {
-                takeNumber(j);
-                lines.splice(i - 1, 1);
-            }
-            else if (PAGE_NUMBER.test(lines[i]))
-                takeNumber(i);
-        }
-        else if (PAGE_NUMBER.test(lines[i]))
+        if (PAGE_NUMBER.test(lines[i]))
             takeNumber(i);
         break;
     }
@@ -161,16 +126,11 @@ function takeRomanFolio(lines) {
  * apart. Walking upward matters because footnote numbers also appear inline.
  */
 export function splitFootnoteBlock(lines, expectedNote, options = {}) {
-    const candidates = noteCandidates(lines, options.footnoteNumbers);
+    const candidates = noteCandidates(lines);
     if (!candidates.length)
         return { body: lines, footnotes: [], runOver: [] };
     const start = chooseBlockStart(candidates, expectedNote, lines.length) ??
-        (options.footnoteGap ? gappedNoteStart(lines, candidates, expectedNote) : null) ??
-        // a chapter's numbering restarting on a page with only its note 1 (period-numbered notes are flush, so
-        // a lone "1. Letter from…" low on the page has no other reading)
-        (options.footnoteNumbers === "period"
-            ? candidates.find((c) => c.note === 1 && c.line > lines.length * 0.55) ?? null
-            : null);
+        (options.footnoteGap ? gappedNoteStart(lines, candidates, expectedNote) : null);
     if (start === null)
         return { body: lines, footnotes: [], runOver: [] };
     const at = start.line;
@@ -185,20 +145,6 @@ export function splitFootnoteBlock(lines, expectedNote, options = {}) {
     let from = runOverStart(lines, at, options.citationRunOver ?? false);
     if (options.footnoteGap)
         from = Math.min(from, gappedRunOverStart(lines, at));
-    if (options.footnoteNumbers === "period") {
-        // The running foot ("62      The Report of the Hillsborough Independent Panel") sits below the notes,
-        // set off by blank lines: it goes back to the body's edge, where the furniture passes read the page
-        // number off it, rather than ending the last note.
-        let last = lines.length - 1;
-        while (last > at && !lines[last].trim())
-            last--;
-        let above = last - 1;
-        while (above > at && !lines[above].trim())
-            above--;
-        if (last > at && last - above > 2 && !noteCandidates([lines[last]], "period").length) {
-            return { body: [...lines.slice(0, from), lines[last]], footnotes: lines.slice(at, above + 1), runOver: lines.slice(from, at) };
-        }
-    }
     return { body: lines.slice(0, from), footnotes: lines.slice(at), runOver: lines.slice(from, at) };
 }
 const indentOf = (line) => line.length - line.trimStart().length;

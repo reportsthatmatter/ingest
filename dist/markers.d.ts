@@ -100,11 +100,4 @@ export declare function linkLayoutMarkers(blocks: Block[], layout: Layout, notes
  * Introduction 3" in the body's own face, nothing raised: Leveson's contents)
  * has neither.
  */
-/**
- * `footnoteNumbers("period")`: whether the line that opens a page's note block ("104. Letter from…") is
- * set in the notes' smaller face. A body paragraph numbered the same way at the page foot (Hillsborough's
- * Appendix 1, "8. In all of the above cases, …") is in the body's face, and stays body. A line the layout
- * does not find is given the benefit of the doubt.
- */
-export declare function inNoteFace(layout: Layout, volume: number, pdfIndex: number, line: string): boolean;
 export declare function pageDefinesNotes(layout: Layout, volume: number, pdfIndex: number): boolean;
