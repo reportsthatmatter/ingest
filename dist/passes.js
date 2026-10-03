@@ -339,6 +339,40 @@ export const photoCredits = () => ({ name: "photoCredits", stage: "page" });
  */
 export const footnoteGap = () => ({ name: "footnoteGap", stage: "page" });
 /**
+ * A page-foot note numbering that starts over at 1 (per Part, per chapter),
+ * read even where the page offers too little to corroborate it
+ * (reportsthatmatter-n7fb). The block start is found by the note the page
+ * expects; after a restart that is the previous Part's next number, so a page
+ * whose only note is the new Part's 1, or whose notes 2 and 3 are all that
+ * read as note openings ("4 / A1 2/114" has no words), is read with its notes
+ * in the body, and so is every page after it until a run of three turns up:
+ * Litvinenko's Parts 6, 8 and 9 lost their first 3-9 notes this way.
+ *
+ * With this pass, a note numbered 1 low on the page (or followed by its 2)
+ * starts the block when the expected note is not there. Opt-in: a numbered
+ * list's "1." at a page foot has the same shape in a report whose notes run
+ * through without restarting.
+ */
+export const footnoteRestarts = () => ({ name: "footnoteRestarts", stage: "page" });
+/**
+ * A page-foot note opens on the next note's number whatever its text opens on
+ * (reportsthatmatter-qsfc, kgpr). A note's opening line is read by its shape,
+ * a number then a letter or a quotation mark, so a note whose text opens on a
+ * digit ("458 3rd Quarter…", "521 17 C.F.R."; Hillsborough's "17. 31 July
+ * 1990"), a bracket ("19. [1992] 1 A.C. 310"), a single quotation mark
+ * ("15. ‘SOUTH YORKSHIRE…") or after a justified gap ("403     Standard &
+ * Poor's") was read as the note above's text: two notes merged, and the
+ * marker of the second never linked.
+ *
+ * With this pass a line that opens with exactly the number after the note
+ * above it (with its full stop under `footnoteNumbers("period")`), then
+ * text, starts that note; and the page's block may open on such a line when
+ * it carries the note the page expects. Opt-in: a wrapped citation can open
+ * on the next number ("…at 403 / 404 Fed. Reg."), which the shape test keeps
+ * out in a report that has not been checked against it.
+ */
+export const sequencedNoteOpenings = () => ({ name: "sequencedNoteOpenings", stage: "page" });
+/**
  * How the report numbers its page-foot notes, where that is not the usual bare
  * "104 Letter from…": `"period"` reads "104. Letter from…" (Hillsborough,
  * reportsthatmatter-ivg.3), whose notes were otherwise printed in the body as
@@ -830,3 +864,51 @@ export const geometry = (scope) => ({
 });
 /** Re-exported so a report can compose the page-local passes directly. */
 export { takePrintedNumber, splitFootnoteBlock, bodyIndent };
+/**
+ * A raised marker that `pdftotext -layout` filed on a line of its own
+ * (reportsthatmatter-kvxj). The marker sits over the first word of a line
+ * ("…WaMu's oversight / efforts.²⁸⁸ For example…"), a fraction above it, and
+ * the text reads the digits as a line between the two:
+ *
+ *   `       OTS examinations … deficiencies in WaMu's oversight`
+ *   `       288`
+ *   `efforts. For example, a 2007 OTS memorandum found…`
+ *
+ * so the paragraph splits at it and the marker opens the second half as bare
+ * text ("288 efforts. For example"), where no linker finds it. This puts the
+ * digits back after that word ("efforts.288 For example"), for `layoutMarkers`
+ * to link, when the page's layout raises exactly those digits after a word of
+ * that line (its first most often; "ratings.1032" at its end). Opt-in, and layout-confirmed: without a layout it does nothing.
+ * PSI's notes 216, 288, 1032 and 1104.
+ */
+export const strandedMarkers = () => ({
+    name: "strandedMarkers",
+    stage: "body",
+    run(lines, context, at) {
+        const layout = context?.layout;
+        if (!layout || !at)
+            return lines;
+        const words = (s) => s.replace(/[^\p{L}\p{N}]/gu, "");
+        const raised = layout.lines(at.volume, at.pdfIndex).flatMap((line) => line.raised.map((run) => ({ digits: run.text, word: words(line.text.slice(0, run.offset).trimEnd().split(/\s+/).pop() ?? "") })));
+        if (!raised.length)
+            return lines;
+        const out = [...lines];
+        for (let i = 1; i + 1 < out.length; i++) {
+            const lone = out[i].match(/^\s*(\d{1,4})\s*$/);
+            if (!lone || !out[i - 1].trim())
+                continue;
+            // the word of the next line the layout raises these digits after (its first, most often; "ratings." at its end for 1032)
+            const tokens = [...out[i + 1].matchAll(/\S+/g)];
+            const token = tokens.find((t) => {
+                const word = words(t[0]);
+                return word && raised.some((r) => r.digits === lone[1] && r.word === word);
+            });
+            if (!token)
+                continue;
+            const end = token.index + token[0].length;
+            out[i + 1] = `${out[i + 1].slice(0, end)}${lone[1]}${out[i + 1].slice(end)}`;
+            out.splice(i, 1);
+        }
+        return out;
+    },
+});

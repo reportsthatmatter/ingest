@@ -103,6 +103,8 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
             citationRunOver: resolved.citationRunOver,
             romanFolios: resolved.romanFolios,
             footnoteGap: resolved.footnoteGap,
+            footnoteRestarts: resolved.footnoteRestarts,
+            sequencedNoteOpenings: resolved.sequencedNoteOpenings,
             footnoteNumbers: resolved.footnoteNumbers,
         };
         let split = resolved.paragraphNotes || resolved.endnotes || resolved.layoutEndnotes
@@ -145,7 +147,9 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
             split.body = [...split.body, ...split.runOver];
         }
         if (split.footnotes.length) {
-            const parsed = parseFootnotes(split.footnotes, split.index, resolved.footnoteNumbers === "period" ? "period" : "bare").map((note) => ({
+            const parsed = parseFootnotes(split.footnotes, split.index, resolved.footnoteNumbers === "period" ? "period" : "bare", {
+                sequenced: resolved.sequencedNoteOpenings,
+            }).map((note) => ({
                 ...note,
                 volume: split.volume,
                 pdfIndex: split.pdfIndex,
@@ -687,7 +691,7 @@ function ingestEdition(pageGroups, meta, resolved, corrections, context) {
         linkedText: shadow.linkedText,
         footnotes: shadow.footnotes,
     });
-    const assembled = assembleEdition(edition, pages, printed, pass.sources);
+    const assembled = assembleEdition(edition, pages, printed, pass.sources, { floats: pass.floats });
     if (filled.length) {
         assembled.report.filled = filled;
         const printedOf = new Map(printed.map((entry) => [`${entry.volume}:${entry.pdfIndex}`, entry.number]));

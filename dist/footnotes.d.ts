@@ -14,7 +14,9 @@ export type Footnote = {
     printed?: number | null;
 };
 type NoteStyle = "bare" | "period";
-export declare function parseFootnotes(lines: string[], page: number, style?: NoteStyle): Footnote[];
+export declare function parseFootnotes(lines: string[], page: number, style?: NoteStyle, options?: {
+    sequenced?: boolean;
+}): Footnote[];
 export declare function linkInlineMarkers(text: string, known: Set<number>): string;
 /**
  * Whether a line is one of the appendix's own chapter headings, confirmed

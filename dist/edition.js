@@ -50,6 +50,7 @@ export function cleanEdition(options) {
         stage: "edition",
         sources: options.files,
         notes: options.notes ?? "back",
+        ...(options.floats ? { floats: options.floats } : {}),
         read() {
             const files = options.files.map((file) => {
                 const buffer = readFileSync(join(options.dir, file.path));
@@ -193,7 +194,7 @@ const straighten = (text) => text.replace(/[\u2018\u2019]/g, "'").replace(/[\u20
  * which page carries which printed number (its `%%page%%` markers), so a page
  * the PDF pipeline would not mark is not marked here either.
  */
-export function assembleEdition(edition, pages, printed, sources) {
+export function assembleEdition(edition, pages, printed, sources, options = {}) {
     const blocks = structuredClone(edition.blocks);
     const notes = structuredClone(edition.notes);
     const fields = fieldsOf(blocks, notes);
@@ -558,6 +559,19 @@ export function assembleEdition(edition, pages, printed, sources) {
         if (j > b + 1 && next?.kind === "paragraph" && !next.float)
             joins.set(b, j);
     }
+    // `floats: "by-notes"`: the joins whose floats read first, by where their notes are numbered
+    const floatsFirst = new Set();
+    if (options.floats === "by-notes") {
+        const ordinal = new Map(notes.map((note, i) => [note.label, i]));
+        const cited = (from, to) => blocks.slice(from, to).flatMap((block) => [...blockMarkdown(block).matchAll(/\[\^([^\]]+)\](?!:)/g)].flatMap((m) => (ordinal.has(m[1]) ? [ordinal.get(m[1])] : [])));
+        for (const [b, j] of joins) {
+            const head = cited(b, b + 1);
+            const floats = cited(b + 1, j);
+            const tail = cited(j, j + 1);
+            if (!head.length && floats.length && tail.length && Math.min(...tail) > Math.max(...floats))
+                floatsFirst.add(b);
+        }
+    }
     const out = [];
     const order = [];
     const marker = (p) => (p.occurrence ? `%%page ${p.number}#${p.occurrence}%%` : `%%page ${p.number}%%`);
@@ -592,6 +606,22 @@ export function assembleEdition(edition, pages, printed, sources) {
             kind: "paragraph",
             text: /[a-z]-$/.test(head.text) && /^[a-z]/.test(tail.text) ? head.text.slice(0, -1) + tail.text : `${head.text} ${tail.text}`,
         };
+        if (floatsFirst.has(b)) {
+            // the floats, on their own pages, then the paragraph: a box is often a
+            // page or more, so it keeps its page stamps and the paragraph whose
+            // opening lines it interrupted reads on the page it ends on
+            for (let k = b + 1; k < j; k++) {
+                for (const p of markersBefore.get(k) ?? [])
+                    out.push(marker(p));
+                out.push(blockMarkdown(blocks[k]));
+                order.push({ block: blocks[k], source: k });
+            }
+            out.push(blockMarkdown(joined));
+            order.push({ block: joined, source: b });
+            carried = markersBefore.get(j) ?? [];
+            b = j;
+            continue;
+        }
         out.push(blockMarkdown(joined));
         order.push({ block: joined, source: b });
         // the floats follow it with their own pages; a page that began in the paragraph's second half follows them

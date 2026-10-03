@@ -75,9 +75,11 @@ function classify(line, style = "bare") {
  * tolerates the same (`chooseBlockStart`).
  */
 const MAX_NOTE_STEP = 6;
-export function parseFootnotes(lines, page, style = "bare") {
+export function parseFootnotes(lines, page, style = "bare", options = {}) {
     const raw = lines.filter((line) => line.trim());
     const tokens = raw.map((line) => classify(line, style));
+    // `sequencedNoteOpenings`: a line opening on the next note's number, then any text, opens that note
+    const SEQUENCED = style === "period" ? /^\s{0,20}(\d{1,4})\.\s+(\S.*)$/ : /^\s{0,8}(\d{1,4})\s+(\S.*)$/;
     const notes = [];
     const append = (text) => {
         const last = notes[notes.length - 1];
@@ -87,6 +89,14 @@ export function parseFootnotes(lines, page, style = "bare") {
     };
     let i = 0;
     while (i < tokens.length) {
+        if (options.sequenced && (tokens[i].kind === "text" || tokens[i].kind === "garbled") && (notes.length || i === 0)) {
+            // (the block's own first line, when the block was opened on it, is a note whatever its number)
+            const m = raw[i].match(SEQUENCED);
+            const last = notes[notes.length - 1];
+            if (m && (last === undefined || (last.text && Number(m[1]) === last.number + 1))) {
+                tokens[i] = { kind: "inline", number: Number(m[1]), text: normaliseWhitespace(m[2]) };
+            }
+        }
         const token = tokens[i];
         // A page's notes run in sequence, so once one is read, a number that does
         // not follow it closely is the start of a continuation line: the note's

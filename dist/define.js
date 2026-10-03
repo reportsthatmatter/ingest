@@ -93,6 +93,8 @@ export function resolvePasses(def) {
         numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),
         photoCredits: passes.some((pass) => pass.name === "photoCredits"),
         footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
+        footnoteRestarts: passes.some((pass) => pass.name === "footnoteRestarts"),
+        sequencedNoteOpenings: passes.some((pass) => pass.name === "sequencedNoteOpenings"),
         footnoteNumbers: passes.some((pass) => pass.name === "footnoteNumbers") ? "period" : undefined,
         quoteInset: passes.find((pass) => pass.stage === "quoteInset")?.columns,
         allCapsHeadings: passes.find((pass) => pass.stage === "allCapsHeadings")?.enabled ?? true,

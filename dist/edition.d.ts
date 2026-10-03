@@ -86,6 +86,17 @@ export type EditionPass = {
      * body (Saville).
      */
     readonly notes: "back" | "page-foot";
+    /**
+     * Where a paragraph that a float interrupted mid-sentence, rejoined, is
+     * served against its floats. `"after"` (the default): the paragraph, then
+     * the floats. `"by-notes"`: the floats first when their notes number them
+     * before the paragraph's (the paragraph's opening half cites none, its
+     * closing half cites only notes after the floats'), so the notes read in
+     * the order the print numbers them: 9/11's "A Case Study in Terrorist
+     * Travel" (notes 22-25) interrupts the paragraph that ends on note 26
+     * (reportsthatmatter-gq4j).
+     */
+    readonly floats?: "after" | "by-notes";
     /** Reads and checks the edition's files and returns its blocks. */
     read(): Edition;
 };
@@ -103,6 +114,8 @@ export declare function cleanEdition(options: {
     files: EditionSource[];
     encoding?: BufferEncoding;
     notes?: "back" | "page-foot";
+    /** See `EditionPass.floats`. */
+    floats?: "after" | "by-notes";
     read(files: Array<{
         path: string;
         text: string;
@@ -180,7 +193,9 @@ export type PrintedPage = {
  * which page carries which printed number (its `%%page%%` markers), so a page
  * the PDF pipeline would not mark is not marked here either.
  */
-export declare function assembleEdition(edition: Edition, pages: Page[], printed: PrintedPage[], sources: readonly EditionSource[]): {
+export declare function assembleEdition(edition: Edition, pages: Page[], printed: PrintedPage[], sources: readonly EditionSource[], options?: {
+    floats?: "after" | "by-notes";
+}): {
     body: string;
     notes: string;
     report: EditionReport;
