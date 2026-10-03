@@ -72,13 +72,15 @@ export function paragraphIndex(sections) {
  * a reader would recognise as sections. The heading survives in the body, so
  * nothing is hidden — it just stops being a page of its own.
  *
- * Two exceptions, both a heading with no body of its own that must not fold
+ * Three exceptions, each a heading with no body of its own that must not fold
  * *backwards* into the part before it, or the contents page loses it
  * entirely and lists what follows with nothing above it. Both fold forwards
  * instead, onto what comes after, and head that section:
  *
  * - A numbered-division heading — an inquiry's "Part 4:" divider, followed
  *   straight away by its first chapter.
+ * - A chapter heading with opening paragraphs before its first ### (n9em),
+ *   which would otherwise file the chapter's opening under the previous one.
  * - A chapter banner in a report whose sections are numbered
  *   (`numberedSections()`, reportsthatmatter-u88): the banner carries no text
  *   of its own before its first numbered section ("8" then "8.1 The Summer of
@@ -93,6 +95,19 @@ const NUMBERED_SECTION_HEADING = /^<h3\b[^>]*>(?:<[^>]+>)*\s*\d{1,2}\.\d{1,2}\s/
 function isBodylessH2(part) {
     const match = part.match(/^<h2\b[^>]*>[\s\S]*?<\/h2>([\s\S]*)$/);
     return match !== null && textLength(match[1]) === 0;
+}
+/**
+ * An h2 followed by some text, then (in the next part) an h3: a chapter's
+ * opening paragraphs before its first subsection. reportsthatmatter-n9em: the
+ * 9/11 Commission's chapter 1 opens "WE HAVE SOME PLANES" with two paragraphs
+ * before "1.1", and as a sliver they folded backwards onto the preface, so the
+ * chapter's opening, and its heading, were filed under the previous section.
+ * Like a banner, the chapter heading and its intro fold forward onto its first
+ * subsection and head that section.
+ */
+function isH2WithIntro(part) {
+    const match = part.match(/^<h2\b[^>]*>[\s\S]*?<\/h2>([\s\S]*)$/);
+    return match !== null && textLength(match[1]) > 0;
 }
 function mergeSlivers(parts, minChars) {
     const merged = [];
@@ -112,7 +127,8 @@ function mergeSlivers(parts, minChars) {
             continue;
         }
         const chapterBanner = isBodylessH2(part) && NUMBERED_SECTION_HEADING.test(parts[i + 1] ?? "");
-        if ((chapterBanner || DIVISION_HEADING.test(part)) && textLength(part) < minChars) {
+        const chapterIntro = isH2WithIntro(part) && /^<h3\b/.test(parts[i + 1] ?? "");
+        if ((chapterBanner || chapterIntro || DIVISION_HEADING.test(part)) && textLength(part) < minChars) {
             divider = part;
             continue;
         }
