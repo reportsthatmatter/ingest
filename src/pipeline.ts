@@ -253,6 +253,8 @@ export function ingestPageGroups(
           pdfIndex: split.pdfIndex,
           printed: split.printed,
         }));
+        // `footnoteRestarts`: a block that opens below the expected number starts the numbering over
+        if (resolved.footnoteRestarts && parsed.length && parsed[0].number < expectedNote) parsed[0].restart = true;
         footnotes.push(...parsed);
         if (parsed.length) expectedNote = Math.max(...parsed.map((n) => n.number)) + 1;
       }

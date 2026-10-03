@@ -15,6 +15,11 @@ export type Footnote = {
   pdfIndex?: number;
   /** The printed page number the note sits on — what a correction's `where` scopes against. */
   printed?: number | null;
+  /**
+   * `footnoteRestarts`: the note opens a numbering that starts over, so it is never the tail of a
+   * note above it with the same number (a chapter with one note, then a chapter's note 1).
+   */
+  restart?: boolean;
 };
 
 const NOTE_INLINE = /^\s{0,8}(\d{1,4})\s{0,3}(?=[A-Za-z"“(])/;
@@ -610,7 +615,7 @@ export function mergeFootnotes(notes: Footnote[]): Footnote[] {
   const merged: Footnote[] = [];
   for (const note of notes) {
     const previous = merged[merged.length - 1];
-    if (previous && (previous.label ?? previous.number) === (note.label ?? note.number)) {
+    if (previous && !note.restart && (previous.label ?? previous.number) === (note.label ?? note.number)) {
       if (previous.text !== note.text) previous.text = `${previous.text} ${note.text}`;
       continue;
     }

@@ -249,3 +249,13 @@ describe("a PDF page the edition has no word of (reportsthatmatter-bt5d)", () =>
     expect(found[0].pdfIndex).toBe(2);
   });
 });
+
+describe("a restarted note 1 is not the tail of the note 1 above it (reportsthatmatter-u00i)", () => {
+  it("keeps two notes 1 apart when the second opens a restart", async () => {
+    const { mergeFootnotes } = await import("../src/footnotes");
+    const a = { number: 1, text: "That is to say.", page: 66 };
+    const b = { number: 1, text: "http://example.org/transcript.pdf", page: 68 };
+    expect(mergeFootnotes([a, b])).toHaveLength(1);
+    expect(mergeFootnotes([a, { ...b, restart: true }]).map((n) => n.text)).toEqual(["That is to say.", "http://example.org/transcript.pdf"]);
+  });
+});

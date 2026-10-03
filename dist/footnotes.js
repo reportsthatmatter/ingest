@@ -504,7 +504,7 @@ export function mergeFootnotes(notes) {
     const merged = [];
     for (const note of notes) {
         const previous = merged[merged.length - 1];
-        if (previous && (previous.label ?? previous.number) === (note.label ?? note.number)) {
+        if (previous && !note.restart && (previous.label ?? previous.number) === (note.label ?? note.number)) {
             if (previous.text !== note.text)
                 previous.text = `${previous.text} ${note.text}`;
             continue;

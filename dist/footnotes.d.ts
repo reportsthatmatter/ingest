@@ -12,6 +12,11 @@ export type Footnote = {
     pdfIndex?: number;
     /** The printed page number the note sits on — what a correction's `where` scopes against. */
     printed?: number | null;
+    /**
+     * `footnoteRestarts`: the note opens a numbering that starts over, so it is never the tail of a
+     * note above it with the same number (a chapter with one note, then a chapter's note 1).
+     */
+    restart?: boolean;
 };
 type NoteStyle = "bare" | "period";
 export declare function parseFootnotes(lines: string[], page: number, style?: NoteStyle, options?: {
