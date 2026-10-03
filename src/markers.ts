@@ -294,6 +294,23 @@ export function linkLayoutMarkers(blocks: Block[], layout: Layout, notes: Marker
  * Introduction 3" in the body's own face, nothing raised: Leveson's contents)
  * has neither.
  */
+/**
+ * `footnoteNumbers("period")`: whether the line that opens a page's note block ("104. Letter from…") is
+ * set in the notes' smaller face. A body paragraph numbered the same way at the page foot (Hillsborough's
+ * Appendix 1, "8. In all of the above cases, …") is in the body's face, and stays body. A line the layout
+ * does not find is given the benefit of the doubt.
+ */
+export function inNoteFace(layout: Layout, volume: number, pdfIndex: number, line: string): boolean {
+  const page = layout.page(volume, pdfIndex);
+  if (!page) return true;
+  const bodySize = Math.max(Number(page.bodyFont.split("|")[1]) || 0, layout.bodyFont.size);
+  const key = (text: string) => text.replace(/\s+/g, "").slice(0, 24);
+  const want = key(line);
+  const hit = page.lines.find((l) => key(l.text) === want || (want.length >= 12 && key(l.text).startsWith(want.slice(0, 12))));
+  if (!hit || bodySize <= 0) return true;
+  return hit.size < BODY_SIZE_RATIO * bodySize;
+}
+
 export function pageDefinesNotes(layout: Layout, volume: number, pdfIndex: number): boolean {
   const page = layout.page(volume, pdfIndex);
   if (!page) return true;

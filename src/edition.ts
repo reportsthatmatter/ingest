@@ -706,7 +706,7 @@ export type FilledGap = {
   reason: string;
   /** Blocks taken from the PDF shadow (a block cut at the gap's edge counts once). */
   blocks: number;
-  /** Shadow blocks in the gap left out: a bare number, or a title the edition already has (a running head). */
+  /** Shadow blocks in the gap left out: a bare number, a title the edition already has (a running head), or words the edition prints next to the gap. */
   dropped?: number;
   words: number;
   notes: number;
@@ -916,7 +916,14 @@ export function fillGaps(edition: Edition, pages: Page[], shadow: ShadowText): {
     // (a contents entry among others is the contents page's own, and kept)
     const lone = (k: number) => shadow.blocks[k]?.kind !== "contents";
     const runningHead = filled.kind === "heading" || (filled.kind === "contents" && lone(b - 1) && lone(b + 1));
-    if (!words.some(hasLetter) || (runningHead && titles.has(words.join(" ")))) {
+    // and words the edition prints right there already: the aligner left a repeated phrase unmatched
+    // (Hillsborough's terms of reference quote a clause that Appendix 2 quotes again), not text it lacks
+    const nearby = ` ${edition.blocks
+      .slice(Math.max(0, gapAt[g] - 100), gapAt[g] + 100)
+      .flatMap((block) => fieldsOf([block], []).flatMap((field) => fieldTokens(field.get()).map((t) => t.word)))
+      .join(" ")} `;
+    const repeated = filled.kind !== "contents" && words.length >= 3 && nearby.includes(` ${words.join(" ")} `);
+    if (!words.some(hasLetter) || (runningHead && titles.has(words.join(" "))) || repeated) {
       dropped[g]++;
       continue;
     }

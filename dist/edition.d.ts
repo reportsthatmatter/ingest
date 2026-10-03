@@ -194,7 +194,7 @@ export type FilledGap = {
     reason: string;
     /** Blocks taken from the PDF shadow (a block cut at the gap's edge counts once). */
     blocks: number;
-    /** Shadow blocks in the gap left out: a bare number, or a title the edition already has (a running head). */
+    /** Shadow blocks in the gap left out: a bare number, a title the edition already has (a running head), or words the edition prints next to the gap. */
     dropped?: number;
     words: number;
     notes: number;

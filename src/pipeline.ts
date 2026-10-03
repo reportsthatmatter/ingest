@@ -42,7 +42,7 @@ import {
   type NotesLine,
   type NotesChapter,
 } from "./footnotes";
-import { linkLayoutMarkers, pageDefinesNotes, type LayoutMarkerStats } from "./markers";
+import { inNoteFace, linkLayoutMarkers, pageDefinesNotes, type LayoutMarkerStats } from "./markers";
 import { autoFix, findSuspects, rankSuspects, type Suspect } from "./ocr";
 import type { PipelineContext } from "./context";
 import { assembleEdition, fillGaps, fillPrintedGaps, type EditionReport, type PrintedPage } from "./edition";
@@ -180,14 +180,21 @@ export function ingestPageGroups(
       const page = pages[pageOffset++];
       // Notes under each paragraph are read across the volume below, not
       // as a block at the page foot; endnotes are not read as notes at all.
-      const split = resolved.paragraphNotes || resolved.endnotes
+      const splitOptions = {
+        citationRunOver: resolved.citationRunOver,
+        romanFolios: resolved.romanFolios,
+        footnoteGap: resolved.footnoteGap,
+        footnoteNumbers: resolved.footnoteNumbers,
+      };
+      let split = resolved.paragraphNotes || resolved.endnotes
         ? splitPageNumberOnly(page)
-        : splitPage(page, expectedNote, {
-            citationRunOver: resolved.citationRunOver,
-            romanFolios: resolved.romanFolios,
-            footnoteGap: resolved.footnoteGap,
-            footnoteNumbers: resolved.footnoteNumbers,
-          });
+        : splitPage(page, expectedNote, splitOptions);
+      // `footnoteNumbers("period")`: a block opening "8. In all of the above cases" in the body's face is
+      // the body's own numbered paragraphs (an appendix's), not notes: the page is read without them.
+      const firstNote = split.footnotes.find((line) => line.trim());
+      if (resolved.footnoteNumbers === "period" && context.layout && firstNote && !inNoteFace(context.layout, split.volume, split.pdfIndex, firstNote)) {
+        split = splitPage(page, expectedNote, { ...splitOptions, footnoteNumbers: undefined });
+      }
 
       // `layoutMarkers` (page scope): page-foot "notes" on a page whose layout
       // defines none (nothing raised, nothing in a smaller face) are the body's

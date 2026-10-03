@@ -6,7 +6,7 @@ import { applyCorrections } from "./corrections.js";
 import { rejoinHyphenated, vocabulary } from "./hyphens.js";
 import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, spacedContentsBlocks, shortSubheadAt, isIllustrationList, mergeAcrossPages, contentsHeadings, contentsTitles, headingKey, numberedContents, emptyOutline, readContentsOutline, learnOutline, outlineContentsBlocks, divisionContents, bodyIndent, } from "./paragraphs.js";
 import { parseFootnotes, linkInlineMarkers, linkFlushMarkers, renderEndnotes, isNotesChapterHead, parseNotesAppendix, linkFlushMarkersByChapter, } from "./footnotes.js";
-import { linkLayoutMarkers, pageDefinesNotes } from "./markers.js";
+import { inNoteFace, linkLayoutMarkers, pageDefinesNotes } from "./markers.js";
 import { autoFix, findSuspects, rankSuspects } from "./ocr.js";
 import { assembleEdition, fillGaps, fillPrintedGaps } from "./edition.js";
 /**
@@ -91,14 +91,21 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         const page = pages[pageOffset++];
         // Notes under each paragraph are read across the volume below, not
         // as a block at the page foot; endnotes are not read as notes at all.
-        const split = resolved.paragraphNotes || resolved.endnotes
+        const splitOptions = {
+            citationRunOver: resolved.citationRunOver,
+            romanFolios: resolved.romanFolios,
+            footnoteGap: resolved.footnoteGap,
+            footnoteNumbers: resolved.footnoteNumbers,
+        };
+        let split = resolved.paragraphNotes || resolved.endnotes
             ? splitPageNumberOnly(page)
-            : splitPage(page, expectedNote, {
-                citationRunOver: resolved.citationRunOver,
-                romanFolios: resolved.romanFolios,
-                footnoteGap: resolved.footnoteGap,
-                footnoteNumbers: resolved.footnoteNumbers,
-            });
+            : splitPage(page, expectedNote, splitOptions);
+        // `footnoteNumbers("period")`: a block opening "8. In all of the above cases" in the body's face is
+        // the body's own numbered paragraphs (an appendix's), not notes: the page is read without them.
+        const firstNote = split.footnotes.find((line) => line.trim());
+        if (resolved.footnoteNumbers === "period" && context.layout && firstNote && !inNoteFace(context.layout, split.volume, split.pdfIndex, firstNote)) {
+            split = splitPage(page, expectedNote, { ...splitOptions, footnoteNumbers: undefined });
+        }
         // `layoutMarkers` (page scope): page-foot "notes" on a page whose layout
         // defines none (nothing raised, nothing in a smaller face) are the body's
         // own lines, a contents page's entries most often (reportsthatmatter-b94).
