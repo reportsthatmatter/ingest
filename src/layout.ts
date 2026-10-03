@@ -22,8 +22,12 @@ let installed: string | undefined;
  * Nothing here changes any output. It is an input to passes that opt in.
  */
 
-/** A small raised run of digits inside a body line: the shape of a footnote marker. */
-export type RaisedRun = { text: string; size: number; left: number };
+/**
+ * A small raised run of digits inside a body line: the shape of a footnote marker.
+ * `offset` is where the run's own text starts in the line's `text` (so the words before
+ * it, the marker's anchor, are `text.slice(0, offset)`).
+ */
+export type RaisedRun = { text: string; size: number; left: number; offset: number };
 
 export type LayoutLine = {
   /** Which source volume, 1-based, in the order the report lists them. */
@@ -162,17 +166,35 @@ export function parseLayoutXml(xml: string): RawLine[] {
           right = f.left + f.width;
         }
       }
+      // A raised marker poppler emits after the text that follows it on the line ("phone.” ",
+      // "He also sent…", then "1585": PSI p.399) goes back into the gap it sits in.
+      for (let j = i + 1; j < frags.length && j < i + MAX_FRAGMENTS_PER_LINE; j++) {
+        if (used.has(j)) continue;
+        const f = frags[j];
+        const base = parts[0];
+        if (f.top > base.top + base.height) break;
+        if (!MARKER.test(f.text) || f.height >= base.height) continue;
+        if (f.top < base.top - base.height / 2 || f.top + f.height > base.top + base.height + 2) continue;
+        const k = parts.findIndex(
+          (p, n) => n < parts.length - 1 && f.left >= p.left + p.width - 2 && f.left + f.width <= parts[n + 1].left + 2
+        );
+        if (k < 0) continue;
+        parts.splice(k + 1, 0, f);
+        used.add(j);
+      }
       const main = parts.reduce((a, b) => (b.text.length > a.text.length ? b : a));
       const font = fonts.get(main.font) ?? { size: main.height, family: "", color: "" };
+      const joined = joinParts(parts, font.size);
       const raised: RaisedRun[] = [];
-      for (const p of parts) {
-        if (p === main) continue;
+      parts.forEach((p, k) => {
+        if (p === main) return;
         const pf = fonts.get(p.font);
         const smaller = pf ? pf.size <= font.size - 2 : p.height < main.height - 2;
         if (smaller && p.top < main.top + main.height / 2 && MARKER.test(p.text)) {
-          raised.push({ text: p.text.trim(), size: pf?.size ?? p.height, left: p.left });
+          const offset = joined.starts[k] + (p.text.length - p.text.trimStart().length);
+          raised.push({ text: p.text.trim(), size: pf?.size ?? p.height, left: p.left, offset });
         }
-      }
+      });
       const left = parts[0].left;
       const bold = /<b>/.test(main.inner) || /bold|black|heavy|semibold/i.test(font.family);
       const italic = /<i>/.test(main.inner) || /italic|oblique/i.test(font.family);
@@ -192,7 +214,7 @@ export function parseLayoutXml(xml: string): RawLine[] {
         bold,
         italic,
         raised,
-        text: joinParts(parts, font.size),
+        text: joined.text,
       });
     }
   }
@@ -204,15 +226,20 @@ export function parseLayoutXml(xml: string): RawLine[] {
  * with no space between, so a gap wider than a hair of the font size is a space.
  * A raised marker sits close against its word and gets none.
  */
-function joinParts(parts: Array<{ text: string; left: number; width: number }>, size: number): string {
+function joinParts(
+  parts: Array<{ text: string; left: number; width: number }>,
+  size: number
+): { text: string; starts: number[] } {
   let out = "";
   let right = 0;
+  const starts: number[] = [];
   parts.forEach((p, i) => {
     if (i > 0 && p.left - right > 0.15 * size && !/\s$/.test(out) && !/^\s/.test(p.text)) out += " ";
+    starts.push(out.length);
     out += p.text;
     right = p.left + p.width;
   });
-  return out;
+  return { text: out, starts };
 }
 
 /** Some PDFs emit every word as a fragment: a justified line has dozens. */

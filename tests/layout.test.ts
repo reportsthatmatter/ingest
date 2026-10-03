@@ -53,7 +53,9 @@ describe("parseLayoutXml", () => {
 
   it("records a touching raised digit run, not as text of its own line", () => {
     const line = raw.find((l) => l.text.startsWith("Body text"))!;
-    expect(line.raised).toEqual([{ text: "12", size: 11, left: 700 }]);
+    // offset: where the run starts in the line's text, so the words before it anchor the marker
+    expect(line.raised).toEqual([{ text: "12", size: 11, left: 700, offset: line.text.length - 2 }]);
+    expect(line.text.endsWith("of the line12")).toBe(true);
     expect(raw.filter((l) => l.page === 1)).toHaveLength(3);
   });
 

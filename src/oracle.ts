@@ -274,8 +274,15 @@ function locate(lines: LayoutLine[], text: string, n = 12): LayoutLine | undefin
 export function measureLayout(
   layout: Layout,
   blocks: Block[],
-  footnotes: Array<Pick<Footnote, "number"> & Partial<Pick<Footnote, "text" | "volume" | "pdfIndex">>> = []
+  footnotes: Array<Pick<Footnote, "number"> & Partial<Pick<Footnote, "text" | "volume" | "pdfIndex">>> = [],
+  /**
+   * `relink: false` when `blocks` come from `finalBlocks` and their markers are the pipeline's own.
+   * Re-linking them with `linkInlineMarkers` counts links the reader never sees wherever the
+   * pipeline did not run it (a report whose layout decides its markers, `layoutMarkers`; paragraph notes).
+   */
+  options: { relink?: boolean } = {}
 ): OracleReport {
+  const relink = options.relink ?? true;
   const counts = zero();
   const pages: Record<string, PageCounts> = {};
   const findings: OracleFinding[] = [];
@@ -403,13 +410,13 @@ export function measureLayout(
       // — Markers —
       const labels: string[] = [];
       // (a page that is mostly footnotes has the notes' face as its body: take the document's too)
-      const inBody = (l: LayoutLine) => l.body || (Math.abs(l.size - bodyFont.size) < 0.5 && l.color === bodyFont.color && !l.bold && !l.italic);
+      const inBody = (l: LayoutLine) => l.body || (Math.abs(l.size - bodyFont.size) < 0.5 && l.color === bodyFont.color);
       for (const l of lines) if (inBody(l)) for (const r of l.raised) if (/^\d{1,4}$/.test(r.text) && !definesNote(l, r)) labels.push(r.text);
       expected.markers += labels.length;
       pool.set(pageKey(v, p), labels);
       for (const b of mine) {
         for (const t of blockTexts(b)) {
-          const linked = known.size ? linkInlineMarkers(t, known) : t;
+          const linked = relink && known.size ? linkInlineMarkers(t, known) : t;
           for (const m of linked.matchAll(/\[\^(\d+)(?:-[^\]\s]+)?\]/g)) producedMarkers.push({ volume: v, page: p, label: m[1] });
         }
       }

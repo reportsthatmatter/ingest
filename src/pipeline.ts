@@ -41,6 +41,7 @@ import {
   type NotesLine,
   type NotesChapter,
 } from "./footnotes";
+import { linkLayoutMarkers, pageDefinesNotes, type LayoutMarkerStats } from "./markers";
 import { autoFix, findSuspects, rankSuspects, type Suspect } from "./ocr";
 import type { PipelineContext } from "./context";
 import { assembleEdition, type EditionReport, type PrintedPage } from "./edition";
@@ -77,6 +78,8 @@ export type IngestResult = {
   shadow?: IngestResult;
   /** Each page's lines after the furniture passes (running heads, slugs, page numbers) took theirs off. */
   pageText?: Array<{ volume: number; pdfIndex: number; lines: string[] }>;
+  /** What `layoutMarkers` saw and linked, when the report declares it. */
+  layoutMarkers?: LayoutMarkerStats;
 };
 
 export type Metadata = {
@@ -183,6 +186,19 @@ export function ingestPageGroups(
             romanFolios: resolved.romanFolios,
             footnoteGap: resolved.footnoteGap,
           });
+
+      // `layoutMarkers` (page scope): page-foot "notes" on a page whose layout
+      // defines none (nothing raised, nothing in a smaller face) are the body's
+      // own lines, a contents page's entries most often (reportsthatmatter-b94).
+      if (
+        resolved.layoutMarkers?.scope === "page" &&
+        context.layout &&
+        split.footnotes.length &&
+        !pageDefinesNotes(context.layout, split.volume, split.pdfIndex)
+      ) {
+        split.body = [...split.body, ...split.footnotes];
+        split.footnotes = [];
+      }
 
       // A note that ran over the page break: its tail opens this page's
       // block, and belongs to the last note read before it.
@@ -413,7 +429,22 @@ export function ingestPageGroups(
     }
     return near;
   };
-  for (const block of resolved.flushFootnoteMarkers ? bodyChunks : []) {
+  // Raised markers, read off the PDF's layout: before the text-only linkers,
+  // which then leave alone what is already linked.
+  let markerStats: LayoutMarkerStats | undefined;
+  if (resolved.layoutMarkers && context.layout) {
+    const known = new Set(footnotes.map((note) => note.number));
+    markerStats = linkLayoutMarkers(
+      bodyChunks,
+      context.layout,
+      resolved.layoutMarkers.scope === "document"
+        ? { scope: "document", known }
+        : { scope: "page", onPage: (volume, pdfIndex) => notesByPage.get(pageKey(volume, pdfIndex)) ?? new Set() }
+    );
+  }
+  // With the layout deciding, the text-only linkers stay out unless asked for.
+  const textLinkers = !markerStats || resolved.layoutMarkers!.textFallback;
+  for (const block of resolved.flushFootnoteMarkers && textLinkers ? bodyChunks : []) {
     const plausible = notesNear(block.at);
     if (!plausible.size) continue;
     if (block.kind === "list") {
@@ -461,7 +492,7 @@ export function ingestPageGroups(
   // Paragraph notes are linked where they were read, against the paragraph
   // above them; a document-wide number lookup would only relink stray
   // numbers to notes whose "1" means something different on every page.
-  if (!resolved.paragraphNotes) {
+  if (!resolved.paragraphNotes && textLinkers) {
     const known = new Set(notes.map((note) => note.number));
     body = linkInlineMarkers(body, known);
     // An endnotes appendix's own markers are flush against the word before
@@ -526,6 +557,7 @@ export function ingestPageGroups(
     blocks: corrected.blocks,
     linkedText,
     pageText,
+    ...(markerStats ? { layoutMarkers: markerStats } : {}),
   };
 }
 

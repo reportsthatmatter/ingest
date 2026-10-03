@@ -166,6 +166,28 @@ describe("what each signal counts, on a page built to show it", () => {
     expect(measureLayout(withNote, clean).counts["markers-unlinked"]).toBe(0);
   });
 
+  it("markers: a raised marker in an italic line at the body's size counts (a case name, Leveson vol.1 p.61)", () => {
+    const fontsI = fonts + `\n<fontspec id="3" size="18" family="Times-Italic" color="#000000"/>`;
+    const italic = parseLayoutXml(
+      `<pdf2xml producer="poppler" version="26.08.0"><page number="1" position="absolute" top="0" left="0" height="1000" width="800">\n${fontsI}\n${[
+        ...lines.slice(0, 2),
+        `<text top="181" left="100" width="600" height="16" font="3">${long("Re H (Minors) (Sexual Abuse: Standard of Proof)")}</text>`,
+        f(177, 700, 714, "12", 2),
+        ...lines.slice(3),
+      ].join("\n")}\n</page></pdf2xml>`
+    );
+    const r = measureLayout(buildLayout([italic]), clean);
+    expect(r.expected.markers).toBe(1);
+    expect(r.counts["markers-unlinked"]).toBe(1);
+  });
+
+  it("markers: with relink false the blocks' own links are read, not linkInlineMarkers' guesses", () => {
+    // ", 9 people": a count the text linker reads as note 9 where note 9 exists; nothing on the page is raised
+    const counted = clean.map((b) => (b === clean[1] ? para(`Of these, 9 people. ${(b as { text: string }).text}`) : b));
+    expect(measureLayout(layout, counted, [{ number: 9 }]).counts["markers-spurious"]).toBe(1);
+    expect(measureLayout(layout, counted, [{ number: 9 }], { relink: false }).counts["markers-spurious"]).toBe(0);
+  });
+
   it("counts per page, only where something disagrees", () => {
     const r = measureLayout(layout, clean.slice(1));
     expect(Object.keys(r.pages)).toEqual(["1:1"]);

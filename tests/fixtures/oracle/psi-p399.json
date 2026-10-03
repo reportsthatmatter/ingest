@@ -1,0 +1,85 @@
+{
+ "source": "us-psi-financial-crisis volume 1 PDF page 399",
+ "xml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE pdf2xml SYSTEM \"pdf2xml.dtd\">\n\n<pdf2xml producer=\"poppler\" version=\"26.08.0\">\n<page number=\"399\" position=\"absolute\" top=\"0\" left=\"0\" height=\"1188\" width=\"918\">\n<text top=\"112\" left=\"452\" width=\"27\" height=\"16\" font=\"114\">392</text>\n<text top=\"897\" left=\"126\" width=\"470\" height=\"12\" font=\"115\">  2/6/2008 email from John Pearce to M ichael Petrick, HUD-CDO-00005146. </text>\n<text top=\"894\" left=\"108\" width=\"18\" height=\"8\" font=\"116\">1585</text>\n<text top=\"915\" left=\"126\" width=\"459\" height=\"12\" font=\"115\">  2/7/2008 email from John Pearce to David Lehman, HUD-CDO-00005147.</text>\n<text top=\"912\" left=\"108\" width=\"18\" height=\"8\" font=\"116\">1586</text>\n<text top=\"933\" left=\"126\" width=\"666\" height=\"12\" font=\"115\">  In April 2007, the month after Anderson issued its securities, New Century announced it would have to restate</text>\n<text top=\"930\" left=\"108\" width=\"18\" height=\"8\" font=\"116\">1587</text>\n<text top=\"950\" left=\"108\" width=\"685\" height=\"12\" font=\"115\">its earnings.  It declared bankruptcy soon after.  For more information about New Century, see Chapter IV, section</text>\n<text top=\"968\" left=\"108\" width=\"47\" height=\"12\" font=\"115\">E(2)(c).</text>\n<text top=\"986\" left=\"126\" width=\"649\" height=\"12\" font=\"115\">  See, e.g., 3/2007 Goldman internal email, GS M BS-E-002146861, Hearing Exhibit 4/27-77 (“I recommend</text>\n<text top=\"983\" left=\"108\" width=\"18\" height=\"8\" font=\"116\">1588</text>\n<text top=\"1003\" left=\"108\" width=\"695\" height=\"12\" font=\"115\">putting back 26% of the pool....if possible.”). See also 2/2/2007 email from M atthew Nichols to Kevin Gasvoda, GS</text>\n<text top=\"1021\" left=\"108\" width=\"679\" height=\"12\" font=\"115\">M BS-E-005556331 (“NC is running a 10% drop rate [due diligence drop] at ~6 points / drop and 4% EPD rate at</text>\n<text top=\"1038\" left=\"108\" width=\"693\" height=\"12\" font=\"115\">close to 20 points.”). 2/8/2007 email from John Cassidy to Joseph Ozment, others,  GS M BS-E-002045021 (“Given</text>\n<text top=\"1056\" left=\"108\" width=\"685\" height=\"12\" font=\"115\">the current state of the company I am no longer comfortable with the practice of taking loans with trailing docs . . .</text>\n<text top=\"1074\" left=\"108\" width=\"346\" height=\"12\" font=\"115\">that we need in order to conduct compliance testing. . .”). </text>\n<text top=\"152\" left=\"162\" width=\"650\" height=\"16\" font=\"114\">Once Hudson issued its securities, Goldman placed a priority on selling them, and delayed</text>\n<text top=\"173\" left=\"108\" width=\"683\" height=\"16\" font=\"114\">the issuance of a CDO on behalf of another client in order to facilitate Hudson sales.  Goldman</text>\n<text top=\"194\" left=\"108\" width=\"711\" height=\"16\" font=\"114\">sales representatives reported that clients expressed skepticism regarding the quality of the Hudson</text>\n<text top=\"215\" left=\"108\" width=\"456\" height=\"16\" font=\"114\">assets, but Goldman continued to promote the sale of the CDO.</text>\n<text top=\"258\" left=\"162\" width=\"617\" height=\"16\" font=\"114\">In 2008, as Hudson’s assets lost value and received rating downgrades from the credit</text>\n<text top=\"279\" left=\"108\" width=\"690\" height=\"16\" font=\"114\">rating agencies, Goldman, in its role as liquidation agent, was tasked with selling those assets to</text>\n<text top=\"300\" left=\"108\" width=\"701\" height=\"16\" font=\"114\">limit losses to the long investors.  The major Hudson investor, Morgan Stanley, pressed Goldman</text>\n<text top=\"322\" left=\"108\" width=\"711\" height=\"16\" font=\"114\">to do just that.  Goldman, however, delayed selling the assets for months.  As the assets dropped in</text>\n<text top=\"343\" left=\"108\" width=\"707\" height=\"16\" font=\"114\">value, Goldman’s short position increased in value.  Morgan Stanley’s representative reported to a</text>\n<text top=\"364\" left=\"108\" width=\"678\" height=\"16\" font=\"114\">colleague that when Goldman rejected the firm’s request to sell the poorly performing Hudson</text>\n<text top=\"385\" left=\"108\" width=\"202\" height=\"16\" font=\"114\">assets, “I broke my phone.” </text>\n<text top=\"385\" left=\"332\" width=\"490\" height=\"16\" font=\"114\">  He also sent an email to the head of Goldman’s CDO Desk saying:</text>\n<text top=\"383\" left=\"310\" width=\"21\" height=\"9\" font=\"118\">1585</text>\n<text top=\"407\" left=\"108\" width=\"501\" height=\"16\" font=\"114\">“[O]ne day I hope I get the real reason why you are doing this to me.”</text>\n<text top=\"407\" left=\"630\" width=\"154\" height=\"16\" font=\"114\">  Morgan Stanley lost</text>\n<text top=\"405\" left=\"608\" width=\"21\" height=\"9\" font=\"118\">1586</text>\n<text top=\"428\" left=\"108\" width=\"334\" height=\"16\" font=\"114\">nearly $960 million on its Hudson investment.</text>\n<text top=\"471\" left=\"162\" width=\"227\" height=\"16\" font=\"117\"><b>Anderson Mezzanine 2007-1. </b></text>\n<text top=\"471\" left=\"389\" width=\"390\" height=\"16\" font=\"114\"> Anderson Mezzanine 2007-1 (Anderson) was another</text>\n<text top=\"492\" left=\"108\" width=\"673\" height=\"16\" font=\"114\">synthetic CDO referencing BBB and BBB- rated subprime RMBS securities.  It was issued in</text>\n<text top=\"513\" left=\"108\" width=\"715\" height=\"16\" font=\"114\">March 2007.  Among other roles, Goldman served as the CDO’s placement agent, initial purchaser,</text>\n<text top=\"534\" left=\"108\" width=\"680\" height=\"16\" font=\"114\">collateral put provider, and liquidation agent.  Goldman hired another firm, a New York hedge</text>\n<text top=\"556\" left=\"108\" width=\"672\" height=\"16\" font=\"114\">fund founded by former Goldman employees, GSC Partners, to act as the collateral manager. </text>\n<text top=\"577\" left=\"108\" width=\"677\" height=\"16\" font=\"114\">Goldman took a short position on approximately 40% of the $305 million in assets underlying</text>\n<text top=\"598\" left=\"108\" width=\"79\" height=\"16\" font=\"114\">Anderson. </text>\n<text top=\"641\" left=\"162\" width=\"636\" height=\"16\" font=\"114\">Anderson referenced a number of poor quality assets.  Those assets had been selected by</text>\n<text top=\"662\" left=\"108\" width=\"663\" height=\"16\" font=\"114\">GSC Partners, with the approval of Goldman.  Over 45% of the referenced subprime RMBS</text>\n<text top=\"683\" left=\"108\" width=\"689\" height=\"16\" font=\"114\">securities contained mortgages originated by New Century, a subprime lender known within the</text>\n<text top=\"704\" left=\"108\" width=\"702\" height=\"16\" font=\"114\">industry, including Goldman, for issuing poor quality loans and which was experiencing financial</text>\n<text top=\"726\" left=\"108\" width=\"445\" height=\"16\" font=\"114\">problems while Anderson was being structured and marketed.</text>\n<text top=\"726\" left=\"575\" width=\"204\" height=\"16\" font=\"114\">  Inside Goldman, staff were</text>\n<text top=\"724\" left=\"553\" width=\"21\" height=\"9\" font=\"118\">1587</text>\n<text top=\"747\" left=\"108\" width=\"648\" height=\"16\" font=\"114\">aware of New Century’s problems and were taking action to return substantial numbers of</text>\n<text top=\"768\" left=\"108\" width=\"587\" height=\"16\" font=\"114\">substandard loans purchased from New Century and demand repayment for them.</text>\n<text top=\"768\" left=\"717\" width=\"96\" height=\"16\" font=\"114\">  Other assets</text>\n<text top=\"766\" left=\"695\" width=\"21\" height=\"9\" font=\"118\">1588</text>\n<text top=\"789\" left=\"108\" width=\"714\" height=\"16\" font=\"114\">in the Anderson CDO were also performing poorly, and at one point, Goldman personnel estimated</text>\n</page>\n</pdf2xml>\n",
+ "blocks": [
+  {
+   "kind": "page",
+   "number": 392,
+   "at": {
+    "volume": 1,
+    "pdfIndex": 399,
+    "printed": 392
+   }
+  },
+  {
+   "kind": "paragraph",
+   "text": "Once Hudson issued its securities, Goldman placed a priority on selling them, and delayed the issuance of a CDO on behalf of another client in order to facilitate Hudson sales. Goldman sales representatives reported that clients expressed skepticism regarding the quality of the Hudson assets, but Goldman continued to promote the sale of the CDO.",
+   "at": {
+    "volume": 1,
+    "pdfIndex": 399,
+    "printed": 392
+   }
+  },
+  {
+   "kind": "paragraph",
+   "text": "In 2008, as Hudson's assets lost value and received rating downgrades from the credit rating agencies, Goldman, in its role as liquidation agent, was tasked with selling those assets to limit losses to the long investors. The major Hudson investor, Morgan Stanley, pressed Goldman to do just that. Goldman, however, delayed selling the assets for months. As the assets dropped in value, Goldman's short position increased in value. Morgan Stanley's representative reported to a colleague that when Goldman rejected the firm's request to sell the poorly performing Hudson assets, \"I broke my phone.\" 1585 He also sent an email to the head of Goldman's CDO Desk saying: \"[O]ne day I hope I get the real reason why you are doing this to me.\"1586 Morgan Stanley lost nearly $960 million on its Hudson investment.",
+   "at": {
+    "volume": 1,
+    "pdfIndex": 399,
+    "printed": 392
+   }
+  },
+  {
+   "kind": "paragraph",
+   "text": "Anderson Mezzanine 2007-1. Anderson Mezzanine 2007-1 (Anderson) was another synthetic CDO referencing BBB and BBB- rated subprime RMBS securities. It was issued in March 2007. Among other roles, Goldman served as the CDO's placement agent, initial purchaser, collateral put provider, and liquidation agent. Goldman hired another firm, a New York hedge fund founded by former Goldman employees, GSC Partners, to act as the collateral manager. Goldman took a short position on approximately 40% of the $305 million in assets underlying Anderson.",
+   "at": {
+    "volume": 1,
+    "pdfIndex": 399,
+    "printed": 392
+   }
+  },
+  {
+   "kind": "paragraph",
+   "text": "Anderson referenced a number of poor quality assets. Those assets had been selected by GSC Partners, with the approval of Goldman. Over 45% of the referenced subprime RMBS securities contained mortgages originated by New Century, a subprime lender known within the industry, including Goldman, for issuing poor quality loans and which was experiencing financial problems while Anderson was being structured and marketed.1587 Inside Goldman, staff were aware of New Century's problems and were taking action to return substantial numbers of substandard loans purchased from New Century and demand repayment for them.1588 Other assets in the Anderson CDO were also performing poorly, and at one point, Goldman personnel estimated its warehouse assets had fallen in value by $22 million.1589 Due to the asset quality problems, the Mortgage Department head, Daniel Sparks, initially decided to cancel Anderson, but later changed his mind and decided to market the CDO as quickly as possible, using the $305 million in assets already in its warehouse account, rather than wait to accumulate all of the $500 million in assets initially planned.",
+   "at": {
+    "volume": 1,
+    "pdfIndex": 399,
+    "printed": 392
+   }
+  }
+ ],
+ "footnotes": [
+  {
+   "number": 1585,
+   "text": "2/6/2008 email from John Pearce to Michael Petrick, HUD-CDO-00005146.",
+   "page": 399,
+   "volume": 1,
+   "pdfIndex": 399,
+   "printed": 392
+  },
+  {
+   "number": 1586,
+   "text": "2/7/2008 email from John Pearce to David Lehman, HUD-CDO-00005147.",
+   "page": 399,
+   "volume": 1,
+   "pdfIndex": 399,
+   "printed": 392
+  },
+  {
+   "number": 1587,
+   "text": "In April 2007, the month after Anderson issued its securities, New Century announced it would have to restate its earnings. It declared bankruptcy soon after. For more information about New Century, see Chapter IV, section E(2)(c).",
+   "page": 399,
+   "volume": 1,
+   "pdfIndex": 399,
+   "printed": 392
+  },
+  {
+   "number": 1588,
+   "text": "See, e.g., 3/2007 Goldman internal email, GS M BS-E-002146861, Hearing Exhibit 4/27-77 (\"I recommend putting back 26% of the pool....if possible.\"). See also 2/2/2007 email from Matthew Nichols to Kevin Gasvoda, GS MBS-E-005556331 (\"NC is running a 10% drop rate [due diligence drop] at ~6 points / drop and 4% EPD rate at close to 20 points.\"). 2/8/2007 email from John Cassidy to Joseph Ozment, others, GS MBS-E-002045021 (\"Given the current state of the company I am no longer comfortable with the practice of taking loans with trailing docs . . . that we need in order to conduct compliance testing. . .\").",
+   "page": 399,
+   "volume": 1,
+   "pdfIndex": 399,
+   "printed": 392
+  }
+ ]
+}
