@@ -125,6 +125,16 @@ function quoteRuns(page, bodySize, skip) {
     flush();
     return runs;
 }
+/**
+ * A raised number that opens its line is a note's own number, on a page of
+ * notes (Columbia's and Deepwater's endnotes) or at the foot of one (Lehman's
+ * footnotes), not a marker in the text. A marker sits after a word.
+ * Labelled notes (`[^N-label]`, Saville's, the hybrid path's) are read as note N:
+ * the raised digits in the PDF are N.
+ */
+function definesNote(line, run) {
+    return line.text.trim().startsWith(run.text) && run.left - line.left < 5;
+}
 function furniture(layout) {
     // Running heads and folios: the same text (digits aside) in the same place on several pages.
     const place = (l) => `${norm(l.text.replace(/\d+/g, ""))}|${Math.round(l.top / 20)}`;
@@ -333,17 +343,19 @@ export function measureLayout(layout, blocks, footnotes = []) {
             }
             // — Markers —
             const labels = [];
+            // (a page that is mostly footnotes has the notes' face as its body: take the document's too)
+            const inBody = (l) => l.body || (Math.abs(l.size - bodyFont.size) < 0.5 && l.color === bodyFont.color && !l.bold && !l.italic);
             for (const l of lines)
-                if (l.body)
+                if (inBody(l))
                     for (const r of l.raised)
-                        if (/^\d{1,4}$/.test(r.text))
+                        if (/^\d{1,4}$/.test(r.text) && !definesNote(l, r))
                             labels.push(r.text);
             expected.markers += labels.length;
             pool.set(pageKey(v, p), labels);
             for (const b of mine) {
                 for (const t of blockTexts(b)) {
                     const linked = known.size ? linkInlineMarkers(t, known) : t;
-                    for (const m of linked.matchAll(/\[\^(\d+)\]/g))
+                    for (const m of linked.matchAll(/\[\^(\d+)(?:-[^\]\s]+)?\]/g))
                         producedMarkers.push({ volume: v, page: p, label: m[1] });
                 }
             }
