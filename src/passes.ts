@@ -4,6 +4,7 @@ import { splitColumns } from "./columns";
 import type { PipelineContext } from "./context";
 import type { Provenance } from "./paragraphs";
 import type { EditionPass } from "./edition";
+import type { VisionStructurePass } from "./vision/hybrid";
 import type { PageBreakReferee } from "./pagebreaks";
 
 /**
@@ -90,6 +91,7 @@ export type LayoutMarkersPass = {
 
 export type Pass =
   | EditionPass
+  | VisionStructurePass
   | NumberedHeadingsPass
   | LayoutMarkersPass
   | PageBreakContinuationsPass

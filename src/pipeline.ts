@@ -47,6 +47,7 @@ import { LayoutEndnotesReader, chapterOfBlocks } from "./layout-endnotes";
 import { autoFix, findSuspects, rankSuspects, type Suspect } from "./ocr";
 import type { PipelineContext } from "./context";
 import { assembleEdition, fillGaps, fillPrintedGaps, type EditionReport, type PrintedPage } from "./edition";
+import { VisionHybrid, type VisionReport } from "./vision/hybrid";
 
 export type IngestResult = {
   markdown: string;
@@ -82,6 +83,8 @@ export type IngestResult = {
   pageText?: Array<{ volume: number; pdfIndex: number; lines: string[]; noteLines?: number }>;
   /** What `layoutMarkers` saw and linked, when the report declares it. */
   layoutMarkers?: LayoutMarkerStats;
+  /** `visionStructure`: which pages took the vision model's structure, and why the others did not. */
+  vision?: VisionReport;
 };
 
 export type Metadata = {
@@ -179,6 +182,9 @@ export function ingestPageGroups(
     resolved.layoutEndnotes && context.layout ? new LayoutEndnotesReader(context.layout) : undefined;
   const endnotesHeadings = new Map<string, string[]>();
 
+  // `visionStructure`: a note's tail that ran over the page break, by the note it was added to.
+  const runOvers = new Map<Footnote, string>();
+
   let pageOffset = 0;
   const splitGroups = pageGroups.map((group) =>
     group.map(() => {
@@ -228,6 +234,7 @@ export function ingestPageGroups(
       const previous = footnotes[footnotes.length - 1];
       if (split.runOver && previous) {
         previous.text = normaliseWhitespace(`${previous.text} ${split.runOver.join(" ")}`);
+        runOvers.set(previous, split.runOver.join(" "));
       } else if (split.runOver) {
         // Nothing to give it back to: leave it where it was read.
         split.body = [...split.body, ...split.runOver];
@@ -305,6 +312,8 @@ export function ingestPageGroups(
   const outline: Outline | undefined = resolved.contentsOutline ? emptyOutline() : undefined;
   // `listedDivisions`: the parts, chapters and appendices the contents lists.
   const divisions: ListedDivisions = { entries: [], used: new Set() };
+  // `visionStructure`: a vision model's verified block structure, page by page (vision/hybrid.ts).
+  const hybrid = resolved.vision ? new VisionHybrid(resolved.vision, () => vocabulary(sourceText), context.layout, corrections.map((c) => c.find)) : undefined;
 
   for (const [groupIndex, group] of cleanedGroups.entries()) {
     for (const split of group) {
@@ -374,7 +383,7 @@ export function ingestPageGroups(
               resolved.recoverListedHeadings,
               resolved.letteredItems
         );
-      const blocks = (
+      const read = (
         resolved.contentsEntries && (entries?.sections.size || isIllustrationList(pageLines))
           ? spacedContentsBlocks(pageLines)
           : isContentsPage(pageLines)
@@ -385,6 +394,17 @@ export function ingestPageGroups(
             ? readWithSubheads(pageLines, readBody)
             : readBody(pageLines)
       ).map((block) => ({ ...block, at }));
+      const blocks = hybrid
+        ? hybrid.page({
+            volume: split.volume,
+            pdfIndex: split.pdfIndex,
+            body: pageLines,
+            footLines: split.footnotes,
+            blocks: read,
+            at,
+            pipelineNotes: footnotes.filter((note) => note.volume === split.volume && note.pdfIndex === split.pdfIndex).map((note) => note.text),
+          })
+        : read;
 
       // Record where each printed page begins. These documents are cited by page
       // ("Report at 62"), so the printed number is the citation unit readers
@@ -416,6 +436,11 @@ export function ingestPageGroups(
       bodyChunks.push(...blocks);
     }
   }
+
+  // The text-only marker linker keeps the note numbers the pipeline itself read: the vision pages' notes add
+  // labels it would otherwise take as license to link a bare number anywhere ("testing. . . 3 8" as note 3).
+  const pipelineKnown = hybrid ? new Set(footnotes.map((note) => note.number)) : undefined;
+  if (hybrid) footnotes.splice(0, footnotes.length, ...hybrid.footnotes(footnotes, runOvers));
 
   let notesChapters: NotesChapter[] = [];
   if (notesLines.length) {
@@ -510,6 +535,7 @@ export function ingestPageGroups(
     letteredItems: resolved.letteredItems,
     layout: context.layout,
   });
+  const visionReport = hybrid?.report(hybrid.joins(joined));
   const corrected = applyCorrections(
     resolved.chapterContents ? contentsHeadings(joined) : joined,
     corrections,
@@ -538,8 +564,9 @@ export function ingestPageGroups(
   // numbers to notes whose "1" means something different on every page.
   if (!resolved.paragraphNotes && textLinkers) {
     // A labelled note ("3-5", `layoutEndnotes`) is not what a bare [^3] would open.
-    const known = new Set(notes.filter((note) => !note.label).map((note) => note.number));
-    body = linkInlineMarkers(body, known);
+    const defined = new Set(notes.filter((note) => !note.label).map((note) => note.number));
+    const known = pipelineKnown ? new Set([...pipelineKnown].filter((n) => defined.has(n))) : defined;
+    body = hybrid ? linkOutsideVision(body, outBlocks, (text) => linkInlineMarkers(text, known)) : linkInlineMarkers(body, known);
     // An endnotes appendix's own markers are flush against the word before
     // them far more often than not ("Airport.1") — `linkInlineMarkers` alone
     // leaves most of them as bare digits. Scoped per chapter because the
@@ -608,7 +635,28 @@ export function ingestPageGroups(
     linkedText,
     pageText,
     ...(markerStats ? { layoutMarkers: markerStats } : {}),
+    ...(visionReport ? { vision: visionReport } : {}),
   };
+}
+
+/**
+ * `visionStructure`: the text-only marker linker runs on every block but those whose structure came from
+ * the vision reading, whose markers the model placed and the layer confirmed; there it would only add the
+ * bare numbers the model said were not markers ("2 8" as note 2). Falls back to the whole text when the
+ * chunks cannot be paired with the blocks.
+ */
+function linkOutsideVision(body: string, blocks: Block[], link: (text: string) => string): string {
+  const chunks = body.split("\n\n");
+  const paired = alignChunks(blocks, chunks);
+  if (!paired) return link(body);
+  const vision = new Set<number>();
+  let j = 0;
+  paired.forEach((chunk, i) => {
+    if (chunk === undefined) return;
+    if (blocks[i].source === "vision") vision.add(j);
+    j++;
+  });
+  return chunks.map((chunk, i) => (vision.has(i) ? chunk : link(chunk))).join("\n\n");
 }
 
 /**

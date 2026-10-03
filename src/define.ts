@@ -11,6 +11,7 @@ import type {
 } from "./passes";
 import type { PageBreakOptions } from "./pagebreaks";
 import type { EditionPass } from "./edition";
+import type { VisionStructurePass } from "./vision/hybrid";
 
 export type Volume = { path: string; sha256?: string };
 
@@ -92,6 +93,11 @@ export type ResolvedPasses = {
    * the PDF passes still run, as the shadow ingest that supplies printed pages.
    */
   edition?: EditionPass;
+  /**
+   * `visionStructure`: block structure from a vision model's verified reading
+   * of the page images, on the pages that pass its gate (vision/hybrid.ts).
+   */
+  vision?: VisionStructurePass;
 };
 
 /** Validates a report's definition. Throws rather than ingesting nonsense. */
@@ -118,6 +124,14 @@ export function pipeline(def: PipelineDef): PipelineDef {
   }
   if ((def.passes ?? []).filter((pass) => pass.stage === "edition").length > 1) {
     throw new Error(`${def.id}: more than one cleanEdition declared`);
+  }
+  const visions = (def.passes ?? []).filter((pass) => pass.stage === "vision").length;
+  if (visions > 1) throw new Error(`${def.id}: more than one visionStructure declared`);
+  if (visions && (def.passes ?? []).some((pass) => pass.stage === "edition")) {
+    throw new Error(`${def.id}: visionStructure and cleanEdition do not combine — one takes structure from the PDF's pages, the other text and structure from an edition`);
+  }
+  if (visions && (def.passes ?? []).some((pass) => pass.name === "paragraphNotes" || pass.name === "endnotes")) {
+    throw new Error(`${def.id}: visionStructure reads page-foot notes; it does not combine with paragraphNotes or endnotes`);
   }
   if ((def.passes ?? []).filter((pass) => pass.stage === "allCapsHeadings").length > 1) {
     throw new Error(`${def.id}: more than one allCapsHeadings pass declared`);
@@ -208,6 +222,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     bodyPasses: passes.filter((pass): pass is BodyPass => pass.stage === "body"),
     volumePasses: passes.filter((pass): pass is VolumePass => pass.stage === "volume"),
     edition: passes.find((pass): pass is EditionPass => pass.stage === "edition"),
+    vision: passes.find((pass): pass is VisionStructurePass => pass.stage === "vision"),
   };
 }
 

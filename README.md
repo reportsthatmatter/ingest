@@ -137,6 +137,30 @@ passes: [
 
 `losslessCheck` accepts a word that is in the source as a piece of a token or two tokens joined across a line-end dash or an apostrophe ("interceptors.The", "team—" / "Suqami", "Yousef ’s"): the edition spaces and closes up what the PDF's text layer does not. It moves no output; the gate's counts fall for PDF-built reports too, and no report's pass or fail changes.
 
+## Block structure from a vision model (`visionStructure`)
+
+A scanned report whose text layer is good on words and poor on structure (Challenger: paragraph starts lost at every indented line, notes run into the body, the report's own Issue/Findings labels read as prose) can take its block structure from a vision model's reading of the page images, page by page, while every word stays the text layer's. `visionStructure` (src/vision/, reportsthatmatter-jsqw; the measurements behind it: the site's `docs/design/2026-10-03-vision-structure-pass.md`, kyj3) reads the model output the report repo commits (granite-docling DocTags, `reference/vision/doctags.jsonl.gz`, written by the site's `scripts/vision/run.py --manifest`):
+
+```ts
+import { visionStructure } from "@rtm/ingest";
+
+passes: [
+  …every PDF pass, unchanged…,
+  visionStructure({
+    dir: import.meta.dirname,
+    pack: { path: "reference/vision/doctags.jsonl.gz", sha256: "…" },   // checked before reading; each page's DocTags against its recorded hash
+    // minAccepted: 0.8, strict: false, keepStarts: false, quotesFromPipeline: true (the defaults)
+  }),
+]
+```
+
+- **Verified, page by page.** Each page's model blocks are aligned to the pipeline's own text for that page (its lines once furniture and the body passes are off, page-foot notes included; `verify.ts`, ported from the site's verifier): a block is accepted at 75% of its words in the layer and no run of more than 8 missing (lenient; `strict: true` is 90% and 4). The layout is a second witness for which lines are notes (set at 0.88 of the body size or less).
+- **Gated, page by page.** The page takes the model's structure only when at least `minAccepted` of its blocks are accepted, it is not a contents page, and the vision reading loses none of the pipeline's section headings (level 2 and 3: the report's sections and their slugs), none of its notes, and no text a correction finds there. `keepStarts: true` also refuses a page where the model has fewer paragraph starts than the pipeline (off by default: on Challenger the pipeline over-splits exactly the pages the model reads best, PDF p.68 has 48 starts for 16 paragraphs). Every other page keeps the pipeline's blocks.
+- **The layer's words, always.** A gated page is rebuilt from the layer's characters: each layer token belongs to exactly one block, so every word is served once and none is the model's (`word count changed` keeps the pipeline's page if that ever fails). Accepted blocks take the model's type; a rejected stretch claims no structure and runs on into the paragraph before it, except where the pipeline also reads a paragraph start at an indented line after a full stop (two witnesses). A heading the pipeline also read keeps its text and level; a new one is a level-4 subhead (no section moves). A model "heading" that ends as a sentence or a lead-in ("Mr. Mulloy testified:") is a paragraph. A paragraph the pipeline set as a quotation (80% of its words) stays one.
+- **Notes and markers.** A note is an accepted footnote block with the model's label (the model reads note numbers far better than this layer does); the layer's opening digits come off only where they are that label ("4 1 Ibid." for 41). A marker is set where the model puts one and the layer's characters look like one: the label's digits closed up to a lower-case word or closing punctuation, or set off after punctuation; never a number in running text ("13 of the 23 missions", "STS-3"). The page's notes replace the pipeline's notes for that page, in page order; a note's tail that ran over onto the next page stays with it. The text-only marker linker does not run on vision blocks and links only the note numbers the pipeline itself read.
+- **Provenance and joins.** Each block from a gated page has `source: "vision"` (`Block.source`, the field cleanEdition's gap-fill uses for `"edition" | "pdf"`). The pipeline's page markers stand, and the page-break joins (`mergeAcrossPages`, `layoutPageJoins`) run over the mixed blocks as over any others: vision to pipeline, pipeline to vision, vision to vision. `IngestResult.vision` (`VisionReport`) lists every page's decision and why, and counts the source boundaries and how many the joins closed; `renderVisionReport` writes it out (the site's `pnpm ingest run` puts it in `reference/vision/hybrid.{md,json}`).
+- **Relation to `cleanEdition`.** That mode replaces a report's text and structure with an edition's and keeps the PDF for pages and the fidelity check; this one keeps the PDF's words everywhere and swaps only the structure of the pages that pass the gate. They do not combine (`pipeline()` refuses both, and refuses `visionStructure` with `paragraphNotes` or `endnotes`). Whether to serve the model's words where it reads better than the layer is a decision (the site's docs/decisions/0011, fc3x), not an option here.
+
 ## Rendering and publishing
 
 `full.md` is the ingestion pipeline's output and a report repo's own
