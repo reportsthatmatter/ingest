@@ -113,9 +113,28 @@ export function takePrintedNumber(input: string[], options: { roman?: boolean } 
     lines.splice(index, 1);
   };
 
+  // A thumb-index tab sets a capital letter at the foot of the page edge, on the folio's line or the line below
+  // it (Leveson, Part L: "1803" then "L", or "L        1804"); the folio is read past it, and the tab goes
+  // with it (reportsthatmatter-d662).
+  const withTab = (line: string): number | null => {
+    const m = /^\s*(?:[A-Z]\s{2,}(\d{1,4})|(\d{1,4})\s{2,}[A-Z])\s*$/.exec(line);
+    return m ? Number.parseInt(m[1] ?? m[2], 10) : null;
+  };
   for (let i = lines.length - 1; i >= 0 && i >= lines.length - 4; i--) {
     if (!lines[i].trim()) continue;
-    if (PAGE_NUMBER.test(lines[i])) takeNumber(i);
+    const tabbed = withTab(lines[i]);
+    if (tabbed !== null) {
+      printed = tabbed;
+      lines.splice(i, 1);
+    } else if (/^\s*[A-Z]\s*$/.test(lines[i])) {
+      // a lone tab letter: the folio is the nearest line above it, if that is a number
+      let j = i - 1;
+      while (j >= 0 && !lines[j].trim()) j--;
+      if (j >= 0 && /^\s*\d{1,4}\s*$/.test(lines[j])) {
+        takeNumber(j);
+        lines.splice(i - 1, 1);
+      } else if (PAGE_NUMBER.test(lines[i])) takeNumber(i);
+    } else if (PAGE_NUMBER.test(lines[i])) takeNumber(i);
     break;
   }
 

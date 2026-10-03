@@ -274,6 +274,11 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         footnotes.push(...appendix.notes);
         notesChapters = appendix.chapters;
     }
+    // A page whose number was not read (a figure page, a folio set as "(3)" or
+    // above a thumb index) between two that were, in step with the PDF's page order,
+    // is marked with the number between them, at its own first block: without a
+    // marker its text is cited with the page before (reportsthatmatter-d662).
+    markUnreadPages(bodyChunks);
     // A printed number that appears more than once in a report needs telling
     // apart, or every occurrence renders the same anchor and a citation to the
     // second silently lands on the first.
@@ -518,6 +523,36 @@ function splitPageNumberOnly(page) {
         body: lines,
         footnotes: [],
     };
+}
+/**
+ * `fillPrintedGaps` on the PDF path: inserts, in place, a page marker before
+ * the first block of each page the gap-filler numbers. A page with no block of
+ * its own (a blank or figure-only page) gets none, so markers never stack.
+ */
+export function markUnreadPages(chunks) {
+    const read = chunks.flatMap((block) => block.kind === "page" && block.at ? [{ volume: block.at.volume, pdfIndex: block.at.pdfIndex, number: block.number }] : []);
+    const have = new Set(read.map((entry) => `${entry.volume}:${entry.pdfIndex}`));
+    const fill = new Map(fillPrintedGaps(read)
+        .filter((entry) => !have.has(`${entry.volume}:${entry.pdfIndex}`))
+        .map((entry) => [`${entry.volume}:${entry.pdfIndex}`, entry]));
+    if (!fill.size)
+        return;
+    for (let i = chunks.length - 1; i >= 0; i--) {
+        const block = chunks[i];
+        if (block.kind === "page" || !block.at)
+            continue;
+        const key = `${block.at.volume}:${block.at.pdfIndex}`;
+        const entry = fill.get(key);
+        if (!entry)
+            continue;
+        // the earliest block of the page: walk back while the block before it is on the same page
+        let first = i;
+        while (first > 0 && chunks[first - 1].kind !== "page" && chunks[first - 1].at?.volume === block.at.volume && chunks[first - 1].at?.pdfIndex === block.at.pdfIndex)
+            first--;
+        chunks.splice(first, 0, { kind: "page", number: entry.number, at: { volume: entry.volume, pdfIndex: entry.pdfIndex, printed: null } });
+        fill.delete(key);
+        i = first;
+    }
 }
 function frontMatter(fields) {
     const lines = Object.entries(fields)
