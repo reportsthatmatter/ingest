@@ -484,9 +484,8 @@ export function linkFlushMarkersByChapter(body, chapters, notesChapters) {
     }
     return out;
 }
-export function renderEndnotes(notes) {
-    if (!notes.length)
-        return "";
+/** The notes as `renderEndnotes` prints them: consecutive notes with one label are one note (a note that runs over a page). */
+export function mergeFootnotes(notes) {
     const merged = [];
     for (const note of notes) {
         const previous = merged[merged.length - 1];
@@ -497,7 +496,14 @@ export function renderEndnotes(notes) {
         }
         merged.push({ ...note });
     }
-    return merged.map((note) => `[^${note.label ?? note.number}]: ${note.text}`).join("\n\n");
+    return merged;
+}
+export function renderEndnotes(notes) {
+    if (!notes.length)
+        return "";
+    return mergeFootnotes(notes)
+        .map((note) => `[^${note.label ?? note.number}]: ${note.text}`)
+        .join("\n\n");
 }
 /**
  * Footnote markers that sit flush against the word before them.

@@ -42,6 +42,8 @@ export type { PageBreakLines, PageBreakDecision, PageBreakCase, PageBreakReferee
 export type { PipelineContext } from "./context.js";
 export { measureLayout, ORACLE_SIGNALS, ORACLE } from "./oracle.js";
 export type { OracleReport, OracleSignal, OracleFinding, PageCounts } from "./oracle.js";
+export { noteOffPage, hasPageNotes } from "./noteplace.js";
+export type { NoteOffPage } from "./noteplace.js";
 export { parseGolden, checkGoldenPage, scoreOracle, finalBlocks } from "./golden.js";
 export { ASSERTION_KINDS } from "./golden.js";
 export type { Golden, GoldenPage, GoldenBlock, GoldenResult, SignalScore, AssertionKind } from "./golden.js";

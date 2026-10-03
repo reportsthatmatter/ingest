@@ -108,6 +108,8 @@ export declare function parseNotesAppendix(lines: NotesLine[], chapters: Readonl
  */
 export declare function linkSequencedMarkers(text: string, plausible: ReadonlySet<number>): string;
 export declare function linkFlushMarkersByChapter(body: string, chapters: ReadonlySet<string>, notesChapters: NotesChapter[]): string;
+/** The notes as `renderEndnotes` prints them: consecutive notes with one label are one note (a note that runs over a page). */
+export declare function mergeFootnotes(notes: Footnote[]): Footnote[];
 export declare function renderEndnotes(notes: Footnote[]): string;
 /**
  * Footnote markers that sit flush against the word before them.

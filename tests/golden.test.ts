@@ -103,7 +103,7 @@ describe("checkGoldenPage on Hillsborough PDF p.34 (printed 30)", () => {
 });
 
 describe("scoreOracle", () => {
-  const zero = { "headings-missed": 0, "headings-spurious": 0, "markers-unlinked": 0, "markers-spurious": 0, "paragraphs-oversplit": 0, "paragraphs-merged": 0, "quotes-spurious": 0, "quotes-missed": 0 };
+  const zero = { "headings-missed": 0, "headings-spurious": 0, "markers-unlinked": 0, "markers-spurious": 0, "paragraphs-oversplit": 0, "paragraphs-merged": 0, "quotes-spurious": 0, "quotes-missed": 0, "note-off-page": 0 };
   it("matches counts one for one per page and skips a signal the entry does not speak to", () => {
     const rows = [
       { oracle: { ...zero, "headings-missed": 3 }, truth: { "headings-missed": 2 } },
