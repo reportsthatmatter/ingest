@@ -412,6 +412,16 @@ describe("splitSections", () => {
     expect(sections[1].html).toContain('id="body-first"');
   });
 
+  it("titles a section by its heading's words, not the note beside it (reportsthatmatter-y0w9)", async () => {
+    const { splitSections } = await import("../src/sections");
+    const html = renderMarkdown(
+      "## Defendants Acknowledged a Market[^19]\n\nBody of the section.\n\n[^19]: The Court is distinguishing between cigarettes. -656-"
+    );
+    const section = splitSections(html, 0).find((s) => s.title.startsWith("Defendants"))!;
+    expect(section.html).toContain("The Court is distinguishing");
+    expect(section.title).toBe("Defendants Acknowledged a Market");
+  });
+
   it("folds a sliver into the section before it", async () => {
     const { splitSections } = await import("../src/sections");
     const long = "word ".repeat(800);
