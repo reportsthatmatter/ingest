@@ -2373,7 +2373,51 @@ export function mergeAcrossPages(blocks: Block[], options: MergeOptions = {}): B
     merged.push(block);
   }
 
-  return merged;
+  return options.photoCredits ? attachRepeatedCredits(merged) : merged;
+}
+
+/** The credit is at most this many words; the caption it joins at most `CREDIT_CAPTION_WORDS`. */
+const CREDIT_WORDS = 3;
+const CREDIT_CAPTION_WORDS = 40;
+/** A credit recurs: a firm's name under each of the report's figures. */
+const CREDIT_REPEATS = 3;
+
+/**
+ * A graphics firm's name set under each figure ("TrialGraphix", Deepwater),
+ * with no slash for `isPhotoCredit` to find. Once the page breaks are joined it
+ * stands as a paragraph of its own, repeated down the report, which is how the
+ * quality harness reads it (`furniture-paragraph`, reportsthatmatter-sbnn).
+ *
+ * A lone short line of at most three words, no sentence, that stands as a whole
+ * paragraph at least three times in the report and directly below a caption-sized
+ * paragraph, is that credit: it is attached to the caption ("FIGURE 4.1: Macondo
+ * Well Schematic — TrialGraphix"), so no word is lost and no paragraph is left
+ * standing for it. A short repeated line below anything longer is left alone.
+ */
+function attachRepeatedCredits(blocks: Block[]): Block[] {
+  const key = (text: string) => text.trim().toLowerCase();
+  const counts = new Map<string, number>();
+  const isCredit = (b: Block): boolean =>
+    b.kind === "paragraph" && b.finding === undefined && words(b.text) <= CREDIT_WORDS && !endsSentence(b.text);
+  for (const b of blocks) if (b.kind === "paragraph" && isCredit(b)) counts.set(key(b.text), (counts.get(key(b.text)) ?? 0) + 1);
+  const out: Block[] = [];
+  for (const b of blocks) {
+    const above = out[out.length - 1];
+    if (
+      b.kind === "paragraph" &&
+      isCredit(b) &&
+      (counts.get(key(b.text)) ?? 0) >= CREDIT_REPEATS &&
+      above?.kind === "paragraph" &&
+      above.finding === undefined &&
+      !isCredit(above) &&
+      words(above.text) <= CREDIT_CAPTION_WORDS
+    ) {
+      above.text = `${above.text} — ${b.text.trim()}`;
+      continue;
+    }
+    out.push(b);
+  }
+  return out;
 }
 
 /** How many blocks may stand between a paragraph and its continuation (a chart's labels count one each). */
