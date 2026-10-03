@@ -150,6 +150,22 @@ describe("what each signal counts, on a page built to show it", () => {
     expect(spurious.counts["markers-spurious"]).toBe(1);
   });
 
+  it("markers: a labelled link [^N-label] is note N, so it consumes the raised N (Saville, the hybrid path)", () => {
+    const marked = buildLayout([page([...lines.slice(0, 2), f(155, 700, 708, "7", 2), ...lines.slice(2)])]);
+    const labelled = clean.map((b) => (b === clean[1] ? para(`${(b as { text: string }).text}[^7-31]`) : b));
+    const r = measureLayout(marked, labelled, [{ number: 7 }]);
+    expect(r.counts["markers-unlinked"]).toBe(0);
+    expect(r.counts["markers-spurious"]).toBe(0);
+  });
+
+  it("markers: a raised number that opens its line is a note's own number (a notes page, a footnote), not a marker", () => {
+    const noteLine = [f(158, 100, 108, "7", 2), f(160, 108, 700, long("Report of the Commission, Vol. I, p. 48."))];
+    const withNote = buildLayout([page([...lines.slice(0, 1), ...noteLine, ...lines.slice(2)])]);
+    expect(withNote.page(1, 1)!.lines.some((l) => l.raised.length > 0 && l.text.startsWith("7"))).toBe(true);
+    expect(measureLayout(withNote, clean).expected.markers).toBe(0);
+    expect(measureLayout(withNote, clean).counts["markers-unlinked"]).toBe(0);
+  });
+
   it("counts per page, only where something disagrees", () => {
     const r = measureLayout(layout, clean.slice(1));
     expect(Object.keys(r.pages)).toEqual(["1:1"]);
