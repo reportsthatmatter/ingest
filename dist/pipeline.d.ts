@@ -8,6 +8,7 @@ import { type LayoutMarkerStats } from "./markers.js";
 import { type Suspect } from "./ocr.js";
 import type { PipelineContext } from "./context.js";
 import { type EditionReport } from "./edition.js";
+import { type VisionReport } from "./vision/hybrid.js";
 export type IngestResult = {
     markdown: string;
     corrections: number;
@@ -47,6 +48,8 @@ export type IngestResult = {
     }>;
     /** What `layoutMarkers` saw and linked, when the report declares it. */
     layoutMarkers?: LayoutMarkerStats;
+    /** `visionStructure`: which pages took the vision model's structure, and why the others did not. */
+    vision?: VisionReport;
     /** What `typographicHeadings` found and cut out, when the report declares it. */
     typographicHeadings?: TypographicHeadingStats;
 };

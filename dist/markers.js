@@ -60,7 +60,7 @@ function anchorPattern(before, earlier) {
         .join("\\s+");
     for (const r of marks) {
         out += plain(trimmed.slice(at, r.offset));
-        out += `(?:\\[\\^${r.text}\\]|${r.text})`;
+        out += `(?:\\[\\^${r.text}(?:-\\d+)?\\]|${r.text})`;
         at = r.offset + r.text.length;
     }
     out += plain(trimmed.slice(at));
@@ -173,7 +173,11 @@ export function linkLayoutMarkers(blocks, layout, notes) {
             continue;
         const raised = raisedOn(volume, pdfIndex);
         stats.raised += raised.length;
+        // A page's chapter is its first block's that has one (chapters open on a page of their own).
+        const chapter = notes.scope === "chapter" ? units.map((u) => notes.chapterOf(u.block)).find(Boolean) : undefined;
         const cites = (n) => {
+            if (notes.scope === "chapter")
+                return chapter?.numbers.has(n) ?? false;
             if (notes.scope === "document")
                 return notes.known.has(n);
             if (notes.onPage(volume, pdfIndex).has(n))
@@ -195,7 +199,7 @@ export function linkLayoutMarkers(blocks, layout, notes) {
             const text = textOf(unit);
             // Close up any space pdftotext put between the word and its marker.
             const head = text.slice(0, at.start).replace(/[ \t]+$/, "");
-            const marker = `[^${c.value}]`;
+            const marker = chapter ? `[^${c.value}-${chapter.key}]` : `[^${c.value}]`;
             setText(unit, head + marker + text.slice(at.end));
             cursor.unit = at.unit;
             cursor.pos = head.length + marker.length;

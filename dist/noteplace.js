@@ -2,7 +2,7 @@ import { mergeFootnotes } from "./footnotes.js";
 import { resolveNoteReferences } from "./markdown.js";
 /** The notes sit at the foot of the page that cites them (not endnotes, not an edition's own notes). */
 export function hasPageNotes(passes) {
-    return !(passes ?? []).some((pass) => pass.name === "endnotes" || pass.name === "edition");
+    return !(passes ?? []).some((pass) => pass.name === "endnotes" || pass.name === "layoutEndnotes" || pass.name === "edition");
 }
 function texts(b) {
     if (b.kind === "paragraph" || b.kind === "quote" || b.kind === "heading" || b.kind === "contents")

@@ -90,6 +90,17 @@ export type MarkerNotes =
  | {
     scope: "document";
     known: ReadonlySet<number>;
+}
+/**
+ * Endnotes numbered afresh per chapter (`layoutEndnotes`): each block's chapter, and the
+ * note numbers printed for it. A marker is linked `[^N-C]`; a block in no chapter links nothing.
+ */
+ | {
+    scope: "chapter";
+    chapterOf: (block: Block) => {
+        key: number;
+        numbers: ReadonlySet<number>;
+    } | undefined;
 };
 export declare function linkLayoutMarkers(blocks: Block[], layout: Layout, notes: MarkerNotes): LayoutMarkerStats;
 /**

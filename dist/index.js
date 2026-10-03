@@ -11,11 +11,15 @@
  */
 // — What a report declares —
 export { pipeline, resolvePasses } from "./define.js";
-export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, escapeNumberedParagraphs, escapeLeadingHash, paragraphNotes, chapterContents, listedHeadings, unlistedHeadingsMinor, hangingIndents, letteredItems, unmarkedHeadings, recoverListedHeadings, endnotes, numberedSections, contentsEntries, shortSubheads, shiftedPages, quoteRunOn, quoteListRunOns, layoutPageJoins, layoutMarkers, typographicHeadings, numberedFindings, doubleSpaced, contentsOutline, listedDivisions, wrappedHeadings, pageBreakContinuations, citationRunOver, romanFolios, numberedOutsideTables, photoCredits, footnoteGap, footnoteNumbers, runningFurniture, geometry, columns, quoteInset, allCapsHeadings, numberedHeadings, } from "./passes.js";
+export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, escapeNumberedParagraphs, escapeLeadingHash, paragraphNotes, chapterContents, listedHeadings, unlistedHeadingsMinor, hangingIndents, letteredItems, unmarkedHeadings, recoverListedHeadings, endnotes, layoutEndnotes, numberedSections, contentsEntries, shortSubheads, shiftedPages, quoteRunOn, quoteListRunOns, layoutPageJoins, layoutMarkers, typographicHeadings, numberedFindings, doubleSpaced, contentsOutline, listedDivisions, wrappedHeadings, pageBreakContinuations, citationRunOver, romanFolios, numberedOutsideTables, photoCredits, footnoteGap, footnoteNumbers, runningFurniture, geometry, columns, quoteInset, allCapsHeadings, numberedHeadings, } from "./passes.js";
 export { detectGutter, splitColumns } from "./columns.js";
 // — A clean edition as the source (the hybrid mode, edition.ts) —
 export { cleanEdition, inlineMarkdown, inlineText, escapeInline, assembleEdition, fillGaps } from "./edition.js";
 export { htmlEvents, decodeEntities } from "./html.js";
+// — Block structure from a vision model's verified page reading (vision/hybrid.ts) —
+export { visionStructure, visionPage, readPack, renderVisionReport } from "./vision/hybrid.js";
+export { parseDoctags } from "./vision/doctags.js";
+export { verifyPage, verifyWithLayout, rejoinLineHyphens } from "./vision/verify.js";
 // Monotone word alignment (promoted from the site's scorer, src/lib/score)
 export { align } from "./align.js";
 export { tokens, words, fold, tokensBefore, hasLetter } from "./tokens.js";

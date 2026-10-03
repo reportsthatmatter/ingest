@@ -22,6 +22,15 @@ export function pipeline(def) {
     if ((def.passes ?? []).filter((pass) => pass.stage === "edition").length > 1) {
         throw new Error(`${def.id}: more than one cleanEdition declared`);
     }
+    const visions = (def.passes ?? []).filter((pass) => pass.stage === "vision").length;
+    if (visions > 1)
+        throw new Error(`${def.id}: more than one visionStructure declared`);
+    if (visions && (def.passes ?? []).some((pass) => pass.stage === "edition")) {
+        throw new Error(`${def.id}: visionStructure and cleanEdition do not combine — one takes structure from the PDF's pages, the other text and structure from an edition`);
+    }
+    if (visions && (def.passes ?? []).some((pass) => pass.name === "paragraphNotes" || pass.name === "endnotes")) {
+        throw new Error(`${def.id}: visionStructure reads page-foot notes; it does not combine with paragraphNotes or endnotes`);
+    }
     if ((def.passes ?? []).filter((pass) => pass.stage === "allCapsHeadings").length > 1) {
         throw new Error(`${def.id}: more than one allCapsHeadings pass declared`);
     }
@@ -59,6 +68,7 @@ export function resolvePasses(def) {
             passes.some((pass) => pass.name === "unmarkedHeadings") &&
             passes.some((pass) => pass.name === "listedHeadings"),
         endnotes: passes.some((pass) => pass.name === "endnotes"),
+        layoutEndnotes: passes.some((pass) => pass.name === "layoutEndnotes"),
         numberedSections: passes.some((pass) => pass.name === "numberedSections"),
         contentsEntries: passes.some((pass) => pass.name === "contentsEntries"),
         shortSubheads: passes.some((pass) => pass.name === "shortSubheads"),
@@ -90,6 +100,7 @@ export function resolvePasses(def) {
         bodyPasses: passes.filter((pass) => pass.stage === "body"),
         volumePasses: passes.filter((pass) => pass.stage === "volume"),
         edition: passes.find((pass) => pass.stage === "edition"),
+        vision: passes.find((pass) => pass.stage === "vision"),
     };
 }
 function layoutPageJoinsOf(passes) {
