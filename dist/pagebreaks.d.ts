@@ -150,6 +150,8 @@ export declare function layoutJoins(layout: Layout, prevText: string, nextText: 
     volume?: number;
     pdfIndex: number;
 }, options?: PageBreakOptions): boolean;
+/** "FIGURE 2.4: Wells Drilled…", "Source: Commission staff…": a figure's or table's caption or source line. */
+export declare function isCaption(text: string): boolean;
 /**
  * Whether a block left on a page is not set in the body face: the run-over of
  * a footnote that began on the page before (no number of its own), which the
