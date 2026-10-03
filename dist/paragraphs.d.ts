@@ -50,10 +50,11 @@ export type Block = ({
 }) & {
     at?: Provenance;
     /**
-     * `cleanEdition` only: whether the block's text is the clean edition's, or
-     * the PDF shadow's, filled into a gap the edition declared (`fillGaps`).
+     * Where the block's structure came from, when not the pipeline's own reading of the PDF page:
+     * `"vision"`, a vision model's verified reading of the page image (`visionStructure`; the words are
+     * still the PDF's). Ingest #53 (cleanEdition gap-fill) adds `"edition" | "pdf"` to the same field.
      */
-    source?: "edition" | "pdf";
+    source?: "vision";
     /**
      * Nothing may be joined across this block. Set where one column of a page
      * ends and the next begins — they are adjacent in the stream but not in the

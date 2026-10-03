@@ -43,7 +43,6 @@ export type LayoutPageJoinsPass = {
   readonly stage: "page";
   readonly scanned?: boolean;
   readonly referee?: PageBreakReferee;
-  readonly refer?: "low" | "medium";
 };
 
 /** Runs over one volume's pages together. */
@@ -85,7 +84,7 @@ export type NumberedHeadingsPass = {
 export type LayoutMarkersPass = {
   readonly name: "layoutMarkers";
   readonly stage: "page";
-  readonly scope: "page" | "document" | "chapter";
+  readonly scope: "page" | "document";
   readonly textFallback?: boolean;
 };
 
@@ -353,29 +352,6 @@ export const letteredItems = (): PagePass => ({ name: "letteredItems", stage: "p
 export const endnotes = (): PagePass => ({ name: "endnotes", stage: "page" });
 
 /**
- * This report prints its notes in sections of their own, numbered afresh for
- * each chapter, and they are read off the PDF's layout rather than its text
- * (reportsthatmatter-b89, reportsthatmatter-izw). A section opens under an
- * "Endnotes" / "Notes" heading set bigger than the body ("ENDNOTES FOR
- * CHAPTER 5" names its chapter; a bare "ENDNOTES" names its chapters with
- * subheads, "Chapter One"); a note opens on its number, raised or set small
- * at the column's note margin, and its other lines hang under it; the next
- * page is still the section while it reads as notes in sequence.
- *
- * Deepwater Horizon's appendix and Columbia's two-column chapter endnotes
- * defeat the text readers: Columbia's columns share each `pdftotext` line,
- * and Deepwater sets half its note numbers small on a line of their own, so
- * both kept their notes as body paragraphs. Each note is labelled `N-C`, the
- * C-th chapter whose notes are printed; no page-foot notes are read. Declare
- * `layoutMarkers({ scope: "chapter" })` with it to link the body's raised
- * markers to their own chapter's notes (`layout-endnotes.ts`).
- *
- * Opt-in: it reads `context.layout`, and only a report whose notes sit in
- * such sections has them.
- */
-export const layoutEndnotes = (): PagePass => ({ name: "layoutEndnotes", stage: "page" });
-
-/**
  * A footnote's run-over may be several ordinary-looking paragraphs, not one
  * unbroken run: PSI's "BSAM mark recap" note (reportsthatmatter-626) fills
  * two whole pages with a quotation, its source line, and more prose, all
@@ -459,19 +435,6 @@ export const photoCredits = (): PagePass => ({ name: "photoCredits", stage: "pag
  * so only a report whose footnotes are checked against it declares this.
  */
 export const footnoteGap = (): PagePass => ({ name: "footnoteGap", stage: "page" });
-
-/**
- * How the report numbers its page-foot notes, where that is not the usual bare
- * "104 Letter from…": `"period"` reads "104. Letter from…" (Hillsborough,
- * reportsthatmatter-ivg.3), whose notes were otherwise printed in the body as
- * a paragraph with every marker bare. Opt-in: a numbered list item at a page
- * foot has the same shape.
- */
-export const footnoteNumbers = (numbers: "period"): PagePass & { numbers: "period" } => ({
-  name: "footnoteNumbers",
-  stage: "page",
-  numbers,
-});
 
 /**
  * Reads the report's chapter-and-section numbering from its contents
@@ -794,11 +757,7 @@ export const quoteListRunOns = (): PagePass => ({ name: "quoteListRunOns", stage
  * `referee`: an optional, deterministic second opinion on the low-margin
  * calls (an indent near the threshold, an R2 join, no line under the first
  * line to compare with) — in practice a lookup in a committed cache keyed by
- * `PageBreakCase.key` (38s.11): `pageBreakCache(new URL("./referee/pagebreaks.json",
- * import.meta.url))`, filled offline by the host (`src/referee.ts`). An
- * `undefined` answer leaves the rules' call. `refer: "medium"` also puts the
- * medium-confidence calls to it (a flush first line after a finished
- * sentence; a layout-only label after an unfinished one).
+ * `PageBreakCase.key` (38s.11). An `undefined` answer leaves the rules' call.
  */
 /**
  * Links the footnote markers the PDF sets as small raised digits
@@ -807,8 +766,7 @@ export const quoteListRunOns = (): PagePass => ({ name: "quoteListRunOns", stage
  * word or a quotation mark sits before them. Each raised run is found in the
  * page's blocks by the words printed before it, and linked only when a note
  * with its number was collected (`scope: "page"`, near the page, for
- * footnotes; `"document"`, anywhere, for endnotes; `"chapter"`, among the notes
- * `layoutEndnotes` read for the marker's own chapter, linked `[^N-C]`) and it is in sequence with
+ * footnotes; `"document"`, anywhere, for endnotes) and it is in sequence with
  * the page's other markers. See `markers.ts`.
  *
  * The layout is then the authority on which numbers are markers: the
@@ -822,7 +780,7 @@ export const quoteListRunOns = (): PagePass => ({ name: "quoteListRunOns", stage
  * raised (a scan's OCR layer) gains nothing from it.
  */
 export const layoutMarkers = (
-  options: { scope?: "page" | "document" | "chapter"; textFallback?: boolean } = {}
+  options: { scope?: "page" | "document"; textFallback?: boolean } = {}
 ): LayoutMarkersPass => ({
   name: "layoutMarkers",
   stage: "page",
@@ -831,13 +789,12 @@ export const layoutMarkers = (
 });
 
 export const layoutPageJoins = (
-  options: { scanned?: boolean; referee?: PageBreakReferee; refer?: "low" | "medium" } = {}
+  options: { scanned?: boolean; referee?: PageBreakReferee } = {}
 ): LayoutPageJoinsPass => ({
   name: "layoutPageJoins",
   stage: "page",
   ...(options.scanned ? { scanned: true } : {}),
   ...(options.referee ? { referee: options.referee } : {}),
-  ...(options.referee && options.refer === "medium" ? { refer: "medium" as const } : {}),
 });
 
 /**

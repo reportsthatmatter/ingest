@@ -3,6 +3,7 @@ import { bodyIndent } from "./paragraphs.js";
 import type { PipelineContext } from "./context.js";
 import type { Provenance } from "./paragraphs.js";
 import type { EditionPass } from "./edition.js";
+import type { VisionStructurePass } from "./vision/hybrid.js";
 import type { PageBreakReferee } from "./pagebreaks.js";
 /**
  * A pass is one named decision about how to read a source.
@@ -36,7 +37,6 @@ export type LayoutPageJoinsPass = {
     readonly stage: "page";
     readonly scanned?: boolean;
     readonly referee?: PageBreakReferee;
-    readonly refer?: "low" | "medium";
 };
 /** Runs over one volume's pages together. */
 export type VolumePass = {
@@ -75,7 +75,7 @@ export type LayoutMarkersPass = {
     readonly scope: "page" | "document";
     readonly textFallback?: boolean;
 };
-export type Pass = EditionPass | NumberedHeadingsPass | LayoutMarkersPass | PageBreakContinuationsPass | LayoutPageJoinsPass | PagePass | BodyPass | VolumePass | GeometryPass | QuoteInsetPass | AllCapsHeadingsPass;
+export type Pass = EditionPass | VisionStructurePass | NumberedHeadingsPass | LayoutMarkersPass | PageBreakContinuationsPass | LayoutPageJoinsPass | PagePass | BodyPass | VolumePass | GeometryPass | QuoteInsetPass | AllCapsHeadingsPass;
 /**
  * Takes the printed page number off each page. These documents are cited by
  * page ("Report at 62"), so the printed number is the citation unit readers
@@ -359,16 +359,6 @@ export declare const photoCredits: () => PagePass;
  */
 export declare const footnoteGap: () => PagePass;
 /**
- * How the report numbers its page-foot notes, where that is not the usual bare
- * "104 Letter from…": `"period"` reads "104. Letter from…" (Hillsborough,
- * reportsthatmatter-ivg.3), whose notes were otherwise printed in the body as
- * a paragraph with every marker bare. Opt-in: a numbered list item at a page
- * foot has the same shape.
- */
-export declare const footnoteNumbers: (numbers: "period") => PagePass & {
-    numbers: "period";
-};
-/**
  * Reads the report's chapter-and-section numbering from its contents
  * ("8.1   The Summer of Threat 254") and takes each numbered section's heading
  * from there (reportsthatmatter-w8g).
@@ -643,11 +633,7 @@ export declare const quoteListRunOns: () => PagePass;
  * `referee`: an optional, deterministic second opinion on the low-margin
  * calls (an indent near the threshold, an R2 join, no line under the first
  * line to compare with) — in practice a lookup in a committed cache keyed by
- * `PageBreakCase.key` (38s.11): `pageBreakCache(new URL("./referee/pagebreaks.json",
- * import.meta.url))`, filled offline by the host (`src/referee.ts`). An
- * `undefined` answer leaves the rules' call. `refer: "medium"` also puts the
- * medium-confidence calls to it (a flush first line after a finished
- * sentence; a layout-only label after an unfinished one).
+ * `PageBreakCase.key` (38s.11). An `undefined` answer leaves the rules' call.
  */
 /**
  * Links the footnote markers the PDF sets as small raised digits
@@ -676,7 +662,6 @@ export declare const layoutMarkers: (options?: {
 export declare const layoutPageJoins: (options?: {
     scanned?: boolean;
     referee?: PageBreakReferee;
-    refer?: "low" | "medium";
 }) => LayoutPageJoinsPass;
 /**
  * Whether a numbered or lettered line ("1. Withdrawing the Army", "C. The

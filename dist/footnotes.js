@@ -14,7 +14,7 @@ const NOTE_STACKED = /^\s{0,10}(\d{1,4})\s*$/;
 // A deeper hanging indent than the bare style's: this appendix sets its note
 // number a good 14 columns in, not the 0-8 the rest of the corpus's page-foot
 // blocks use.
-const NOTE_INLINE_PERIOD = /^\s{0,20}(\d{1,4})\.\s{0,6}(?=[A-Za-z"“(])/;
+const NOTE_INLINE_PERIOD = /^\s{0,20}(\d{1,4})\.\s{0,3}(?=[A-Za-z"“(])/;
 const NOTE_STACKED_PERIOD = /^\s{0,20}(\d{1,4})\.\s*$/;
 /**
  * A note-start whose digit is followed by exactly one stray OCR character
@@ -283,12 +283,7 @@ export function linkInlineMarkers(text, known) {
         // Look at what follows the candidate.
         const followingStart = offset + whole.length;
         const following = text.slice(followingStart, followingStart + 28);
-        // The month filter stops at a blank line: the next block (a running head
-        // "January 6, 2025") says nothing about this candidate. The other
-        // filters keep reading across it: "Planning, 75 | Fed. Reg. 60,800" is a
-        // citation a page break cut in two (reportsthatmatter-3ezs).
-        const followingInBlock = following.split(/\n[ \t]*\n/, 1)[0];
-        if (MONTH_SOON_AFTER.test(followingInBlock))
+        if (MONTH_SOON_AFTER.test(following))
             return whole;
         if (PHONE_NUMBER_SOON_AFTER.test(following))
             return whole;

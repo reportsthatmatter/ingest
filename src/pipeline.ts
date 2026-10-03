@@ -42,11 +42,10 @@ import {
   type NotesLine,
   type NotesChapter,
 } from "./footnotes";
-import { inNoteFace, linkLayoutMarkers, pageDefinesNotes, type LayoutMarkerStats } from "./markers";
-import { LayoutEndnotesReader, chapterOfBlocks } from "./layout-endnotes";
+import { linkLayoutMarkers, pageDefinesNotes, type LayoutMarkerStats } from "./markers";
 import { autoFix, findSuspects, rankSuspects, type Suspect } from "./ocr";
 import type { PipelineContext } from "./context";
-import { assembleEdition, fillGaps, fillPrintedGaps, type EditionReport, type PrintedPage } from "./edition";
+import { assembleEdition, fillPrintedGaps, type EditionReport, type PrintedPage } from "./edition";
 import { VisionHybrid, type VisionReport } from "./vision/hybrid";
 
 export type IngestResult = {
@@ -80,7 +79,7 @@ export type IngestResult = {
   edition?: EditionReport;
   shadow?: IngestResult;
   /** Each page's lines after the furniture passes (running heads, slugs, page numbers) took theirs off. */
-  pageText?: Array<{ volume: number; pdfIndex: number; lines: string[]; noteLines?: number }>;
+  pageText?: Array<{ volume: number; pdfIndex: number; lines: string[] }>;
   /** What `layoutMarkers` saw and linked, when the report declares it. */
   layoutMarkers?: LayoutMarkerStats;
   /** `visionStructure`: which pages took the vision model's structure, and why the others did not. */
@@ -177,10 +176,6 @@ export function ingestPageGroups(
   // text follows it.
   let notesStarted = false;
   const notesLines: NotesLine[] = [];
-  // `layoutEndnotes`: notes sections read off the layout, page by page.
-  const endnotesReader =
-    resolved.layoutEndnotes && context.layout ? new LayoutEndnotesReader(context.layout) : undefined;
-  const endnotesHeadings = new Map<string, string[]>();
 
   // `visionStructure`: a note's tail that ran over the page break, by the note it was added to.
   const runOvers = new Map<Footnote, string>();
@@ -191,21 +186,13 @@ export function ingestPageGroups(
       const page = pages[pageOffset++];
       // Notes under each paragraph are read across the volume below, not
       // as a block at the page foot; endnotes are not read as notes at all.
-      const splitOptions = {
-        citationRunOver: resolved.citationRunOver,
-        romanFolios: resolved.romanFolios,
-        footnoteGap: resolved.footnoteGap,
-        footnoteNumbers: resolved.footnoteNumbers,
-      };
-      let split = resolved.paragraphNotes || resolved.endnotes || resolved.layoutEndnotes
-        ? splitPageNumberOnly(page, { romanFolios: resolved.romanFolios })
-        : splitPage(page, expectedNote, splitOptions);
-      // `footnoteNumbers("period")`: a block opening "8. In all of the above cases" in the body's face is
-      // the body's own numbered paragraphs (an appendix's), not notes: the page is read without them.
-      const firstNote = split.footnotes.find((line) => line.trim());
-      if (resolved.footnoteNumbers === "period" && context.layout && firstNote && !inNoteFace(context.layout, split.volume, split.pdfIndex, firstNote)) {
-        split = splitPage(page, expectedNote, { ...splitOptions, footnoteNumbers: undefined });
-      }
+      const split = resolved.paragraphNotes || resolved.endnotes
+        ? splitPageNumberOnly(page)
+        : splitPage(page, expectedNote, {
+            citationRunOver: resolved.citationRunOver,
+            romanFolios: resolved.romanFolios,
+            footnoteGap: resolved.footnoteGap,
+          });
 
       // `layoutMarkers` (page scope): page-foot "notes" on a page whose layout
       // defines none (nothing raised, nothing in a smaller face) are the body's
@@ -220,15 +207,6 @@ export function ingestPageGroups(
         split.footnotes = [];
       }
 
-      // A page of a notes section: its notes are read off the layout, and its body keeps only what
-      // is printed above the section's heading, the heading and the preamble.
-      const read = endnotesReader?.page(split, split.body);
-      if (read) {
-        split.body = read.body;
-        if (read.heading.length) endnotesHeadings.set(`${split.volume}:${split.pdfIndex}`, read.heading);
-        footnotes.push(...read.notes);
-      }
-
       // A note that ran over the page break: its tail opens this page's
       // block, and belongs to the last note read before it.
       const previous = footnotes[footnotes.length - 1];
@@ -240,7 +218,7 @@ export function ingestPageGroups(
         split.body = [...split.body, ...split.runOver];
       }
       if (split.footnotes.length) {
-        const parsed = parseFootnotes(split.footnotes, split.index, resolved.footnoteNumbers === "period" ? "period" : "bare").map((note) => ({
+        const parsed = parseFootnotes(split.footnotes, split.index).map((note) => ({
           ...note,
           volume: split.volume,
           pdfIndex: split.pdfIndex,
@@ -274,18 +252,11 @@ export function ingestPageGroups(
   const cleanedGroups = splitGroups.map((group) =>
     resolved.volumePasses.reduce((pages, pass) => pass.run(pages, context), group)
   );
-  // `layoutEndnotes`: a notes section's heading and preamble join the page's body once its furniture is off.
-  for (const split of endnotesHeadings.size ? cleanedGroups.flat() : []) {
-    const heading = endnotesHeadings.get(`${split.volume}:${split.pdfIndex}`);
-    if (heading) split.body = [...split.body, ...heading];
-  }
   // Each page's own text once its furniture is off, for `cleanEdition` to align against.
   const pageText = cleanedGroups.flat().map((split) => ({
     volume: split.volume,
     pdfIndex: split.pdfIndex,
     lines: [...split.body, ...split.footnotes],
-    // the trailing lines that are the page-foot note block, as read
-    ...(split.footnotes.length ? { noteLines: split.footnotes.length } : {}),
   }));
   // Measured on the page *body*, never on the raw lines.
   //
@@ -449,12 +420,6 @@ export function ingestPageGroups(
     notesChapters = appendix.chapters;
   }
 
-  // A page whose number was not read (a figure page, a folio set as "(3)" or
-  // above a thumb index) between two that were, in step with the PDF's page order,
-  // is marked with the number between them, at its own first block: without a
-  // marker its text is cited with the page before (reportsthatmatter-d662).
-  markUnreadPages(bodyChunks);
-
   // A printed number that appears more than once in a report needs telling
   // apart, or every occurrence renders the same anchor and a citation to the
   // second silently lands on the first.
@@ -495,15 +460,10 @@ export function ingestPageGroups(
   let markerStats: LayoutMarkerStats | undefined;
   if (resolved.layoutMarkers && context.layout) {
     const known = new Set(footnotes.map((note) => note.number));
-    const chapters = resolved.layoutMarkers.scope === "chapter" && endnotesReader
-      ? chapterOfBlocks(bodyChunks, endnotesReader.chapters)
-      : undefined;
     markerStats = linkLayoutMarkers(
       bodyChunks,
       context.layout,
-      chapters
-        ? { scope: "chapter", chapterOf: (block) => chapters.get(block) }
-        : resolved.layoutMarkers.scope === "document"
+      resolved.layoutMarkers.scope === "document"
         ? { scope: "document", known }
         : { scope: "page", onPage: (volume, pdfIndex) => notesByPage.get(pageKey(volume, pdfIndex)) ?? new Set() }
     );
@@ -563,8 +523,7 @@ export function ingestPageGroups(
   // above them; a document-wide number lookup would only relink stray
   // numbers to notes whose "1" means something different on every page.
   if (!resolved.paragraphNotes && textLinkers) {
-    // A labelled note ("3-5", `layoutEndnotes`) is not what a bare [^3] would open.
-    const defined = new Set(notes.filter((note) => !note.label).map((note) => note.number));
+    const defined = new Set(notes.map((note) => note.number));
     const known = pipelineKnown ? new Set([...pipelineKnown].filter((n) => defined.has(n))) : defined;
     body = hybrid ? linkOutsideVision(body, outBlocks, (text) => linkInlineMarkers(text, known)) : linkInlineMarkers(body, known);
     // An endnotes appendix's own markers are flush against the word before
@@ -589,11 +548,6 @@ export function ingestPageGroups(
   // Footnote and citation text is where the scan degrades worst, so the same
   // certain-substitution pass matters more here than it does in the body.
   let noteFixes = 0;
-  // Notes read off the layout keep each printed line's end: rejoin the typesetter's hyphens as the body's are.
-  if (endnotesReader) {
-    const words = vocabulary(sourceText);
-    for (const note of notes) if (note.label) note.text = rejoinHyphenated(note.text, words);
-  }
   for (const note of notes) {
     const result = autoFix(note.text);
     note.text = result.text;
@@ -740,48 +694,16 @@ const NUMBERED_OPENER = /^\s{0,8}\d{1,2}\.\d{1,3}[ \uFFFD]{2,}(?=\S)/;
 const PAGE_MARGIN_MIN_LINES = 8;
 
 /** The printed page number off, and nothing else: no page-foot note block. */
-function splitPageNumberOnly(page: Page, options: { romanFolios?: boolean } = {}): SplitPage {
-  const { printed, roman, lines } = takePrintedNumber(page.lines, { roman: options.romanFolios });
+function splitPageNumberOnly(page: Page): SplitPage {
+  const { printed, lines } = takePrintedNumber(page.lines);
   return {
     index: page.index,
     volume: page.volume,
     pdfIndex: page.pdfIndex,
     printed,
-    ...(roman ? { roman } : {}),
     body: lines,
     footnotes: [],
   };
-}
-
-/**
- * `fillPrintedGaps` on the PDF path: inserts, in place, a page marker before
- * the first block of each page the gap-filler numbers. A page with no block of
- * its own (a blank or figure-only page) gets none, so markers never stack.
- */
-export function markUnreadPages(chunks: Block[]): void {
-  const read: PrintedPage[] = chunks.flatMap((block) =>
-    block.kind === "page" && block.at ? [{ volume: block.at.volume, pdfIndex: block.at.pdfIndex, number: block.number }] : []
-  );
-  const have = new Set(read.map((entry) => `${entry.volume}:${entry.pdfIndex}`));
-  const fill = new Map<string, PrintedPage>(
-    fillPrintedGaps(read)
-      .filter((entry) => !have.has(`${entry.volume}:${entry.pdfIndex}`))
-      .map((entry) => [`${entry.volume}:${entry.pdfIndex}`, entry] as const)
-  );
-  if (!fill.size) return;
-  for (let i = chunks.length - 1; i >= 0; i--) {
-    const block = chunks[i];
-    if (block.kind === "page" || !block.at) continue;
-    const key = `${block.at.volume}:${block.at.pdfIndex}`;
-    const entry = fill.get(key);
-    if (!entry) continue;
-    // the earliest block of the page: walk back while the block before it is on the same page
-    let first = i;
-    while (first > 0 && chunks[first - 1].kind !== "page" && chunks[first - 1].at?.volume === block.at.volume && chunks[first - 1].at?.pdfIndex === block.at.pdfIndex) first--;
-    chunks.splice(first, 0, { kind: "page", number: entry.number, at: { volume: entry.volume, pdfIndex: entry.pdfIndex, printed: null } } as Block);
-    fill.delete(key);
-    i = first;
-  }
 }
 
 function frontMatter(fields: Record<string, unknown>): string {
@@ -810,12 +732,7 @@ function ingestEdition(
   const pass = resolved.edition!;
   const shadow = ingestPageGroups(pageGroups, meta, { ...resolved, edition: undefined }, corrections, context);
   // the PDF's words page by page, as the shadow read them once their furniture was off
-  const pages: Page[] = (shadow.pageText ?? []).map(({ noteLines, ...page }, i) => ({
-    index: i + 1,
-    ...page,
-    // with the notes laid out as a foot of their own below, the raw note block is not page text as well
-    ...(pass.notes === "page-foot" && noteLines ? { lines: page.lines.slice(0, page.lines.length - noteLines) } : {}),
-  }));
+  const pages: Page[] = (shadow.pageText ?? []).map((page, i) => ({ index: i + 1, ...page }));
   if (pass.notes === "page-foot") {
     // The notes the shadow lifted out from under their paragraphs go back on their pages, as a
     // foot of their own; the markers it linked into the body text are not words.
@@ -833,30 +750,8 @@ function ingestEdition(
       ? [{ volume: block.at.volume, pdfIndex: block.at.pdfIndex, number: block.number, occurrence: block.occurrence }]
       : []
   ));
-  // What the edition says it lacks (its `gap` blocks) is filled from the shadow's own blocks.
-  const { edition, filled } = fillGaps(pass.read(), pages, {
-    blocks: shadow.blocks ?? [],
-    linkedText: shadow.linkedText,
-    footnotes: shadow.footnotes,
-  });
+  const edition = pass.read();
   const assembled = assembleEdition(edition, pages, printed, pass.sources);
-  if (filled.length) {
-    assembled.report.filled = filled;
-    const printedOf = new Map(printed.map((entry) => [`${entry.volume}:${entry.pdfIndex}`, entry.number]));
-    // a gap the PDF had nothing for (two web pages that were consecutive after all) is in the report, not the queue
-    for (const gap of filled.filter((g) => g.blocks > 0)) {
-      const at = gap.from ? printedOf.get(`${gap.from.volume}:${gap.from.pdfIndex}`) : undefined;
-      assembled.suspects.push({
-        pattern: "edition gap filled from the PDF",
-        match: gap.opening ?? "",
-        context: `${gap.reason}: ${gap.blocks} blocks, ${gap.words} words, ${gap.notes} notes, from PDF p.${gap.from!.pdfIndex} to p.${gap.to!.pdfIndex}`,
-        page: typeof at === "number" ? at : 0,
-        volume: gap.from?.volume,
-        pdfIndex: gap.from?.pdfIndex,
-        confidence: "possible",
-      });
-    }
-  }
   const printedAt = new Map(printed.map((entry) => [`${entry.volume}:${entry.pdfIndex}`, entry.number]));
   const footnotes: Footnote[] = edition.notes.map((note, i) => {
     // the PDF page the note's first word is printed on, so a golden page can say which notes it defines

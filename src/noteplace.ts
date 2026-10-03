@@ -27,7 +27,7 @@ export type NoteOffPage = { volume: number; page: number; label: string; defined
 
 /** The notes sit at the foot of the page that cites them (not endnotes, not an edition's own notes). */
 export function hasPageNotes(passes: ReadonlyArray<{ name: string }> | undefined): boolean {
-  return !(passes ?? []).some((pass) => pass.name === "endnotes" || pass.name === "layoutEndnotes" || pass.name === "edition");
+  return !(passes ?? []).some((pass) => pass.name === "endnotes" || pass.name === "edition");
 }
 
 function texts(b: Block): string[] {

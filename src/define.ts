@@ -62,9 +62,7 @@ export type ResolvedPasses = {
   /** `layoutPageJoins`: on, with its options. */
   layoutPageJoins?: PageBreakOptions;
   /** `layoutMarkers`: on, with where its notes are. */
-  layoutMarkers?: { scope: "page" | "document" | "chapter"; textFallback: boolean };
-  /** `layoutEndnotes`: notes sections read off the layout, labelled by chapter. */
-  layoutEndnotes?: boolean;
+  layoutMarkers?: { scope: "page" | "document"; textFallback: boolean };
   unlistedHeadingsMinor?: boolean;
   hangingIndents?: boolean;
   letteredItems?: boolean;
@@ -81,8 +79,6 @@ export type ResolvedPasses = {
   numberedOutsideTables?: boolean;
   photoCredits?: boolean;
   footnoteGap?: boolean;
-  /** `footnoteNumbers`: how page-foot notes are numbered. */
-  footnoteNumbers?: "bare" | "period";
   quoteInset?: number;
   allCapsHeadings: boolean;
   numberedHeadings?: boolean;
@@ -181,7 +177,6 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
       passes.some((pass) => pass.name === "unmarkedHeadings") &&
       passes.some((pass) => pass.name === "listedHeadings"),
     endnotes: passes.some((pass) => pass.name === "endnotes"),
-    layoutEndnotes: passes.some((pass) => pass.name === "layoutEndnotes"),
     numberedSections: passes.some((pass) => pass.name === "numberedSections"),
     contentsEntries: passes.some((pass) => pass.name === "contentsEntries"),
     shortSubheads: passes.some((pass) => pass.name === "shortSubheads"),
@@ -207,7 +202,6 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),
     photoCredits: passes.some((pass) => pass.name === "photoCredits"),
     footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
-    footnoteNumbers: passes.some((pass) => pass.name === "footnoteNumbers") ? "period" : undefined,
     quoteInset: passes.find(
       (pass): pass is QuoteInsetPass => pass.stage === "quoteInset"
     )?.columns,
@@ -232,11 +226,10 @@ function layoutPageJoinsOf(passes: Pass[]): PageBreakOptions | undefined {
   return {
     ...(pass.scanned ? { scanned: true } : {}),
     ...(pass.referee ? { referee: pass.referee } : {}),
-    ...(pass.refer ? { refer: pass.refer } : {}),
   };
 }
 
-function layoutMarkersOf(passes: Pass[]): { scope: "page" | "document" | "chapter"; textFallback: boolean } | undefined {
+function layoutMarkersOf(passes: Pass[]): { scope: "page" | "document"; textFallback: boolean } | undefined {
   const pass = passes.find((p): p is LayoutMarkersPass => p.name === "layoutMarkers");
   return pass ? { scope: pass.scope ?? "page", textFallback: pass.textFallback === true } : undefined;
 }

@@ -22,6 +22,15 @@ export function pipeline(def) {
     if ((def.passes ?? []).filter((pass) => pass.stage === "edition").length > 1) {
         throw new Error(`${def.id}: more than one cleanEdition declared`);
     }
+    const visions = (def.passes ?? []).filter((pass) => pass.stage === "vision").length;
+    if (visions > 1)
+        throw new Error(`${def.id}: more than one visionStructure declared`);
+    if (visions && (def.passes ?? []).some((pass) => pass.stage === "edition")) {
+        throw new Error(`${def.id}: visionStructure and cleanEdition do not combine — one takes structure from the PDF's pages, the other text and structure from an edition`);
+    }
+    if (visions && (def.passes ?? []).some((pass) => pass.name === "paragraphNotes" || pass.name === "endnotes")) {
+        throw new Error(`${def.id}: visionStructure reads page-foot notes; it does not combine with paragraphNotes or endnotes`);
+    }
     if ((def.passes ?? []).filter((pass) => pass.stage === "allCapsHeadings").length > 1) {
         throw new Error(`${def.id}: more than one allCapsHeadings pass declared`);
     }
@@ -82,13 +91,13 @@ export function resolvePasses(def) {
         numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),
         photoCredits: passes.some((pass) => pass.name === "photoCredits"),
         footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
-        footnoteNumbers: passes.some((pass) => pass.name === "footnoteNumbers") ? "period" : undefined,
         quoteInset: passes.find((pass) => pass.stage === "quoteInset")?.columns,
         allCapsHeadings: passes.find((pass) => pass.stage === "allCapsHeadings")?.enabled ?? true,
         numberedHeadings: passes.find((pass) => pass.stage === "numberedHeadings")?.enabled ?? true,
         bodyPasses: passes.filter((pass) => pass.stage === "body"),
         volumePasses: passes.filter((pass) => pass.stage === "volume"),
         edition: passes.find((pass) => pass.stage === "edition"),
+        vision: passes.find((pass) => pass.stage === "vision"),
     };
 }
 function layoutPageJoinsOf(passes) {
@@ -98,7 +107,6 @@ function layoutPageJoinsOf(passes) {
     return {
         ...(pass.scanned ? { scanned: true } : {}),
         ...(pass.referee ? { referee: pass.referee } : {}),
-        ...(pass.refer ? { refer: pass.refer } : {}),
     };
 }
 function layoutMarkersOf(passes) {

@@ -123,7 +123,7 @@ function anchorPattern(before: string, earlier: Array<{ offset: number; text: st
       .join("\\s+");
   for (const r of marks) {
     out += plain(trimmed.slice(at, r.offset));
-    out += `(?:\\[\\^${r.text}(?:-\\d+)?\\]|${r.text})`;
+    out += `(?:\\[\\^${r.text}\\]|${r.text})`;
     at = r.offset + r.text.length;
   }
   out += plain(trimmed.slice(at));
@@ -220,12 +220,7 @@ export type MarkerNotes =
   /** Page-foot notes: the note numbers collected on each page. */
   | { scope: "page"; onPage: (volume: number, pdfIndex: number) => ReadonlySet<number> }
   /** Endnotes: every note number the report collected. */
-  | { scope: "document"; known: ReadonlySet<number> }
-  /**
-   * Endnotes numbered afresh per chapter (`layoutEndnotes`): each block's chapter, and the
-   * note numbers printed for it. A marker is linked `[^N-C]`; a block in no chapter links nothing.
-   */
-  | { scope: "chapter"; chapterOf: (block: Block) => { key: number; numbers: ReadonlySet<number> } | undefined };
+  | { scope: "document"; known: ReadonlySet<number> };
 
 export function linkLayoutMarkers(blocks: Block[], layout: Layout, notes: MarkerNotes): LayoutMarkerStats {
   const stats: LayoutMarkerStats = { raised: 0, candidates: 0, linked: 0, unplaced: 0, links: [], misses: [] };
@@ -256,10 +251,7 @@ export function linkLayoutMarkers(blocks: Block[], layout: Layout, notes: Marker
     if (!layout.page(volume, pdfIndex)) continue;
     const raised = raisedOn(volume, pdfIndex);
     stats.raised += raised.length;
-    // A page's chapter is its first block's that has one (chapters open on a page of their own).
-    const chapter = notes.scope === "chapter" ? units.map((u) => notes.chapterOf(u.block)).find(Boolean) : undefined;
     const cites = (n: number): boolean => {
-      if (notes.scope === "chapter") return chapter?.numbers.has(n) ?? false;
       if (notes.scope === "document") return notes.known.has(n);
       if (notes.onPage(volume, pdfIndex).has(n)) return true;
       return [pdfIndex - 1, pdfIndex + 1].some(
@@ -282,7 +274,7 @@ export function linkLayoutMarkers(blocks: Block[], layout: Layout, notes: Marker
       const text = textOf(unit);
       // Close up any space pdftotext put between the word and its marker.
       const head = text.slice(0, at.start).replace(/[ \t]+$/, "");
-      const marker = chapter ? `[^${c.value}-${chapter.key}]` : `[^${c.value}]`;
+      const marker = `[^${c.value}]`;
       setText(unit, head + marker + text.slice(at.end));
       cursor.unit = at.unit;
       cursor.pos = head.length + marker.length;
@@ -302,23 +294,6 @@ export function linkLayoutMarkers(blocks: Block[], layout: Layout, notes: Marker
  * Introduction 3" in the body's own face, nothing raised: Leveson's contents)
  * has neither.
  */
-/**
- * `footnoteNumbers("period")`: whether the line that opens a page's note block ("104. Letter from…") is
- * set in the notes' smaller face. A body paragraph numbered the same way at the page foot (Hillsborough's
- * Appendix 1, "8. In all of the above cases, …") is in the body's face, and stays body. A line the layout
- * does not find is given the benefit of the doubt.
- */
-export function inNoteFace(layout: Layout, volume: number, pdfIndex: number, line: string): boolean {
-  const page = layout.page(volume, pdfIndex);
-  if (!page) return true;
-  const bodySize = Math.max(Number(page.bodyFont.split("|")[1]) || 0, layout.bodyFont.size);
-  const key = (text: string) => text.replace(/\s+/g, "").slice(0, 24);
-  const want = key(line);
-  const hit = page.lines.find((l) => key(l.text) === want || (want.length >= 12 && key(l.text).startsWith(want.slice(0, 12))));
-  if (!hit || bodySize <= 0) return true;
-  return hit.size < BODY_SIZE_RATIO * bodySize;
-}
-
 export function pageDefinesNotes(layout: Layout, volume: number, pdfIndex: number): boolean {
   const page = layout.page(volume, pdfIndex);
   if (!page) return true;
