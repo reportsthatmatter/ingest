@@ -5,6 +5,7 @@ import { type Block } from "./paragraphs.js";
 import { type Footnote } from "./footnotes.js";
 import { type Suspect } from "./ocr.js";
 import type { PipelineContext } from "./context.js";
+import { type EditionReport } from "./edition.js";
 export type IngestResult = {
     markdown: string;
     corrections: number;
@@ -27,6 +28,20 @@ export type IngestResult = {
      * if the serialised text does not split into one chunk per block.
      */
     linkedText?: Array<string | undefined>;
+    /**
+     * `cleanEdition` only: how the edition compares with the PDF, and the PDF
+     * ingest run as its shadow (the same passes, without the edition), which
+     * supplied the printed pages and is what `pnpm score` scores against the
+     * served text.
+     */
+    edition?: EditionReport;
+    shadow?: IngestResult;
+    /** Each page's lines after the furniture passes (running heads, slugs, page numbers) took theirs off. */
+    pageText?: Array<{
+        volume: number;
+        pdfIndex: number;
+        lines: string[];
+    }>;
 };
 export type Metadata = {
     title: string;

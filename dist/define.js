@@ -19,6 +19,9 @@ export function pipeline(def) {
     if (geometries.length > 1) {
         throw new Error(`${def.id}: more than one geometry pass declared`);
     }
+    if ((def.passes ?? []).filter((pass) => pass.stage === "edition").length > 1) {
+        throw new Error(`${def.id}: more than one cleanEdition declared`);
+    }
     if ((def.passes ?? []).filter((pass) => pass.stage === "allCapsHeadings").length > 1) {
         throw new Error(`${def.id}: more than one allCapsHeadings pass declared`);
     }
@@ -83,6 +86,7 @@ export function resolvePasses(def) {
         numberedHeadings: passes.find((pass) => pass.stage === "numberedHeadings")?.enabled ?? true,
         bodyPasses: passes.filter((pass) => pass.stage === "body"),
         volumePasses: passes.filter((pass) => pass.stage === "volume"),
+        edition: passes.find((pass) => pass.stage === "edition"),
     };
 }
 function layoutPageJoinsOf(passes) {

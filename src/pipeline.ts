@@ -43,6 +43,7 @@ import {
 } from "./footnotes";
 import { autoFix, findSuspects, rankSuspects, type Suspect } from "./ocr";
 import type { PipelineContext } from "./context";
+import { assembleEdition, type EditionReport, type PrintedPage } from "./edition";
 
 export type IngestResult = {
   markdown: string;
@@ -66,6 +67,16 @@ export type IngestResult = {
    * if the serialised text does not split into one chunk per block.
    */
   linkedText?: Array<string | undefined>;
+  /**
+   * `cleanEdition` only: how the edition compares with the PDF, and the PDF
+   * ingest run as its shadow (the same passes, without the edition), which
+   * supplied the printed pages and is what `pnpm score` scores against the
+   * served text.
+   */
+  edition?: EditionReport;
+  shadow?: IngestResult;
+  /** Each page's lines after the furniture passes (running heads, slugs, page numbers) took theirs off. */
+  pageText?: Array<{ volume: number; pdfIndex: number; lines: string[] }>;
 };
 
 export type Metadata = {
@@ -138,6 +149,7 @@ export function ingestPageGroups(
   corrections: Correction[] = [],
   context: PipelineContext = {}
 ): IngestResult {
+  if (resolved.edition) return ingestEdition(pageGroups, meta, resolved, corrections, context);
   // Volume is assigned here because this is the only place that knows the
   // order the volumes were given in — and that order is semantic: footnote
   // numbering and page indices run continuously across them.
@@ -216,6 +228,12 @@ export function ingestPageGroups(
   const cleanedGroups = splitGroups.map((group) =>
     resolved.volumePasses.reduce((pages, pass) => pass.run(pages, context), group)
   );
+  // Each page's own text once its furniture is off, for `cleanEdition` to align against.
+  const pageText = cleanedGroups.flat().map((split) => ({
+    volume: split.volume,
+    pdfIndex: split.pdfIndex,
+    lines: [...split.body, ...split.footnotes],
+  }));
   // Measured on the page *body*, never on the raw lines.
   //
   // A footnote block sits at the left edge, and so does page furniture, so
@@ -507,6 +525,7 @@ export function ingestPageGroups(
     pages: pages.length,
     blocks: corrected.blocks,
     linkedText,
+    pageText,
   };
 }
 
@@ -610,4 +629,60 @@ function frontMatter(fields: Record<string, unknown>): string {
       typeof value === "number" ? `${key}: ${value}` : `${key}: ${JSON.stringify(String(value))}`
     );
   return `---\n${lines.join("\n")}\n---`;
+}
+
+/**
+ * `cleanEdition`: the text and structure from the edition, the printed pages
+ * from the PDF (see `edition.ts`). The PDF ingest runs in full as the shadow:
+ * its page markers say which PDF page carries which printed number, exactly
+ * as a PDF-sourced build would mark them. Corrections are judgements about
+ * the PDF's text, so they apply to the shadow.
+ */
+function ingestEdition(
+  pageGroups: Page[][],
+  meta: Metadata,
+  resolved: ResolvedPasses,
+  corrections: Correction[],
+  context: PipelineContext
+): IngestResult {
+  const pass = resolved.edition!;
+  const shadow = ingestPageGroups(pageGroups, meta, { ...resolved, edition: undefined }, corrections, context);
+  // the PDF's words page by page, as the shadow read them once their furniture was off
+  const pages: Page[] = (shadow.pageText ?? []).map((page, i) => ({ index: i + 1, ...page }));
+  const printed: PrintedPage[] = (shadow.blocks ?? []).flatMap((block) =>
+    block.kind === "page" && block.at
+      ? [{ volume: block.at.volume, pdfIndex: block.at.pdfIndex, number: block.number, occurrence: block.occurrence }]
+      : []
+  );
+  const edition = pass.read();
+  const assembled = assembleEdition(edition, pages, printed, pass.sources);
+  const footnotes: Footnote[] = edition.notes.map((note, i) => ({
+    number: Number.parseInt(note.label, 10) || i + 1,
+    label: note.label,
+    text: note.text,
+    page: 0,
+  }));
+  const markdown = [
+    frontMatter({ ...meta, pages: shadow.pages, footnotes: footnotes.length }),
+    assembled.body,
+    assembled.notes ? `## Notes\n\n${assembled.notes}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n")
+    .replace(/\n{4,}/g, "\n\n\n")
+    .trimEnd()
+    .concat("\n");
+  return {
+    markdown,
+    corrections: 0,
+    sourceText: shadow.sourceText,
+    footnotes,
+    suspects: assembled.suspects,
+    autoFixes: 0,
+    pages: shadow.pages,
+    edition: assembled.report,
+    shadow,
+    blocks: assembled.blocks,
+    linkedText: assembled.linkedText,
+  };
 }

@@ -100,6 +100,34 @@ A page the pipeline is known to get wrong carries `xfail: <bead>` and `xfail_onl
 
 The page kit prints one page's layout lines beside the blocks made from it, so writing an entry takes minutes: `renderPage(id, layout, blocks, footnotes, volume, pdfIndex)`; `draftGolden(...)` is a first draft of the entry from what the pipeline made (the pipeline's reading, to be corrected against the image); `pageFixture(source, xml, blocks, footnotes, volume, pdfIndex)` cuts a `tests/fixtures/oracle/*.json` fixture. The site's `pnpm ingest page <id> <volume> <pdfPage> [--draft] [--fixture <name>]` runs them.
 
+## A clean edition as the source (`cleanEdition`)
+
+Where the publisher's own HTML (or tagged text) of a report exists, its text and structure are authored there, and the PDF cleaning passes have nothing to repair. `cleanEdition` (src/edition.ts, reportsthatmatter-ivg; design: the site's `docs/design/reference-editions.md` §2.1) serves such a report from the edition and keeps the PDF for what only it has:
+
+```ts
+import { cleanEdition } from "@rtm/ingest";
+import { readCommissionHtml } from "./commission-html.ts"; // the report's own adapter
+
+passes: [
+  cleanEdition({
+    dir: import.meta.dirname,            // the report repo
+    encoding: "latin1",
+    files: [{ path: "reference/raw/911Report_Ch1.htm", sha256: "…" }, …],  // checked before reading
+    read: readCommissionHtml,           // files → { blocks, notes }
+  }),
+  …every PDF pass, unchanged…
+]
+```
+
+- **Text and structure** come from the edition, as `EditionBlock`s (heading, paragraph, quote, list, contents, table; inline Markdown with `[^label]` markers) and `EditionNote`s that the report's adapter reads. What the markup means is a property of that source, so the adapter is report code; `htmlEvents` (a tolerant HTML 4 tokenizer), `inlineMarkdown` and `inlineText` (notes: the renderer sets them as plain text) are the pieces. A block the edition sets where the PDF's page put it (a figure, a caption, a box) carries `float: true`: a paragraph that stops mid-sentence, then only floats, then a paragraph, is served as one paragraph with the floats after it.
+- **The PDF ingest still runs**, every declared pass, as the **shadow**: its `%%page%%` markers say which PDF page carries which printed number, and its furniture-free page text is what the edition is aligned to (`IngestResult.shadow`, `IngestResult.pageText`). Corrections apply to the shadow; they are judgements about the PDF's text.
+- **Page anchors**: the edition's words are aligned to the PDF's with the scorer's monotone anchor alignment (`align`, promoted here from the site's `src/lib/score`), and each block is stamped with the printed page its first word is on. A page that starts inside a block is marked after it (and after any float still printed on the earlier page), as `mergeAcrossPages` does.
+- **Typography the edition flattened**, only where there is one reading: an ASCII hyphen the PDF prints as an em or en dash between the same two aligned words; a space the PDF prints after punctuation the edition runs on ("Timeline,"Dec."); a line-end hyphen of the PDF the edition kept ("air-line's"), closed up only where the edition prints the word whole elsewhere and this is its only hyphenated spelling.
+- **The PDF is the fidelity check.** `IngestResult.edition` (`EditionReport`) has the share of edition words aligned to the PDF, the edition's words the PDF never prints (OOV, as a word or two joined), the share of PDF words the edition holds, pages anchored, and the count of each typographic repair. Every stretch where the two disagree is a review-queue suspect (`edition text not in the PDF`, `PDF text not in the edition`) in `fidelity.md`: flagged, never resolved silently.
+- **Same output contract**: `full.md` with `%%page N%%` markers and notes under a closing `## Notes`; `IngestResult.blocks` (each on the PDF page its first word is printed on) and `linkedText`, so the layout oracle and golden pages measure the served text.
+
+`losslessCheck` accepts a word that is in the source as a piece of a token or two tokens joined across a line-end dash or an apostrophe ("interceptors.The", "team—" / "Suqami", "Yousef ’s"): the edition spaces and closes up what the PDF's text layer does not. It moves no output; the gate's counts fall for PDF-built reports too, and no report's pass or fail changes.
+
 ## Rendering and publishing
 
 `full.md` is the ingestion pipeline's output and a report repo's own
