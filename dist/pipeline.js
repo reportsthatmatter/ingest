@@ -562,14 +562,13 @@ function ingestEdition(pageGroups, meta, resolved, corrections, context) {
     if (filled.length) {
         assembled.report.filled = filled;
         const printedOf = new Map(printed.map((entry) => [`${entry.volume}:${entry.pdfIndex}`, entry.number]));
-        for (const gap of filled) {
+        // a gap the PDF had nothing for (two web pages that were consecutive after all) is in the report, not the queue
+        for (const gap of filled.filter((g) => g.blocks > 0)) {
             const at = gap.from ? printedOf.get(`${gap.from.volume}:${gap.from.pdfIndex}`) : undefined;
             assembled.suspects.push({
                 pattern: "edition gap filled from the PDF",
                 match: gap.opening ?? "",
-                context: gap.blocks
-                    ? `${gap.reason}: ${gap.blocks} blocks, ${gap.words} words, ${gap.notes} notes, from PDF p.${gap.from.pdfIndex} to p.${gap.to.pdfIndex}`
-                    : `${gap.reason}: nothing to fill (the PDF prints nothing between the edition's words either side)`,
+                context: `${gap.reason}: ${gap.blocks} blocks, ${gap.words} words, ${gap.notes} notes, from PDF p.${gap.from.pdfIndex} to p.${gap.to.pdfIndex}`,
                 page: typeof at === "number" ? at : 0,
                 volume: gap.from?.volume,
                 pdfIndex: gap.from?.pdfIndex,
