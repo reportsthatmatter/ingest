@@ -82,6 +82,10 @@ export type ResolvedPasses = {
     numberedOutsideTables?: boolean;
     photoCredits?: boolean;
     footnoteGap?: boolean;
+    /** `sequencedNoteOpenings`: a note line opening on the next note's number starts it, whatever follows. */
+    sequencedNoteOpenings?: boolean;
+    /** `footnoteRestarts`: a page-foot numbering that starts over at 1 is read without corroboration. */
+    footnoteRestarts?: boolean;
     /** `footnoteNumbers`: how page-foot notes are numbered. */
     footnoteNumbers?: "bare" | "period" | "tabbed";
     /** `pdfPageNumbers`: each page is numbered by its place in its PDF. */

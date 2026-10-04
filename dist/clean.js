@@ -53,9 +53,11 @@ export function noteCandidates(lines, numbers = "bare") {
             continue;
         // A lone number is only a note opening if prose follows it. Note text
         // frequently opens with a date or a docket number ("4/2010 Evaluation of
-        // …"), so require words rather than a leading letter.
+        // …"), so require words rather than a leading letter — or a witness's
+        // cipher and a transcript reference, Litvinenko's commonest note ("A1
+        // 2/114", "C2 24/14-39"), which has no word in it (reportsthatmatter-n7fb).
         const next = lines.slice(i + 1).find((line) => line.trim());
-        if (next && /[A-Za-z]{2}/.test(next) && !FOOTNOTE_STACKED.test(next)) {
+        if (next && (/[A-Za-z]{2}/.test(next) || /^\s*[A-Z]\d{1,2}\s+\d{1,3}\/\d/.test(next)) && !FOOTNOTE_STACKED.test(next)) {
             candidates.push({ line: i, note: Number.parseInt(stacked[1], 10) });
         }
     }
@@ -192,14 +194,34 @@ function takeRomanFolio(lines) {
  */
 export function splitFootnoteBlock(lines, expectedNote, options = {}) {
     const candidates = noteCandidates(lines, options.footnoteNumbers);
+    if (options.sequencedNoteOpenings) {
+        // `sequencedNoteOpenings`: the expected note (and the run after it) opening on a digit, a bracket or a wide gap
+        const opening = options.footnoteNumbers === "period" ? /^\s{0,8}(\d{1,4})\.\s+\S/ : /^\s{0,8}(\d{1,4})\s+\S/;
+        let want = expectedNote;
+        for (let i = 0; i < lines.length; i++) {
+            const m = lines[i].match(opening);
+            if (!m || Number(m[1]) !== want || candidates.some((c) => c.line === i)) {
+                if (candidates.some((c) => c.line === i && c.note === want))
+                    want += 1;
+                continue;
+            }
+            candidates.push({ line: i, note: want });
+            want += 1;
+        }
+        candidates.sort((a, b) => a.line - b.line);
+    }
     if (!candidates.length)
         return { body: lines, footnotes: [], runOver: [] };
-    const start = chooseBlockStart(candidates, expectedNote, lines.length) ??
+    const start = chooseBlockStart(candidates, expectedNote, lines) ??
         (options.footnoteGap ? gappedNoteStart(lines, candidates, expectedNote) : null) ??
         // a chapter's numbering restarting on a page with only its note 1 (period-numbered notes are flush, so
         // a lone "1. Letter from…" low on the page has no other reading)
         (options.footnoteNumbers === "period"
             ? candidates.find((c) => c.note === 1 && c.line > lines.length * 0.55) ?? null
+            : null) ??
+        // `footnoteRestarts`: the numbering starting over at 1, low on the page or followed by its 2
+        (options.footnoteRestarts && expectedNote > 1
+            ? candidates.find((c) => c.note === 1 && (c.line > lines.length * 0.55 || candidates.some((o) => o.note === 2 && o.line > c.line))) ?? null
             : null);
     if (start === null)
         return { body: lines, footnotes: [], runOver: [] };
@@ -212,7 +234,9 @@ export function splitFootnoteBlock(lines, expectedNote, options = {}) {
             runOver: [],
         };
     }
-    let from = runOverStart(lines, at, options.citationRunOver ?? false);
+    // the page's own notes, for telling the body (which cites them) from a note's run-over
+    const pageNotes = new Set(candidates.filter((c) => c.line >= at).map((c) => c.note));
+    let from = runOverStart(lines, at, options.citationRunOver ?? false, pageNotes);
     if (options.footnoteGap)
         from = Math.min(from, gappedRunOverStart(lines, at));
     if (options.footnoteNumbers === "period") {
@@ -296,30 +320,30 @@ const DISPLACED_OPENING_MAX = 8;
  * where the report's own footnotes are dense enough with citations to tell
  * them from body prose that way.
  */
-function runOverStart(lines, at, citations) {
+function runOverStart(lines, at, citations, notes = new Set()) {
     let top = at;
     while (top > 0 && lines[top - 1].trim())
         top -= 1;
     if (top === at)
-        return citations ? citationRunOverStart(lines, at) : at;
+        return citations ? citationRunOverStart(lines, at, notes) : at;
     let gap = 0;
     while (top - gap - 1 >= 0 && !lines[top - gap - 1].trim())
         gap += 1;
     // Nothing above the run at all: the whole page is the block's, and there
     // is no body line to tell the run from.
     if (top - gap === 0)
-        return citations ? citationRunOverStart(lines, at) : at;
+        return citations ? citationRunOverStart(lines, at, notes) : at;
     // One line under a single blank is spaced exactly like a line of the body
     // above it; a wider gap, or a second line with no blank before it, is not.
     if (gap < RUN_OVER_MIN_GAP && at - top < 2)
-        return citations ? citationRunOverStart(lines, at) : at;
+        return citations ? citationRunOverStart(lines, at, notes) : at;
     // Only a double-spaced body makes an unbroken run stand out. On a
     // single-spaced page the body's own last paragraph is exactly such a run
     // (Litvinenko sets its paragraphs straight onto their notes), and taking it
     // would move prose, headings and all, into a footnote.
     if (isDoubleSpaced(lines.slice(0, top - gap)))
         return top;
-    return citations ? citationRunOverStart(lines, at) : at;
+    return citations ? citationRunOverStart(lines, at, notes) : at;
 }
 const RUN_OVER_MIN_GAP = 2;
 /** Blank lines that read as a deliberate gap — a chart's space, a note block's separator — not paragraph spacing. */
@@ -401,7 +425,12 @@ function gappedRunOverStart(lines, at) {
  * with no citation of its own, ordinary narration — stops the walk exactly
  * where it is, and nothing above that point is touched.
  */
-function citationRunOverStart(lines, at) {
+function citationRunOverStart(lines, at, notes = new Set()) {
+    // A paragraph that cites one of the page's own notes ("a “pig.” 1402 Yet")
+    // is the body however many security names it carries ("FHLT 2005-A M9",
+    // read as Bates numbers, walked a page and a half of PSI into note 1399:
+    // reportsthatmatter-kvxj).
+    const citesThisPage = (paragraph) => [...paragraph.matchAll(/[a-z.,;:!?"”’')\]]\s?(\d{1,4})(?=\s|$)/g)].some((m) => notes.has(Number(m[1])));
     let boundary = at;
     while (true) {
         let top = boundary;
@@ -410,7 +439,7 @@ function citationRunOverStart(lines, at) {
         if (top === boundary)
             return boundary;
         const paragraph = lines.slice(top, boundary).join(" ");
-        if (!looksLikeCitation(paragraph))
+        if (!looksLikeCitation(paragraph) || citesThisPage(paragraph))
             return boundary;
         let gap = 0;
         while (top - gap - 1 >= 0 && !lines[top - gap - 1].trim())
@@ -636,12 +665,36 @@ function pageEdgeIndices(lines) {
  * the entire block: one page offered notes 140-147 and was thrown out because a
  * spurious "20" followed them.
  */
-function chooseBlockStart(candidates, expectedNote, lineCount) {
+function chooseBlockStart(candidates, expectedNote, lines) {
+    const lineCount = lines.length;
     /** Corroboration: the next note follows it, or it sits low on the page. */
     const plausible = (candidate) => candidates.some((other) => other.note === candidate.note + 1) ||
         candidate.line > lineCount * 0.55;
-    const exact = candidates.find((candidate) => candidate.note === expectedNote);
-    if (exact && plausible(exact))
+    // Where the expected number opens more than one line (a body line "2006 and
+    // 2007 securitization…" above the foot's note 2006, a stray raised "216" over
+    // a word), the block opens on a plausible one, the one the most notes follow
+    // in step; on a tie, the first set off by a blank line above it (a note block
+    // is; a stray inside a paragraph is not), else the first (reportsthatmatter-kvxj).
+    const runAfter = (candidate) => {
+        let n = 0;
+        let line = candidate.line;
+        for (;;) {
+            const next = candidates.find((c) => c.note === candidate.note + n + 1 && c.line > line);
+            if (!next)
+                return n;
+            n += 1;
+            line = next.line;
+        }
+    };
+    const exacts = candidates.filter((candidate) => candidate.note === expectedNote && plausible(candidate));
+    const setOff = (c) => (c.line > 0 && !lines[c.line - 1].trim() ? 1 : 0);
+    const exact = exacts.reduce((best, c) => {
+        if (best === undefined)
+            return c;
+        const [a, b] = [runAfter(c), runAfter(best)];
+        return a > b || (a === b && setOff(c) > setOff(best)) ? c : best;
+    }, undefined);
+    if (exact)
         return exact;
     // Notes we failed to collect leave the counter behind; accept a small jump.
     const ahead = candidates

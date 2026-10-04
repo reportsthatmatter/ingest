@@ -18,6 +18,10 @@ const LABEL = /^(?:\d{1,4}(?:\.\d{1,4})*[.)]?|[a-z][.)]|[A-Z]\.|[ivxlc]{1,5}[.)]
 const LABEL_ONLY = /^\s*(?:\d{1,4}(?:\.\d{1,4})*[.)]?|[a-z][.)]|\([a-z0-9]{1,4}\)|[•·▪–-])\s*$/;
 /** A footnote-marker shape: digits, or the usual symbols. */
 const MARKER = /^\s*(?:\d{1,4}|[*†‡§])\s*$/;
+/** A raised number with the sentence's stop set inside it ("232."): the digits. */
+const MARKER_STOPPED = /^\s*(\d{1,4})[.,;]\s*$/;
+/** Raised numbers set as one fragment with commas between ("24,25"). */
+const MARKER_LIST = /^\s*\d{1,4}(?:,\s?\d{1,4})+\s*$/;
 /**
  * How far a footnote marker's box may start inside the box before it. A fragment's box includes its
  * trailing space, and an italic one's is wider still, so a marker set after a closing quotation mark
@@ -93,7 +97,11 @@ export function parseLayoutXml(xml) {
                 parts.splice(k + 1, 0, f);
                 used.add(j);
             }
-            const main = parts.reduce((a, b) => (b.text.length > a.text.length ? b : a));
+            // The line's face is its longest fragment's, not counting a marker-shaped one: "7." and a raised
+            // "1361" is a line of the body's face with a marker, not a line in the marker's 12pt, whose raised
+            // digits `layoutMarkers` then skips as smaller than the body (PSI p.359; reportsthatmatter-kvxj).
+            const words = parts.filter((p) => !MARKER.test(p.text));
+            const main = (words.length ? words : parts).reduce((a, b) => (b.text.length > a.text.length ? b : a));
             const font = fonts.get(main.font) ?? { size: main.height, family: "", color: "" };
             const joined = joinParts(parts, font.size);
             const raised = [];
@@ -102,9 +110,19 @@ export function parseLayoutXml(xml) {
                     return;
                 const pf = fonts.get(p.font);
                 const smaller = pf ? pf.size <= font.size - 2 : p.height < main.height - 2;
-                if (smaller && p.top < main.top + main.height / 2 && MARKER.test(p.text)) {
+                // (a raised "232." carries the sentence's full stop inside it, Lehman p.77: the digits are the marker;
+                // reportsthatmatter-qsfc)
+                const marker = MARKER.test(p.text) ? p.text.trim() : MARKER_STOPPED.exec(p.text)?.[1];
+                if (smaller && p.top < main.top + main.height / 2 && marker) {
                     const offset = joined.starts[k] + (p.text.length - p.text.trimStart().length);
-                    raised.push({ text: p.text.trim(), size: pf?.size ?? p.height, left: p.left, offset });
+                    raised.push({ text: marker, size: pf?.size ?? p.height, left: p.left, offset });
+                }
+                else if (smaller && p.top < main.top + main.height / 2 && MARKER_LIST.test(p.text)) {
+                    // "£3.8m.²⁴,²⁵" set as one raised fragment: each number is a marker (Hillsborough p.235;
+                    // reportsthatmatter-kgpr)
+                    const from = joined.starts[k];
+                    for (const m of p.text.matchAll(/\d{1,4}/g))
+                        raised.push({ text: m[0], size: pf?.size ?? p.height, left: p.left, offset: from + m.index });
                 }
             });
             const left = parts[0].left;

@@ -203,6 +203,8 @@ export function ingestPageGroups(
         parenFolios: resolved.parenFolios,
         pageHeadFolios: resolved.pageHeadFolios,
         footnoteGap: resolved.footnoteGap,
+        footnoteRestarts: resolved.footnoteRestarts,
+        sequencedNoteOpenings: resolved.sequencedNoteOpenings,
         footnoteNumbers: resolved.footnoteNumbers,
       };
       let split = resolved.paragraphNotes || resolved.endnotes || resolved.layoutEndnotes
@@ -255,12 +257,16 @@ export function ingestPageGroups(
         split.body = [...split.body, ...split.runOver];
       }
       if (split.footnotes.length) {
-        const parsed = parseFootnotes(split.footnotes, split.index, resolved.footnoteNumbers ?? "bare").map((note) => ({
+        const parsed = parseFootnotes(split.footnotes, split.index, resolved.footnoteNumbers ?? "bare", {
+          sequenced: resolved.sequencedNoteOpenings,
+        }).map((note) => ({
           ...note,
           volume: split.volume,
           pdfIndex: split.pdfIndex,
           printed: split.printed,
         }));
+        // `footnoteRestarts`: a block that opens below the expected number starts the numbering over
+        if (resolved.footnoteRestarts && parsed.length && parsed[0].number < expectedNote) parsed[0].restart = true;
         footnotes.push(...parsed);
         if (parsed.length) expectedNote = Math.max(...parsed.map((n) => n.number)) + 1;
       }
@@ -876,7 +882,7 @@ function ingestEdition(
     linkedText: shadow.linkedText,
     footnotes: shadow.footnotes,
   });
-  const assembled = assembleEdition(edition, pages, printed, pass.sources);
+  const assembled = assembleEdition(edition, pages, printed, pass.sources, { floats: pass.floats });
   if (filled.length) {
     assembled.report.filled = filled;
     const printedOf = new Map(printed.map((entry) => [`${entry.volume}:${entry.pdfIndex}`, entry.number]));

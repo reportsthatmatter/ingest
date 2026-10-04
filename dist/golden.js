@@ -238,12 +238,13 @@ options = {}) {
             fail(`markers not linked: ${unlinked.join(",")}`);
         const max = Math.max(0, ...markers);
         mine.forEach((m, i) => {
-            const last = i === mine.length - 1;
+            // The last block may run on to the next page, whose markers it then holds; so may a block the
+            // golden page says `continues` with a caption or sidebar after it (Deepwater p.71; reportsthatmatter-qzix).
+            const runsOn = i === mine.length - 1 || (gold?.[i]?.continues === true && gold[i].type !== "heading" && hasStart(m, gold[i]));
             for (const n of m.notes) {
                 if (markers.includes(n))
                     continue;
-                // The last block may run on to the next page, whose markers it then holds.
-                if (last && (n > max || !markers.length))
+                if (runsOn && (n > max || !markers.length))
                     continue;
                 spurious.push(n);
             }

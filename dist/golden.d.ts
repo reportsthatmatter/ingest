@@ -33,7 +33,8 @@ import type { OracleSignal, PageCounts } from "./oracle.js";
  *       - paragraph: {start: "The Inquiry heard", end: "in March 2003.", notes: [12, 13]}
  *       - quote: {start: "I am writing", end: "yours sincerely"}
  *       - list: {start: "(a) the first", end: "(c) the last", items: 3}
- *       - paragraph: {start: "It was then", continues: true}   # runs on to the next page
+ *       - paragraph: {start: "It was then", continues: true}   # runs on to the next page, and may hold its markers
+ *                                     # (wherever it falls: a caption or sidebar may follow it on the page)
  *     footnotes: [12, 13]      # note numbers defined on this page
  *     markers: [12, 13]        # markers referenced on this page
  *     must_contain: ["abdominal pain, profuse diarrhoea"]   # one block holds this run

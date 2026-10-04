@@ -86,6 +86,9 @@ export type Edition = {
 
 export type EditionSource = { path: string; sha256: string };
 
+/** A PDF page with at least this many body words and none the edition aligns to is a page the edition lacks. */
+const PAGE_NOT_IN_EDITION_WORDS = 40;
+
 /** `cleanEdition`: declares the edition a report's text and structure come from. */
 export type EditionPass = {
   readonly name: "cleanEdition";
@@ -99,6 +102,17 @@ export type EditionPass = {
    * body (Saville).
    */
   readonly notes: "back" | "page-foot";
+  /**
+   * Where a paragraph that a float interrupted mid-sentence, rejoined, is
+   * served against its floats. `"after"` (the default): the paragraph, then
+   * the floats. `"by-notes"`: the floats first when their notes number them
+   * before the paragraph's (the paragraph's opening half cites none, its
+   * closing half cites only notes after the floats'), so the notes read in
+   * the order the print numbers them: 9/11's "A Case Study in Terrorist
+   * Travel" (notes 22-25) interrupts the paragraph that ends on note 26
+   * (reportsthatmatter-gq4j).
+   */
+  readonly floats?: "after" | "by-notes";
   /** Reads and checks the edition's files and returns its blocks. */
   read(): Edition;
 };
@@ -117,6 +131,8 @@ export function cleanEdition(options: {
   files: EditionSource[];
   encoding?: BufferEncoding;
   notes?: "back" | "page-foot";
+  /** See `EditionPass.floats`. */
+  floats?: "after" | "by-notes";
   read(files: Array<{ path: string; text: string }>): Edition;
 }): EditionPass {
   return {
@@ -124,6 +140,7 @@ export function cleanEdition(options: {
     stage: "edition",
     sources: options.files,
     notes: options.notes ?? "back",
+    ...(options.floats ? { floats: options.floats } : {}),
     read() {
       const files = options.files.map((file) => {
         const buffer = readFileSync(join(options.dir, file.path));
@@ -314,7 +331,8 @@ export function assembleEdition(
   edition: Edition,
   pages: Page[],
   printed: PrintedPage[],
-  sources: readonly EditionSource[]
+  sources: readonly EditionSource[],
+  options: { floats?: "after" | "by-notes" } = {}
 ): { body: string; notes: string; report: EditionReport; suspects: Suspect[]; blocks: Block[]; linkedText: string[]; notePages: Array<number | undefined> } {
   const blocks = structuredClone(edition.blocks);
   const notes = structuredClone(edition.notes);
@@ -627,6 +645,33 @@ export function assembleEdition(
     } else gap.push(j);
   }
   flushGap();
+  // A whole PDF page the edition has no word of, inside the stretch it covers, raises a suspect of its
+  // own: the stretch scan above only reads pages that hold an aligned word, so a page the edition lacks
+  // (a web page never archived, a gap an adapter forgot to declare) was silent (reportsthatmatter-bt5d).
+  if (covered.size) {
+    const wordsOn = new Map<number, number[]>();
+    pdf.forEach((t, j) => {
+      if (!wordsOn.has(t.page)) wordsOn.set(t.page, []);
+      wordsOn.get(t.page)!.push(j);
+    });
+    const first = Math.min(...covered);
+    const last = Math.max(...covered);
+    for (let p = first + 1; p < last; p++) {
+      const on = wordsOn.get(p) ?? [];
+      if (covered.has(p) || on.length < PAGE_NOT_IN_EDITION_WORDS) continue;
+      const text = pageText[p].slice(pdf[on[0]].start, pdf[on[on.length - 1]].end).replace(/\s+/g, " ");
+      const entry = marked.find((x) => x.p === p)?.entry;
+      suspects.push({
+        pattern: "PDF page not in the edition",
+        match: text.slice(0, 120),
+        context: `${on.length} words, none in the edition: ${text.slice(0, 300)}`,
+        page: pageNumber(entry),
+        volume: pages[p].volume,
+        pdfIndex: pages[p].pdfIndex,
+        confidence: "possible",
+      });
+    }
+  }
 
   // serialise, joining a paragraph that a float interrupted mid-sentence
   const joins = new Map<number, number>();
@@ -637,6 +682,21 @@ export function assembleEdition(
     while (j < blocks.length && blocks[j].float) j++;
     const next = blocks[j];
     if (j > b + 1 && next?.kind === "paragraph" && !next.float) joins.set(b, j);
+  }
+  // `floats: "by-notes"`: the joins whose floats read first, by where their notes are numbered
+  const floatsFirst = new Set<number>();
+  if (options.floats === "by-notes") {
+    const ordinal = new Map(notes.map((note, i) => [note.label, i]));
+    const cited = (from: number, to: number) =>
+      blocks.slice(from, to).flatMap((block) =>
+        [...blockMarkdown(block).matchAll(/\[\^([^\]]+)\](?!:)/g)].flatMap((m) => (ordinal.has(m[1]) ? [ordinal.get(m[1])!] : []))
+      );
+    for (const [b, j] of joins) {
+      const head = cited(b, b + 1);
+      const floats = cited(b + 1, j);
+      const tail = cited(j, j + 1);
+      if (!head.length && floats.length && tail.length && Math.min(...tail) > Math.max(...floats)) floatsFirst.add(b);
+    }
   }
   const out: string[] = [];
   const order: Array<{ block: EditionBlock; source: number }> = [];
@@ -669,6 +729,21 @@ export function assembleEdition(
       kind: "paragraph",
       text: /[a-z]-$/.test(head.text) && /^[a-z]/.test(tail.text) ? head.text.slice(0, -1) + tail.text : `${head.text} ${tail.text}`,
     };
+    if (floatsFirst.has(b)) {
+      // the floats, on their own pages, then the paragraph: a box is often a
+      // page or more, so it keeps its page stamps and the paragraph whose
+      // opening lines it interrupted reads on the page it ends on
+      for (let k = b + 1; k < j; k++) {
+        for (const p of markersBefore.get(k) ?? []) out.push(marker(p));
+        out.push(blockMarkdown(blocks[k]));
+        order.push({ block: blocks[k], source: k });
+      }
+      out.push(blockMarkdown(joined));
+      order.push({ block: joined, source: b });
+      carried = markersBefore.get(j) ?? [];
+      b = j;
+      continue;
+    }
     out.push(blockMarkdown(joined));
     order.push({ block: joined, source: b });
     // the floats follow it with their own pages; a page that began in the paragraph's second half follows them
