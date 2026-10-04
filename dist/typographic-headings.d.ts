@@ -50,6 +50,15 @@ export type TypographicHeadingsOptions = {
      * sentence) still apply. Overrides `sizes`, `minRatio`, `minPages` and `minLines`.
      */
     faces?: string[][];
+    /**
+     * A block the text reading already made a heading, at another level than the face declares, takes
+     * the face's level. The Grenfell Tower Inquiry's executive summary heads its account of each Part
+     * "Part 3 / The testing and marketing of products (Chapters 15 – 29)" in the face of its subsections;
+     * read by its text as a division ("Part 3:"), each became a top-level section beside the volume's own
+     * Parts 1 and 2. Matched on letters and digits only, since the division reading adds a colon. Only
+     * with `faces`. Default false.
+     */
+    relevel?: boolean;
 };
 export type TypographicHeadingStats = {
     /** Heading faces found, largest first, with the level each was given. */
@@ -63,8 +72,10 @@ export type TypographicHeadingStats = {
     headings: number;
     /** Cut out of a block that ran the heading into its text. */
     split: number;
-    /** Already a heading block (left alone). */
+    /** Already a heading block (left alone, or re-levelled under `relevel`). */
     already: number;
+    /** Of those, given the face's level under `relevel`. */
+    relevelled?: number;
     /** Not found in any block of the page. */
     unplaced: number;
     misses: Array<{

@@ -1,4 +1,5 @@
 import { stripRepeatedPageFurniture, takePrintedNumber, splitFootnoteBlock, type SplitPage, type FurnitureOptions } from "./clean";
+import { dropFurnitureFaces, type FurnitureFacesOptions } from "./furniture-faces";
 import { bodyIndent } from "./paragraphs";
 import { splitColumns } from "./columns";
 import type { PageHeadFolio } from "./clean";
@@ -1027,6 +1028,30 @@ export const columns = (): BodyPass => ({
   stage: "body",
   run: splitColumns,
 });
+
+/**
+ * Removes the running heads and feet the layout sets in a declared face (reportsthatmatter-gqsy.4).
+ *
+ * `runningFurniture` finds furniture by repetition at a page edge, which fails both ways on a report
+ * whose running head names the chapter: the Grenfell Tower Inquiry's recto head ("Part 2 | Chapter
+ * 13: The Fire Safety Order", Calibri 10pt white on a banner) recurs only on that chapter's few
+ * rectos, so a short chapter's head stayed in the text, while real headings that open many pages
+ * ("Introduction" under a chapter banner, "Part 3" in the executive summary) and the chapter banners
+ * ("Chapter 2") were stripped as furniture. Declared, a line set in one of `faces` (layout face keys,
+ * `family|size|color` then `|b`, `|i`, as `pnpm ingest page` prints them) within the top or bottom
+ * `edge` of the page (default 8% of its height) is dropped, and nothing else is. Needs the layout;
+ * runs before the volume passes, so a report may declare it instead of `runningFurniture` or with it.
+ *
+ * Opt-in: a face is a fact about one publisher's design.
+ */
+export const furnitureFaces = (faces: string[], options: FurnitureFacesOptions = {}): BodyPass => {
+  const set = new Set(faces);
+  return {
+    name: "furnitureFaces",
+    stage: "body",
+    run: (lines, context, at) => dropFurnitureFaces(lines, set, context, at, options),
+  };
+};
 
 /**
  * How far past the body margin a quotation sits in this document.
