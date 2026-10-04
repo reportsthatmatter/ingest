@@ -302,6 +302,12 @@ export type MergeOptions = {
      */
     letteredItems?: boolean;
     /**
+     * `numberedOpenings` (reportsthatmatter-f951): a block opening on a printed
+     * paragraph number ("2.86 RBKC's…") is not joined onto a paragraph ending in
+     * an abbreviation or an initial ("…Approved Document B.").
+     */
+    numberedOpenings?: boolean;
+    /**
      * The `quoteListRunOns` pass (reportsthatmatter-38s.9): a block quotation
      * or list item running over a page arrives as two quotations or two lists.
      * The second joins the first when the first stops mid-sentence and the

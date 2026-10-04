@@ -74,6 +74,7 @@ export type ResolvedPasses = {
   unlistedHeadingsMinor?: boolean;
   hangingIndents?: boolean;
   letteredItems?: boolean;
+  numberedOpenings?: boolean;
   numberedFindings?: boolean;
   doubleSpaced?: boolean;
   contentsOutline?: boolean;
@@ -184,7 +185,7 @@ export const KNOWN_PAGE_PASSES: ReadonlySet<string> = new Set([
   "endnotes", "escapeLeadingHash", "escapeNumberedParagraphs", "flushFootnoteMarkers",
   "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteRestarts", "hangingIndents",
   "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "letteredItems", "listedDivisions", "listedHeadings",
-  "numberedFindings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
+  "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
   "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
   "printedPageNumber", "quoteListRunOns", "quoteRunOn", "recoverListedHeadings", "romanFolios",
   "sequencedNoteOpenings", "shiftedPages", "shortSubheads", "typographicHeadings", "unlistedHeadingsMinor",
@@ -238,6 +239,8 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     unlistedHeadingsMinor: passes.some((pass) => pass.name === "unlistedHeadingsMinor"),
     hangingIndents: passes.some((pass) => pass.name === "hangingIndents"),
     letteredItems: passes.some((pass) => pass.name === "letteredItems"),
+    numberedOpenings:
+      passes.some((pass) => pass.name === "numberedOpenings") && passes.some((pass) => pass.name === "numberedParagraphs"),
     numberedFindings: passes.some((pass) => pass.name === "numberedFindings"),
     doubleSpaced: passes.some((pass) => pass.name === "doubleSpaced"),
     contentsOutline: passes.some((pass) => pass.name === "contentsOutline"),

@@ -1690,6 +1690,20 @@ function joinChapterBanners(blocks, chapters) {
  * opening mid-sentence — and in a document about Mr. Trump, that is often.
  */
 const ABBREVIATION = /\b(mr|mrs|ms|dr|prof|sen|rep|gov|st|nos?|vs?|inc|co|corp|ltd|jr|sr|u\.s|e\.g|i\.e|cf|ch|art|sec|fig|para|pp?|ecf|tr)\.$/i;
+/** A printed paragraph number opening a block, as `numberedParagraphs` splits on it ("2.86 RBKC's…"). */
+const NUMBERED_OPENING = /^\d{1,3}[.)]\d{1,3}\s+["'“‘(]?[A-Z]/;
+/** The chapter of the last numbered paragraph ("14.8 …") already merged, if any. */
+function lastNumberedChapter(merged) {
+    for (let i = merged.length - 1; i >= 0; i--) {
+        const b = merged[i];
+        if (b.kind !== "paragraph")
+            continue;
+        const m = b.text.match(/^(\d{1,3})[.)]\d{1,3}\s/);
+        if (m)
+            return m[1];
+    }
+    return undefined;
+}
 /** A single initial — "Donald J." — is not a sentence end either. */
 const INITIAL = /\b[A-Z]\.$/;
 export function endsSentence(text) {
@@ -2023,6 +2037,23 @@ export function mergeAcrossPages(blocks, options = {}) {
             previous.text = `${previous.text} ${block.text}`;
             continue;
         }
+        // `numberedOpenings`: a page opening on a paragraph number of another chapter, after a
+        // sentence left unfinished, opens on a cross-reference ("…saying that paragraphs" / "79.9 to
+        // 79.11 of the LGA Guide…", Grenfell p.221, in chapter 14), not on a paragraph of its own.
+        if (options.numberedOpenings &&
+            acrossPages &&
+            block.kind === "paragraph" &&
+            block.finding === undefined &&
+            previous?.kind === "paragraph" &&
+            !endsSentence(previous.text) &&
+            /^\d{1,3}[.)]\d{1,3}\s/.test(block.text)) {
+            const chapter = block.text.match(/^(\d{1,3})/)[1];
+            const current = lastNumberedChapter(merged);
+            if (current !== undefined && current !== chapter) {
+                previous.text = `${previous.text} ${block.text}`;
+                continue;
+            }
+        }
         if (block.kind === "paragraph" &&
             block.finding === undefined &&
             previous?.kind === "paragraph" &&
@@ -2030,6 +2061,7 @@ export function mergeAcrossPages(blocks, options = {}) {
             // A lowercase opening is the usual sign of a continuation. After an
             // abbreviation the next word is often a name, so allow either.
             !(options.letteredItems && ITEM_LABEL.test(block.text)) &&
+            !(options.numberedOpenings && NUMBERED_OPENING.test(block.text)) &&
             (/^[a-z,;]/.test(block.text) ||
                 ABBREVIATION.test(previous.text) ||
                 INITIAL.test(previous.text))) {

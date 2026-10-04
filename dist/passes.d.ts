@@ -282,6 +282,24 @@ export declare const hangingIndents: () => PagePass;
  */
 export declare const letteredItems: () => PagePass;
 /**
+ * A block that opens on a printed paragraph number ("2.86 RBKC's building
+ * control department…") is a paragraph of its own: it is never joined onto
+ * the paragraph above by the text rule that reads a closing abbreviation or
+ * single initial as an unfinished sentence (reportsthatmatter-f951).
+ *
+ * `numberedParagraphs` splits the line, but `mergeAcrossPages` then joins any
+ * paragraph onto one ending "Mr." or "B." (a name usually follows), so the
+ * Grenfell Tower Inquiry's three paragraphs after "…Approved Document B."
+ * (2.86, 5.9, 9.42) ran on inside the one before and their ids did not exist.
+ * Leveson has the same shape ("…in Part H. 4.30 The dinner…", "…News Corp.
+ * 3.5…"). And the reverse: a page that opens on another chapter's number
+ * after a sentence left unfinished opens on a cross-reference, which joins
+ * the paragraph above ("…saying that paragraphs" / "79.9 to 79.11 of the LGA
+ * Guide…", Grenfell p.221, in chapter 14). Opt-in, because declaring it
+ * moves those reports' ids; it only has an effect with `numberedParagraphs`.
+ */
+export declare const numberedOpenings: () => PagePass;
+/**
  * This report's notes are endnotes: printed together at the back, never at a
  * page foot, so no page is searched for a footnote block (reportsthatmatter-vpx).
  *
@@ -876,6 +894,20 @@ export declare const columns: () => BodyPass;
  * Opt-in: a face is a fact about one publisher's design.
  */
 export declare const furnitureFaces: (faces: string[], options?: FurnitureFacesOptions) => BodyPass;
+/**
+ * Drops the words a figure or chart draws, by the font family the layout sets them in
+ * (reportsthatmatter-7150). The Grenfell Tower Inquiry draws its figures and charts (chapters 5 and
+ * 6) with Times New Roman text and sets nothing else in it: their labels ("Chimney", "Combustion
+ * chamber") stood as paragraphs, a chart's columns came out as 242-word runs of interleaved words,
+ * and a label drawn over the body ("BS 476-6") was glued into a citable sentence. Declared, every
+ * line the layout sets in one of `families` (as `pnpm ingest page` prints them, e.g.
+ * "TimesNewRomanPSMT") goes, wherever it sits on the page; a figure's words glued onto a body line
+ * are cut out of it. Captions are the body's own face and stay. Needs the layout.
+ *
+ * Opt-in: a family is a fact about one publisher's design, and a report that sets its body or its
+ * quotations in that family would lose them.
+ */
+export declare const figureFaces: (families: string[]) => BodyPass;
 /**
  * How far past the body margin a quotation sits in this document.
  *
