@@ -450,6 +450,18 @@ describe("splitSections", () => {
     expect(sections[1].html).toContain("Chapter 1: In Russia");
   });
 
+  it("never folds a short part with an intro across the next top-level heading (us-jan6-committee)", async () => {
+    const { splitSections } = await import("../src/sections");
+    const long = "word ".repeat(800);
+    const short = "word ".repeat(200);
+    const html = renderMarkdown(
+      `## Staff\n\n${long}\n\n## Foreword: Speaker\n\n%%page vii%%\n\n### THE LAST BEST HOPE\n\n${short}\n\n## Foreword: Chairman\n\n${long}`
+    );
+    const sections = splitSections(html);
+    // the Speaker's short foreword is a section of its own; the Chairman's is not swallowed into it
+    expect(sections.map((s) => s.title)).toEqual(["Staff", "Foreword: Speaker", "Foreword: Chairman"]);
+  });
+
   it("folds a body-less chapter banner forwards onto its first numbered section, not backwards (reportsthatmatter-u88)", async () => {
     const { splitSections } = await import("../src/sections");
     const long = "word ".repeat(800);

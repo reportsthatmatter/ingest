@@ -119,6 +119,15 @@ function mergeSlivers(parts, minChars) {
         if (!part.trim())
             continue;
         if (divider) {
+            // A divider heads what follows it up to the next top-level heading, never across it: the Speaker's
+            // short foreword ("Foreword: Speaker of the House", then its title as an h3) had swallowed the
+            // Chairman's whole foreword after it, which then had no section of its own (us-jan6-committee).
+            if (/^<h2\b/.test(part)) {
+                merged.push(divider);
+                divider = "";
+                i--;
+                continue;
+            }
             divider += part;
             if (textLength(divider) >= minChars) {
                 merged.push(divider);
