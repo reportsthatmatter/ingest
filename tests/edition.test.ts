@@ -142,6 +142,31 @@ describe("assembleEdition", () => {
     expect(lines.indexOf("%%page 2%%")).toBe(lines.findIndex((l) => l.includes("It left the gate")) - 1);
   });
 
+  it("aligns notes where the PDF prints them (`after`), and leaves a page of only those notes unmarked", () => {
+    // chapter one, its endnotes on a page of their own, then chapter two: the edition's notes follow its body
+    const NOTE = (n: number) => `Interview of witness ${n} on the record of the select committee hearing number ${n * 3}`;
+    const run: Page[] = [
+      page(1, [LONG(1)]),
+      page(2, ["ENDNOTES", ...Array.from({ length: 30 }, (_, k) => `${k + 1}. ${NOTE(k)}`)]),
+      page(3, [LONG(2)]),
+    ];
+    const three: PrintedPage[] = [1, 2, 3].map((n) => ({ volume: 1, pdfIndex: n, number: n }));
+    const blocks: Edition["blocks"] = [
+      { kind: "paragraph", text: `${LONG(1)}[^1-1]` },
+      { kind: "paragraph", text: LONG(2) },
+    ];
+    const notes = Array.from({ length: 30 }, (_, k) => ({ label: `${k + 1}-1`, text: NOTE(k) }));
+    const back = assembleEdition({ blocks, notes }, run, three, []);
+    const placed = assembleEdition({ blocks, notes: notes.map((n) => ({ ...n, after: 0 })) }, run, three, []);
+    // read after the whole body, the chapter's notes cannot align: chapter two's words took their place
+    expect(back.report.alignedWords).toBeLessThan(placed.report.alignedWords);
+    expect(placed.report.alignedWords).toBe(placed.report.editionWords);
+    expect(placed.notePages.every((p) => p === 1)).toBe(true);
+    // the notes page names no served text: no marker for it
+    expect(placed.body.split("\n\n")).toEqual(["%%page 1%%", `${LONG(1)}[^1-1]`, "%%page 3%%", LONG(2)]);
+    expect(back.body).toContain("%%page 2%%");
+  });
+
   it("marks a page that starts inside a block after that block", () => {
     const run: Page[] = [page(1, [`${LONG(1)} and the paragraph runs`]), page(2, [`on over the page. ${LONG(2)}`])];
     const ed: Edition = { blocks: [{ kind: "paragraph", text: `${LONG(1)} and the paragraph runs on over the page.` }, { kind: "paragraph", text: LONG(2) }], notes: [] };

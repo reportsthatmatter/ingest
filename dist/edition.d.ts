@@ -63,6 +63,16 @@ export type BlockSource = {
 export type EditionNote = {
     label: string;
     text: string;
+    /**
+     * Where the PDF prints this note in its reading order: after the edition
+     * block at this index. A report whose notes close each chapter (the January
+     * 6th Committee's "ENDNOTES" after every part) sets it to the chapter's last
+     * block, so the edition's words are aligned to the PDF in the order the PDF
+     * prints them, notes included. Left out, a note follows the whole body, as
+     * a notes section at the back does (9/11). It moves only the alignment: the
+     * notes are served as before.
+     */
+    after?: number;
 };
 export type Edition = {
     blocks: EditionBlock[];

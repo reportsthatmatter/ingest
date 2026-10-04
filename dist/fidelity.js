@@ -117,7 +117,7 @@ export function losslessCheck(sourceText, markdown, extraVocabulary = []) {
             : `${foreign.length}/${output.length} not in source (e.g. ${foreign.slice(0, 5).join(", ")})`,
     };
 }
-/** Source words split at their own punctuation, and pairs joined across a line-end dash or an apostrophe. */
+/** Source words split at their own punctuation, and pairs joined across a line-end dash, an apostrophe or a URL's line break. */
 function sourcePieces(sourceText) {
     const out = [];
     const raw = comparable(sourceText).toLowerCase().split(/\s+/).filter(Boolean);
@@ -126,7 +126,9 @@ function sourcePieces(sourceText) {
             if (piece)
                 out.push(piece);
         const next = raw[i + 1];
-        if (next && (/[-\u2013\u2014\u00ad]$/.test(raw[i]) || /^[\u2019']/.test(next))) {
+        // (and a URL the PDF breaks at a line end after a slash, a dot or a query character, which the edition prints whole)
+        const urlBreak = /(?:https?:|www\.|\/)/.test(raw[i]) && /[/._=?&%#]$/.test(raw[i]);
+        if (next && (/[-\u2013\u2014\u00ad]$/.test(raw[i]) || /^[\u2019']/.test(next) || urlBreak)) {
             const joined = (raw[i] + next).replace(STOP_CHARS, "");
             if (joined)
                 out.push(joined);
