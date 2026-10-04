@@ -163,17 +163,20 @@ export function pipeline(def: PipelineDef): PipelineDef {
  * (reportsthatmatter-5xln: a report declared `typographicHeadings` under a library that predated it, and its
  * output came out byte-identical). `tests/resolve-passes.test.ts` builds every exported page pass and checks it
  * is named here, so a new pass cannot be added without being added to this list.
+ * It also names the page passes of ingest#62 (parenFolios, pageHeadFolios, foliosInStep), #63 (pdfPageNumbers) and
+ * #64 (footnoteRestarts, sequencedNoteOpenings), opened alongside this one: without them a report declaring one would
+ * throw once all are merged (review v0.23.0).
  */
 export const KNOWN_PAGE_PASSES: ReadonlySet<string> = new Set([
   "chapterContents", "citationRunOver", "contentsEntries", "contentsOutline", "doubleSpaced",
   "endnotes", "escapeLeadingHash", "escapeNumberedParagraphs", "flushFootnoteMarkers",
-  "footnoteBlock", "footnoteGap", "footnoteNumbers", "hangingIndents", "layoutEndnotes",
-  "layoutMarkers", "layoutPageJoins", "letteredItems", "listedDivisions", "listedHeadings",
+  "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteRestarts", "hangingIndents",
+  "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "letteredItems", "listedDivisions", "listedHeadings",
   "numberedFindings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
-  "pageBreakContinuations", "paragraphNotes", "photoCredits", "printedPageNumber",
-  "quoteListRunOns", "quoteRunOn", "recoverListedHeadings", "romanFolios", "shiftedPages",
-  "shortSubheads", "typographicHeadings", "unlistedHeadingsMinor", "unmarkedHeadings",
-  "wrappedHeadings",
+  "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
+  "printedPageNumber", "quoteListRunOns", "quoteRunOn", "recoverListedHeadings", "romanFolios",
+  "sequencedNoteOpenings", "shiftedPages", "shortSubheads", "typographicHeadings", "unlistedHeadingsMinor",
+  "unmarkedHeadings", "wrappedHeadings",
 ]);
 
 /**
