@@ -162,6 +162,31 @@ describe("applyTypographicHeadings", () => {
   });
 });
 
+describe("relevel (Grenfell Tower Inquiry, gqsy.4)", () => {
+  // the text reading made "Conclusion" a division-level heading ("Part 3:"-style, level 2) with a colon it added
+  const read = (): Block[] => [
+    { kind: "heading", level: 2, text: "Conclusion:", at: at(2) },
+    para("2.12.6 There were no further findings.", 2),
+  ];
+  const faces = [["HelveticaNeue-Medium|21|#780030"]];
+
+  it("gives a heading the text reading made the level its face declares, matched on letters and digits", () => {
+    const b = read();
+    const stats = applyTypographicHeadings(b, layout, { firstLevel: 4, faces, relevel: true });
+    expect(b[0]).toMatchObject({ kind: "heading", level: 4, text: "Conclusion:" });
+    expect(stats.relevelled).toBe(1);
+  });
+
+  it("leaves it alone without relevel, or without faces", () => {
+    const b = read();
+    applyTypographicHeadings(b, layout, { firstLevel: 4, faces });
+    expect(b[0]).toMatchObject({ level: 2 });
+    const c = read();
+    applyTypographicHeadings(c, layout, { firstLevel: 4, minLines: 3, relevel: true });
+    expect(c[0]).toMatchObject({ level: 2 });
+  });
+});
+
 describe("on a real page", () => {
   it("Hillsborough p.34 (reportsthatmatter-a8l): both maroon subheads, read as paragraphs, are headings", () => {
     const f = JSON.parse(readFileSync(new URL("./fixtures/oracle/hillsborough-p34.json", import.meta.url), "utf8"));
