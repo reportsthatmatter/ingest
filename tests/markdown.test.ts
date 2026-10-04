@@ -470,6 +470,23 @@ describe("splitSections", () => {
     expect(sections[1].html).toContain("The Summer of Threat");
   });
 
+  it("folds a body-less chapter heading forwards onto a lettered first subsection too (Post Office Horizon, gqsy.2)", async () => {
+    const { splitSections } = await import("../src/sections");
+    const long = "word ".repeat(800);
+    const html = renderMarkdown(
+      `## RECOMMENDATIONS\n\n${long}\n\n## THE HUMAN IMPACT\n\n### a. Introduction\n\n${long}\n\n` +
+        `### b. Categories of persons affected\n\n${long}`
+    );
+    const sections = splitSections(html);
+    expect(sections.map((s) => [s.title, s.level])).toEqual([
+      ["RECOMMENDATIONS", 2],
+      ["THE HUMAN IMPACT", 2],
+      ["b. Categories of persons affected", 3],
+    ]);
+    expect(sections[0].html).not.toContain("HUMAN IMPACT");
+    expect(sections[1].html).toContain("a. Introduction");
+  });
+
   it("still folds a body-less h2 with no following numbered section backwards, as before", async () => {
     const { splitSections } = await import("../src/sections");
     const long = "word ".repeat(800);
