@@ -284,8 +284,10 @@ export function assembleEdition(edition, pages, printed, sources) {
         if (/\s/.test(cs) || cs === "" || /^['\u2019]$/.test(cs)) {
             // only an unspaced separator is checked further
         }
-        else if (/^\S+\s+$/.test(ps) && cs.replace(/[*_\\]/g, "") === straighten(ps).trim() && !/[-\u2013\u2014]$/.test(cs)) {
-            // the PDF spaces two words the edition runs together after its punctuation
+        else if (/^\S+[ \t]+$/.test(ps) && cs.replace(/[*_\\]/g, "") === straighten(ps).trim() && !/[-\u2013\u2014]$/.test(cs)) {
+            // the PDF spaces two words the edition runs together after its punctuation, on one line: a line
+            // break after punctuation is the layout's, not a space ("…/status/" ending a line, "1576…" opening the
+            // next, inside a URL the edition prints whole: 412 URLs in the January 6th report's notes)
             // ("Timeline,"Dec.", "**FAA**:Yeah"): the space goes after the punctuation and any emphasis closing there
             if (!edits.has(a.field))
                 edits.set(a.field, []);
