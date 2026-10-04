@@ -1,7 +1,7 @@
 import { extractPages, normaliseWhitespace, type Page } from "./extract";
 import { splitPage, takePrintedNumber, collapseDoubleSpacing, type SplitPage, type PageHeadFolio } from "./clean";
 import { markPrintedNumbers } from "./printed-numbers";
-import { strayFolios } from "./folios";
+import { strayFolios, type FolioRow } from "./folios";
 import { extractParagraphNotes } from "./paragraph-notes";
 import type { ResolvedPasses } from "./define";
 import { applyCorrections, type Correction } from "./corrections";
@@ -83,6 +83,8 @@ export type IngestResult = {
   shadow?: IngestResult;
   /** Each page's lines after the furniture passes (running heads, slugs, page numbers) took theirs off. */
   pageText?: Array<{ volume: number; pdfIndex: number; lines: string[]; noteLines?: number }>;
+  /** Every page's printed-number read, before `foliosInStep` dropped any (`folioReport`, `pnpm ingest folios`). */
+  folios?: FolioRow[];
   /** What `layoutMarkers` saw and linked, when the report declares it. */
   layoutMarkers?: LayoutMarkerStats;
   /** `visionStructure`: which pages took the vision model's structure, and why the others did not. */
@@ -268,12 +270,14 @@ export function ingestPageGroups(
 
   // `foliosInStep`: a printed number read off a figure or test-report page's OCR garble, out of step with the
   // pages round it, is dropped, and the page numbered from its neighbours (reportsthatmatter-uw50).
+  const folios: FolioRow[] = splitGroups.flatMap((group) => group.map((s) => ({ volume: s.volume, pdfIndex: s.pdfIndex, printed: s.printed, dropped: false })));
   if (resolved.foliosInStep) {
     for (const group of splitGroups) {
       const stray = strayFolios(group.flatMap((s) => (s.printed === null ? [] : [{ pdfIndex: s.pdfIndex, printed: s.printed }])));
       if (!stray.size) continue;
       const volume = group[0]?.volume;
       for (const split of group) if (stray.has(split.pdfIndex)) split.printed = null;
+      for (const row of folios) if (row.volume === volume && stray.has(row.pdfIndex)) row.dropped = true;
       for (const note of footnotes) if (note.volume === volume && note.pdfIndex !== undefined && stray.has(note.pdfIndex)) note.printed = null;
     }
   }
@@ -658,6 +662,7 @@ export function ingestPageGroups(
     blocks: outBlocks,
     linkedText,
     pageText,
+    folios,
     ...(markerStats ? { layoutMarkers: markerStats } : {}),
     ...(visionReport ? { vision: visionReport } : {}),
     ...(headingStats ? { typographicHeadings: headingStats } : {}),
@@ -915,6 +920,7 @@ function ingestEdition(
     pages: shadow.pages,
     edition: assembled.report,
     shadow,
+    folios: shadow.folios,
     blocks: assembled.blocks,
     linkedText: assembled.linkedText,
   };
