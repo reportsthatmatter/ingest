@@ -55,6 +55,8 @@ export default pipeline({
 tested behaviours. The moment a report's definition can express a pattern, it
 has become a second parser with no tests of its own.
 
+**`resolvePasses` throws on a page pass it does not implement** (`KNOWN_PAGE_PASSES` in `src/define.ts`): a report's `ingest.ts` is imported from the report's own `node_modules`, so a report declaring a pass added in a newer library than the one the host runs would otherwise get output with the pass silently missing (reportsthatmatter-5xln). Adding a page pass means adding its name to that list; `tests/resolve-passes.test.ts` fails until you do.
+
 A report that genuinely needs something bespoke writes its own pass in its own
 file. That is the escape hatch, and it is a staging area rather than a
 destination: **when a third report needs the same pass, move it in here.** If
