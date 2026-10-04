@@ -82,6 +82,8 @@ export type PageHeadFolio = {
 export declare function splitFootnoteBlock(lines: string[], expectedNote: number, options?: {
     citationRunOver?: boolean;
     footnoteGap?: boolean;
+    footnoteRestarts?: boolean;
+    sequencedNoteOpenings?: boolean;
     footnoteNumbers?: FootnoteNumbers;
 }): {
     body: string[];
@@ -97,6 +99,8 @@ export declare function splitFootnoteBlock(lines: string[], expectedNote: number
 export declare function splitPage(page: Page, expectedNote: number, options?: {
     citationRunOver?: boolean;
     footnoteGap?: boolean;
+    footnoteRestarts?: boolean;
+    sequencedNoteOpenings?: boolean;
     romanFolios?: boolean;
     parenFolios?: boolean;
     pageHeadFolios?: PageHeadFolio;

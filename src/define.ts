@@ -91,6 +91,10 @@ export type ResolvedPasses = {
   numberedOutsideTables?: boolean;
   photoCredits?: boolean;
   footnoteGap?: boolean;
+  /** `sequencedNoteOpenings`: a note line opening on the next note's number starts it, whatever follows. */
+  sequencedNoteOpenings?: boolean;
+  /** `footnoteRestarts`: a page-foot numbering that starts over at 1 is read without corroboration. */
+  footnoteRestarts?: boolean;
   /** `footnoteNumbers`: how page-foot notes are numbered. */
   footnoteNumbers?: "bare" | "period" | "tabbed";
   /** `pdfPageNumbers`: each page is numbered by its place in its PDF. */
@@ -251,6 +255,8 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),
     photoCredits: passes.some((pass) => pass.name === "photoCredits"),
     footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
+    footnoteRestarts: passes.some((pass) => pass.name === "footnoteRestarts"),
+    sequencedNoteOpenings: passes.some((pass) => pass.name === "sequencedNoteOpenings"),
     footnoteNumbers: (passes.find((pass) => pass.name === "footnoteNumbers") as { numbers?: "period" | "tabbed" } | undefined)
       ?.numbers,
     pdfPageNumbers: passes.some((pass) => pass.name === "pdfPageNumbers"),

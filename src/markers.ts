@@ -162,7 +162,8 @@ function pageCandidates(lines: LayoutLine[], bodySize: number): Candidate[] {
       if (!/^[1-9]\d{0,3}$/.test(run.text) || run.offset <= 0) continue;
       const before = line.text.slice(0, run.offset);
       // A note's own number opens its line, possibly after a bullet's indent.
-      if (!/[\p{L}\p{N}.,;:!?)\]'"’”%]\s*$/u.test(before)) continue;
+      // (after an ellipsis too: "from …49", Hillsborough p.148; reportsthatmatter-kgpr)
+      if (!/[\p{L}\p{N}.,;:!?)\]'"’”%…]\s*$/u.test(before)) continue;
       const anchor = anchorPattern(
         before,
         line.raised.filter((r) => r.offset < run.offset)

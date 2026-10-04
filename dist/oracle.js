@@ -355,7 +355,9 @@ options = {}) {
             // — Markers —
             const labels = [];
             // (a page that is mostly footnotes has the notes' face as its body: take the document's too)
-            const inBody = (l) => l.body || (Math.abs(l.size - bodyFont.size) < 0.5 && l.color === bodyFont.color);
+            // A quotation's face is the body's for this (Hillsborough p.113's 'Police Officer.29' in a quoted statement:
+            // reportsthatmatter-n891).
+            const inBody = (l) => l.body || inRun.has(l) || (Math.abs(l.size - bodyFont.size) < 0.5 && l.color === bodyFont.color);
             for (const l of lines)
                 if (inBody(l))
                     for (const r of l.raised)

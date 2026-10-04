@@ -121,6 +121,8 @@ export function resolvePasses(def) {
         numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),
         photoCredits: passes.some((pass) => pass.name === "photoCredits"),
         footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
+        footnoteRestarts: passes.some((pass) => pass.name === "footnoteRestarts"),
+        sequencedNoteOpenings: passes.some((pass) => pass.name === "sequencedNoteOpenings"),
         footnoteNumbers: passes.find((pass) => pass.name === "footnoteNumbers")
             ?.numbers,
         pdfPageNumbers: passes.some((pass) => pass.name === "pdfPageNumbers"),

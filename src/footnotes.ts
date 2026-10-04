@@ -15,6 +15,11 @@ export type Footnote = {
   pdfIndex?: number;
   /** The printed page number the note sits on — what a correction's `where` scopes against. */
   printed?: number | null;
+  /**
+   * `footnoteRestarts`: the note opens a numbering that starts over, so it is never the tail of a
+   * note above it with the same number (a chapter with one note, then a chapter's note 1).
+   */
+  restart?: boolean;
 };
 
 const NOTE_INLINE = /^\s{0,8}(\d{1,4})\s{0,3}(?=[A-Za-z"“(])/;
@@ -112,9 +117,16 @@ function classify(line: string, style: NoteStyle = "bare"): Token {
  */
 const MAX_NOTE_STEP = 6;
 
-export function parseFootnotes(lines: string[], page: number, style: NoteStyle = "bare"): Footnote[] {
+export function parseFootnotes(
+  lines: string[],
+  page: number,
+  style: NoteStyle = "bare",
+  options: { sequenced?: boolean } = {}
+): Footnote[] {
   const raw = lines.filter((line) => line.trim());
   const tokens = raw.map((line) => classify(line, style));
+  // `sequencedNoteOpenings`: a line opening on the next note's number, then any text, opens that note
+  const SEQUENCED = style === "period" ? /^\s{0,20}(\d{1,4})\.\s+(\S.*)$/ : /^\s{0,8}(\d{1,4})\s+(\S.*)$/;
   const notes: Footnote[] = [];
 
   const append = (text: string) => {
@@ -125,6 +137,14 @@ export function parseFootnotes(lines: string[], page: number, style: NoteStyle =
 
   let i = 0;
   while (i < tokens.length) {
+    if (options.sequenced && (tokens[i].kind === "text" || tokens[i].kind === "garbled") && (notes.length || i === 0)) {
+      // (the block's own first line, when the block was opened on it, is a note whatever its number)
+      const m = raw[i].match(SEQUENCED);
+      const last = notes[notes.length - 1];
+      if (m && (last === undefined || (last.text && Number(m[1]) === last.number + 1))) {
+        tokens[i] = { kind: "inline", number: Number(m[1]), text: normaliseWhitespace(m[2]) };
+      }
+    }
     const token = tokens[i];
 
     // A page's notes run in sequence, so once one is read, a number that does
@@ -599,7 +619,7 @@ export function mergeFootnotes(notes: Footnote[]): Footnote[] {
   const merged: Footnote[] = [];
   for (const note of notes) {
     const previous = merged[merged.length - 1];
-    if (previous && (previous.label ?? previous.number) === (note.label ?? note.number)) {
+    if (previous && !note.restart && (previous.label ?? previous.number) === (note.label ?? note.number)) {
       if (previous.text !== note.text) previous.text = `${previous.text} ${note.text}`;
       continue;
     }
