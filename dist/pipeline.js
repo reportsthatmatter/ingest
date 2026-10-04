@@ -439,6 +439,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         layoutJoins: resolved.layoutPageJoins,
         photoCredits: resolved.photoCredits,
         letteredItems: resolved.letteredItems,
+        numberedOpenings: resolved.numberedOpenings,
         layout: context.layout,
     });
     const visionReport = hybrid?.report(hybrid.joins(joined));

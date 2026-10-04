@@ -130,13 +130,14 @@ export function applyTypographicHeadings(blocks, layout, options = {}) {
             j++;
         const pageBlocks = blocks.slice(i, j);
         const todo = byPage.get(key);
-        out.push(...cutPage(pageBlocks, todo, stats));
+        out.push(...cutPage(pageBlocks, todo, stats, Boolean(options.relevel && options.faces)));
         i = j;
     }
     blocks.splice(0, blocks.length, ...out);
     return stats;
 }
-function cutPage(pageBlocks, todo, stats) {
+const alnum = (s) => squash(s).text.replace(/[^\p{L}\p{N}]/gu, "");
+function cutPage(pageBlocks, todo, stats, relevel = false) {
     let units = pageBlocks;
     let from = 0; // blocks before this index are done: headings run in reading order
     for (const h of todo) {
@@ -153,8 +154,14 @@ function cutPage(pageBlocks, todo, stats) {
         for (let k = from; k < units.length && !placed; k++) {
             const block = units[k];
             if (block.kind === "heading") {
-                if (squash(block.text).text.startsWith(want) || want.startsWith(squash(block.text).text)) {
+                const have = squash(block.text).text;
+                const loose = relevel && alnum(block.text).length >= 3 && (alnum(block.text).startsWith(alnum(h.text)) || alnum(h.text).startsWith(alnum(block.text)));
+                if (have.startsWith(want) || want.startsWith(have) || loose) {
                     stats.already++;
+                    if (relevel && block.level !== h.level) {
+                        units = [...units.slice(0, k), { ...block, level: h.level }, ...units.slice(k + 1)];
+                        stats.relevelled = (stats.relevelled ?? 0) + 1;
+                    }
                     from = k + 1;
                     placed = true;
                 }

@@ -26,6 +26,7 @@ export {
   unlistedHeadingsMinor,
   hangingIndents,
   letteredItems,
+  numberedOpenings,
   unmarkedHeadings,
   recoverListedHeadings,
   endnotes,
@@ -59,6 +60,8 @@ export {
   footnoteNumbers,
   pdfPageNumbers,
   runningFurniture,
+  furnitureFaces,
+  figureFaces,
   geometry,
   columns,
   quoteInset,
@@ -103,6 +106,7 @@ export { linkLayoutMarkers, foldForMatch } from "./markers";
 export type { LayoutMarkerStats, LayoutMarkersOptions, MarkerNotes } from "./markers";
 export { pageDefinesNotes } from "./markers";
 export { applyTypographicHeadings, layoutHeadings } from "./typographic-headings";
+export type { FurnitureFacesOptions } from "./furniture-faces";
 export type { TypographicHeadingsOptions, TypographicHeadingStats } from "./typographic-headings";
 export type { Gutter } from "./columns";
 

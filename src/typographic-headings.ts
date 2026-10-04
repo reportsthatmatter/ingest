@@ -52,6 +52,15 @@ export type TypographicHeadingsOptions = {
    * sentence) still apply. Overrides `sizes`, `minRatio`, `minPages` and `minLines`.
    */
   faces?: string[][];
+  /**
+   * A block the text reading already made a heading, at another level than the face declares, takes
+   * the face's level. The Grenfell Tower Inquiry's executive summary heads its account of each Part
+   * "Part 3 / The testing and marketing of products (Chapters 15 – 29)" in the face of its subsections;
+   * read by its text as a division ("Part 3:"), each became a top-level section beside the volume's own
+   * Parts 1 and 2. Matched on letters and digits only, since the division reading adds a colon. Only
+   * with `faces`. Default false.
+   */
+  relevel?: boolean;
 };
 
 export type TypographicHeadingStats = {
@@ -61,8 +70,10 @@ export type TypographicHeadingStats = {
   headings: number;
   /** Cut out of a block that ran the heading into its text. */
   split: number;
-  /** Already a heading block (left alone). */
+  /** Already a heading block (left alone, or re-levelled under `relevel`). */
   already: number;
+  /** Of those, given the face's level under `relevel`. */
+  relevelled?: number;
   /** Not found in any block of the page. */
   unplaced: number;
   misses: Array<{ volume: number; pdfIndex: number; text: string }>;
@@ -77,7 +88,7 @@ const LABEL_ONLY = /^\s*(?:\(?\d{1,4}(?:\.\d{1,4})*[.)]?|\(?[a-z][.)]|[ivxlc]{1,
 type Heading = { volume: number; pdfIndex: number; text: string; level: number };
 
 /** A heading line's candidacy, before the face's recurrence is known. */
-function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces">> & { sizes?: number[]; faces?: string[][] }): boolean {
+function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel">> & { sizes?: number[]; faces?: string[][] }): boolean {
   const text = line.text.trim();
   if (!text || text.length > o.maxChars) return false;
   if (o.faces) return o.faces.some((level) => level.includes(line.font)) && !LABEL_ONLY.test(text) && /\p{L}/u.test(text) && !SENTENCE_END.test(text);
@@ -97,7 +108,7 @@ const faceSize = (face: string) => Number(face.split("|")[1]) || 0;
  * Exported for the tests.
  */
 export function layoutHeadings(layout: Layout, options: TypographicHeadingsOptions = {}): { headings: Heading[]; faces: TypographicHeadingStats["faces"] } {
-  const o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces">> & { sizes?: number[]; faces?: string[][] } = {
+  const o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel">> & { sizes?: number[]; faces?: string[][] } = {
     firstLevel: options.firstLevel ?? 2,
     ...(options.sizes ? { sizes: options.sizes } : {}),
     ...(options.faces ? { faces: options.faces } : {}),
@@ -202,14 +213,16 @@ export function applyTypographicHeadings(blocks: Block[], layout: Layout, option
     while (j < blocks.length && pageOf(blocks[j]) === key) j++;
     const pageBlocks = blocks.slice(i, j);
     const todo = byPage.get(key)!;
-    out.push(...cutPage(pageBlocks, todo, stats));
+    out.push(...cutPage(pageBlocks, todo, stats, Boolean(options.relevel && options.faces)));
     i = j;
   }
   blocks.splice(0, blocks.length, ...out);
   return stats;
 }
 
-function cutPage(pageBlocks: Block[], todo: Heading[], stats: TypographicHeadingStats): Block[] {
+const alnum = (s: string) => squash(s).text.replace(/[^\p{L}\p{N}]/gu, "");
+
+function cutPage(pageBlocks: Block[], todo: Heading[], stats: TypographicHeadingStats, relevel = false): Block[] {
   let units = pageBlocks;
   let from = 0; // blocks before this index are done: headings run in reading order
   for (const h of todo) {
@@ -226,8 +239,14 @@ function cutPage(pageBlocks: Block[], todo: Heading[], stats: TypographicHeading
     for (let k = from; k < units.length && !placed; k++) {
       const block = units[k];
       if (block.kind === "heading") {
-        if (squash(block.text).text.startsWith(want) || want.startsWith(squash(block.text).text)) {
+        const have = squash(block.text).text;
+        const loose = relevel && alnum(block.text).length >= 3 && (alnum(block.text).startsWith(alnum(h.text)) || alnum(h.text).startsWith(alnum(block.text)));
+        if (have.startsWith(want) || want.startsWith(have) || loose) {
           stats.already++;
+          if (relevel && block.level !== h.level) {
+            units = [...units.slice(0, k), { ...block, level: h.level } as Block, ...units.slice(k + 1)];
+            stats.relevelled = (stats.relevelled ?? 0) + 1;
+          }
           from = k + 1;
           placed = true;
         }
