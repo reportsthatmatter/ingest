@@ -32,8 +32,8 @@ export type SplitPage = {
  * thousands.
  */
 export declare const FOOTNOTE_INLINE: RegExp;
-/** How a report numbers its page-foot notes: "104 Letter…" (bare) or "104. Letter…" (period). */
-export type FootnoteNumbers = "bare" | "period";
+/** How a report numbers its page-foot notes: "104 Letter…" (bare), "104. Letter…" (period) or "104<tab>Letter…" (tabbed). */
+export type FootnoteNumbers = "bare" | "period" | "tabbed";
 /** Candidate note openings on a page, in either layout. */
 export declare function noteCandidates(lines: string[], numbers?: FootnoteNumbers): Array<{
     line: number;
@@ -56,10 +56,20 @@ export declare function noteCandidates(lines: string[], numbers?: FootnoteNumber
  */
 export declare function takePrintedNumber(input: string[], options?: {
     roman?: boolean;
+    paren?: boolean;
+    head?: PageHeadFolio;
 }): {
     printed: number | null;
     roman?: string;
     lines: string[];
+};
+/**
+ * `pageHeadFolios`: a running head that carries the page number as "Page 7", on its own line at the head of
+ * the page, under a line of the head's other words ("January 6, 2025") that goes with it. A page without
+ * the head (a letterhead's first page) is not touched.
+ */
+export type PageHeadFolio = {
+    above?: RegExp;
 };
 /**
  * Separates the footnote block at the foot of a page from the running body.
@@ -92,6 +102,8 @@ export declare function splitPage(page: Page, expectedNote: number, options?: {
     footnoteRestarts?: boolean;
     sequencedNoteOpenings?: boolean;
     romanFolios?: boolean;
+    parenFolios?: boolean;
+    pageHeadFolios?: PageHeadFolio;
     footnoteNumbers?: FootnoteNumbers;
 }): SplitPage;
 export type FurnitureOptions = {

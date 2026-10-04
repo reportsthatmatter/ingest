@@ -18,7 +18,7 @@ export type Footnote = {
      */
     restart?: boolean;
 };
-type NoteStyle = "bare" | "period";
+type NoteStyle = "bare" | "period" | "tabbed";
 export declare function parseFootnotes(lines: string[], page: number, style?: NoteStyle, options?: {
     sequenced?: boolean;
 }): Footnote[];

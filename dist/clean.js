@@ -2,6 +2,8 @@ import { normaliseWhitespace } from "./extract.js";
 const PAGE_EDGE_DEPTH = 3;
 const MIN_REPEATED_FURNITURE = 3;
 const PAGE_NUMBER = /^\s*(\d{1,4}|[ivxlcdm]{1,8})\s*$/i;
+/** A folio set in parentheses, "(3)" (`parenFolios`). */
+const PAREN_NUMBER = /^\s*\(\s*(\d{1,4})\s*\)\s*$/;
 /**
  * Two layouts, both common.
  *
@@ -27,11 +29,19 @@ const FOOTNOTE_STACKED = /^\s{0,10}(\d{1,4})\s*$/;
  * were read as notes 16-21 of their page until the number had to be flush).
  */
 const FOOTNOTE_INLINE_PERIOD = /^\s{0,1}(\d{1,4})\.\s{1,6}(?=[A-Za-z"“‘'(])/;
+/**
+ * `footnoteNumbers("tabbed")`: a page-foot note whose number is flush at the page's edge and whose text
+ * starts at a tab stop, so `pdftotext -layout` sets one to eight spaces between them ("9     Most of…",
+ * "335   Transcript…"), and whose text may open on a bracketed document reference ("[INQ00002032].").
+ * The Post Office Horizon IT Inquiry sets its notes this way: the bare style allows three spaces at most
+ * and no bracket, so only its three-digit notes that opened on a letter were read.
+ */
+const FOOTNOTE_INLINE_TABBED = /^\s{0,1}(\d{1,4})\s{1,8}(?=[A-Za-z"“‘'(\[])/;
 /** Candidate note openings on a page, in either layout. */
 export function noteCandidates(lines, numbers = "bare") {
     const candidates = [];
     for (let i = 0; i < lines.length; i++) {
-        const inline = lines[i].match(numbers === "period" ? FOOTNOTE_INLINE_PERIOD : FOOTNOTE_INLINE);
+        const inline = lines[i].match(numbers === "period" ? FOOTNOTE_INLINE_PERIOD : numbers === "tabbed" ? FOOTNOTE_INLINE_TABBED : FOOTNOTE_INLINE);
         if (inline) {
             candidates.push({ line: i, note: Number.parseInt(inline[1], 10) });
             continue;
@@ -72,7 +82,7 @@ export function takePrintedNumber(input, options = {}) {
     const lines = [...input];
     let printed = null;
     const takeNumber = (index) => {
-        const value = Number.parseInt(lines[index].trim(), 10);
+        const value = Number.parseInt(lines[index].trim().replace(/^\(\s*|\s*\)$/g, ""), 10);
         if (Number.isNaN(value))
             return;
         printed = value;
@@ -105,15 +115,17 @@ export function takePrintedNumber(input, options = {}) {
             else if (PAGE_NUMBER.test(lines[i]))
                 takeNumber(i);
         }
-        else if (PAGE_NUMBER.test(lines[i]))
+        else if (PAGE_NUMBER.test(lines[i]) || (options.paren && PAREN_NUMBER.test(lines[i])))
             takeNumber(i);
         break;
     }
+    if (printed === null && options.head)
+        printed = takePageHead(lines, options.head);
     if (printed === null) {
         for (let i = 0; i < Math.min(3, lines.length); i++) {
             if (!lines[i].trim())
                 continue;
-            if (PAGE_NUMBER.test(lines[i]))
+            if (PAGE_NUMBER.test(lines[i]) || (options.paren && PAREN_NUMBER.test(lines[i])))
                 takeNumber(i);
             break;
         }
@@ -124,6 +136,24 @@ export function takePrintedNumber(input, options = {}) {
             return { printed, roman, lines };
     }
     return { printed, lines };
+}
+const PAGE_HEAD = /^\s*Page\s+(\d{1,4})\s*$/;
+function takePageHead(lines, head) {
+    const at = [];
+    for (let i = 0; i < lines.length && at.length < 2; i++)
+        if (lines[i].trim())
+            at.push(i);
+    const pageLine = at.find((i, k) => k < 2 && PAGE_HEAD.test(lines[i]));
+    if (pageLine === undefined)
+        return null;
+    const k = at.indexOf(pageLine);
+    if (k === 1 && !(head.above && head.above.test(lines[at[0]])))
+        return null;
+    const value = Number.parseInt(PAGE_HEAD.exec(lines[pageLine])[1], 10);
+    lines.splice(pageLine, 1);
+    if (k === 1)
+        lines.splice(at[0], 1);
+    return value;
 }
 /**
  * A lowercase roman folio alone on a line at the head or foot, possibly set
@@ -464,7 +494,7 @@ function provenance(page) {
  * stacked note opening.
  */
 export function splitPage(page, expectedNote, options = {}) {
-    const { printed, roman, lines } = takePrintedNumber(page.lines, { roman: options.romanFolios });
+    const { printed, roman, lines } = takePrintedNumber(page.lines, { roman: options.romanFolios, paren: options.parenFolios, head: options.pageHeadFolios });
     const { body, footnotes, runOver } = splitFootnoteBlock(lines, expectedNote, options);
     return { ...provenance(page), printed, ...(roman ? { roman } : {}), body, footnotes, ...(runOver.length ? { runOver } : {}) };
 }

@@ -1,6 +1,7 @@
 import { stripRepeatedPageFurniture, takePrintedNumber, splitFootnoteBlock, type SplitPage, type FurnitureOptions } from "./clean";
 import { bodyIndent } from "./paragraphs";
 import { splitColumns } from "./columns";
+import type { PageHeadFolio } from "./clean";
 import type { PipelineContext } from "./context";
 import type { Provenance } from "./paragraphs";
 import type { EditionPass } from "./edition";
@@ -97,7 +98,15 @@ export type TypographicHeadingsPass = {
   readonly options: TypographicHeadingsOptions;
 };
 
+/** `pageHeadFolios`: the page number is a running head "Page N" (reportsthatmatter-ssfk). */
+export type PageHeadFoliosPass = {
+  readonly name: "pageHeadFolios";
+  readonly stage: "page";
+  readonly options: PageHeadFolio;
+};
+
 export type Pass =
+  | PageHeadFoliosPass
   | EditionPass
   | VisionStructurePass
   | TypographicHeadingsPass
@@ -421,6 +430,40 @@ export const citationRunOver = (): PagePass => ({ name: "citationRunOver", stage
 export const romanFolios = (): PagePass => ({ name: "romanFolios", stage: "page" });
 
 /**
+ * Reads a folio set in parentheses, "(3)" alone at the head or foot of a page, as the printed
+ * page number (reportsthatmatter-uw50, 15h). Challenger's chapter openers and its Conclusions
+ * carry "(1)", "(3)" at the foot: `takePrintedNumber` read only a bare number, so the folio
+ * stayed in the body as a paragraph, the page's number was inferred (d662) rather than read,
+ * and the run-on tail of the paragraph that crossed the break was left above the next page's
+ * marker. Opt-in: a lone "(1)" is also a plausible list marker.
+ */
+export const parenFolios = (): PagePass => ({ name: "parenFolios", stage: "page" });
+
+/**
+ * Reads a running head "Page 7" at the head of a page as the printed page number, and takes it off with the line
+ * above it that goes with it (reportsthatmatter-ssfk). The letter appended to Jack Smith's volume one numbers its
+ * own pages that way, under "January 6, 2025": nothing read those as folios, so twelve pages carried no marker, the
+ * head stayed in the body as a paragraph, and the next marker landed thousands of words away. `above` names the line
+ * above the "Page N" line, which is dropped only when it matches; a page whose head is only "Page N" is read too.
+ * Opt-in: "Page 7" at the head of a page is also a plausible cross-reference.
+ */
+export const pageHeadFolios = (options: PageHeadFolio = {}): PageHeadFoliosPass => ({ name: "pageHeadFolios", stage: "page", options });
+
+/**
+ * Drops printed numbers that are out of step with the pages around them, so the gap-filler
+ * numbers those pages from their neighbours (reportsthatmatter-uw50). An OCR'd figure or test
+ * report page reads digits of its garble as a folio ("2", "0", "77"); in a report whose pages
+ * are numbered continuously from the PDF's own order, such a read differs from the offset
+ * (printed minus PDF page) of the run of pages either side of it. A run of fewer than three
+ * consecutive reads at one offset, next to a run of three or more, is taken for stray reads, and so is a run of up to eight whose two
+ * neighbours agree with each other and not with it (a test method printing its own pages 2-7 inside
+ * the report's pages 370-375).
+ * Opt-in: a report whose numbering legitimately changes offset for short stretches (a
+ * two-page appendix numbered on its own) would lose those pages' labels.
+ */
+export const foliosInStep = (): PagePass => ({ name: "foliosInStep", stage: "page" });
+
+/**
  * A photo credit set between a paragraph and its continuation does not take
  * the continuation (reportsthatmatter-xay).
  *
@@ -512,11 +555,25 @@ export const sequencedNoteOpenings = (): PagePass => ({ name: "sequencedNoteOpen
  * a paragraph with every marker bare. Opt-in: a numbered list item at a page
  * foot has the same shape.
  */
-export const footnoteNumbers = (numbers: "period"): PagePass & { numbers: "period" } => ({
+export const footnoteNumbers = <N extends "period" | "tabbed">(numbers: N): PagePass & { numbers: N } => ({
   name: "footnoteNumbers",
   stage: "page",
   numbers,
 });
+
+/**
+ * The report prints no page numbers, and its own contents cite the PDF's page
+ * order (the Post Office Horizon IT Inquiry's Volume 1: "1. INTRODUCTION 6" is
+ * the PDF's sixth page, and no page carries a folio). Each page is numbered by
+ * its place in its volume's PDF, so page anchors are the numbers the contents
+ * gives.
+ *
+ * Without it such a report has no page anchors at all, or worse: a running head
+ * carrying a constant number ("…Report: Volume 1") is read by
+ * `runningFurniture` as every page's folio. Opt-in: only a report whose
+ * contents is checked against its PDF pages declares it.
+ */
+export const pdfPageNumbers = (): PagePass => ({ name: "pdfPageNumbers", stage: "page" });
 
 /**
  * Reads the report's chapter-and-section numbering from its contents
