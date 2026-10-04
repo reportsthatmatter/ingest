@@ -9,7 +9,9 @@ import type {
   LayoutPageJoinsPass,
   LayoutMarkersPass,
   TypographicHeadingsPass,
+  PageHeadFoliosPass,
 } from "./passes";
+import type { PageHeadFolio } from "./clean";
 import type { PageBreakOptions } from "./pagebreaks";
 import type { EditionPass } from "./edition";
 import type { VisionStructurePass } from "./vision/hybrid";
@@ -82,6 +84,10 @@ export type ResolvedPasses = {
   pageBreakQuoteTails?: boolean;
   citationRunOver?: boolean;
   romanFolios?: boolean;
+  parenFolios?: boolean;
+  /** `pageHeadFolios`: on, with the line that goes with the "Page N" head. */
+  pageHeadFolios?: PageHeadFolio;
+  foliosInStep?: boolean;
   numberedOutsideTables?: boolean;
   photoCredits?: boolean;
   footnoteGap?: boolean;
@@ -160,6 +166,28 @@ export function pipeline(def: PipelineDef): PipelineDef {
 }
 
 /**
+ * The names of the `stage: "page"` passes this library reads. A page pass does nothing by being in the list: it
+ * is a flag `resolvePasses` looks up by name, so a name nobody looks up is a pass that silently never runs
+ * (reportsthatmatter-5xln: a report declared `typographicHeadings` under a library that predated it, and its
+ * output came out byte-identical). `tests/resolve-passes.test.ts` builds every exported page pass and checks it
+ * is named here, so a new pass cannot be added without being added to this list.
+ * It also names the page passes of ingest#62 (parenFolios, pageHeadFolios, foliosInStep), #63 (pdfPageNumbers) and
+ * #64 (footnoteRestarts, sequencedNoteOpenings), opened alongside this one: without them a report declaring one would
+ * throw once all are merged (review v0.23.0).
+ */
+export const KNOWN_PAGE_PASSES: ReadonlySet<string> = new Set([
+  "chapterContents", "citationRunOver", "contentsEntries", "contentsOutline", "doubleSpaced",
+  "endnotes", "escapeLeadingHash", "escapeNumberedParagraphs", "flushFootnoteMarkers",
+  "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteRestarts", "hangingIndents",
+  "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "letteredItems", "listedDivisions", "listedHeadings",
+  "numberedFindings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
+  "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
+  "printedPageNumber", "quoteListRunOns", "quoteRunOn", "recoverListedHeadings", "romanFolios",
+  "sequencedNoteOpenings", "shiftedPages", "shortSubheads", "typographicHeadings", "unlistedHeadingsMinor",
+  "unmarkedHeadings", "wrappedHeadings",
+]);
+
+/**
  * Reads a definition's passes into the shape the executor wants.
  *
  * A report that declares nothing gets the single-volume defaults, which is
@@ -167,6 +195,12 @@ export function pipeline(def: PipelineDef): PipelineDef {
  */
 export function resolvePasses(def: PipelineDef): ResolvedPasses {
   const passes = def.passes ?? [];
+  const unknown = passes.filter((pass) => pass.stage === "page" && !KNOWN_PAGE_PASSES.has(pass.name));
+  if (unknown.length) {
+    throw new Error(
+      `${def.id}: pass ${unknown.map((p) => `"${p.name}"`).join(", ")} is not implemented by this @rtm/ingest (${unknown.length > 1 ? "they" : "it"} would silently do nothing); a typo, or a report on a newer library than the one installed (pnpm ingest preflight)`
+    );
+  }
   const geometry = passes.find(
     (pass): pass is GeometryPass => pass.stage === "geometry"
   );
@@ -211,6 +245,9 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     ),
     citationRunOver: passes.some((pass) => pass.name === "citationRunOver"),
     romanFolios: passes.some((pass) => pass.name === "romanFolios"),
+    parenFolios: passes.some((pass) => pass.name === "parenFolios"),
+    pageHeadFolios: passes.find((pass): pass is PageHeadFoliosPass => pass.name === "pageHeadFolios")?.options ?? undefined,
+    foliosInStep: passes.some((pass) => pass.name === "foliosInStep"),
     numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),
     photoCredits: passes.some((pass) => pass.name === "photoCredits"),
     footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),

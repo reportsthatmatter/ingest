@@ -1,5 +1,6 @@
 import { takePrintedNumber, splitFootnoteBlock, type SplitPage, type FurnitureOptions } from "./clean.js";
 import { bodyIndent } from "./paragraphs.js";
+import type { PageHeadFolio } from "./clean.js";
 import type { PipelineContext } from "./context.js";
 import type { Provenance } from "./paragraphs.js";
 import type { EditionPass } from "./edition.js";
@@ -83,7 +84,13 @@ export type TypographicHeadingsPass = {
     readonly stage: "page";
     readonly options: TypographicHeadingsOptions;
 };
-export type Pass = EditionPass | VisionStructurePass | TypographicHeadingsPass | NumberedHeadingsPass | LayoutMarkersPass | PageBreakContinuationsPass | LayoutPageJoinsPass | PagePass | BodyPass | VolumePass | GeometryPass | QuoteInsetPass | AllCapsHeadingsPass;
+/** `pageHeadFolios`: the page number is a running head "Page N" (reportsthatmatter-ssfk). */
+export type PageHeadFoliosPass = {
+    readonly name: "pageHeadFolios";
+    readonly stage: "page";
+    readonly options: PageHeadFolio;
+};
+export type Pass = PageHeadFoliosPass | EditionPass | VisionStructurePass | TypographicHeadingsPass | NumberedHeadingsPass | LayoutMarkersPass | PageBreakContinuationsPass | LayoutPageJoinsPass | PagePass | BodyPass | VolumePass | GeometryPass | QuoteInsetPass | AllCapsHeadingsPass;
 /**
  * Takes the printed page number off each page. These documents are cited by
  * page ("Report at 62"), so the printed number is the citation unit readers
@@ -342,6 +349,37 @@ export declare const citationRunOver: () => PagePass;
  * declares that its front matter is folioed in roman numerals.
  */
 export declare const romanFolios: () => PagePass;
+/**
+ * Reads a folio set in parentheses, "(3)" alone at the head or foot of a page, as the printed
+ * page number (reportsthatmatter-uw50, 15h). Challenger's chapter openers and its Conclusions
+ * carry "(1)", "(3)" at the foot: `takePrintedNumber` read only a bare number, so the folio
+ * stayed in the body as a paragraph, the page's number was inferred (d662) rather than read,
+ * and the run-on tail of the paragraph that crossed the break was left above the next page's
+ * marker. Opt-in: a lone "(1)" is also a plausible list marker.
+ */
+export declare const parenFolios: () => PagePass;
+/**
+ * Reads a running head "Page 7" at the head of a page as the printed page number, and takes it off with the line
+ * above it that goes with it (reportsthatmatter-ssfk). The letter appended to Jack Smith's volume one numbers its
+ * own pages that way, under "January 6, 2025": nothing read those as folios, so twelve pages carried no marker, the
+ * head stayed in the body as a paragraph, and the next marker landed thousands of words away. `above` names the line
+ * above the "Page N" line, which is dropped only when it matches; a page whose head is only "Page N" is read too.
+ * Opt-in: "Page 7" at the head of a page is also a plausible cross-reference.
+ */
+export declare const pageHeadFolios: (options?: PageHeadFolio) => PageHeadFoliosPass;
+/**
+ * Drops printed numbers that are out of step with the pages around them, so the gap-filler
+ * numbers those pages from their neighbours (reportsthatmatter-uw50). An OCR'd figure or test
+ * report page reads digits of its garble as a folio ("2", "0", "77"); in a report whose pages
+ * are numbered continuously from the PDF's own order, such a read differs from the offset
+ * (printed minus PDF page) of the run of pages either side of it. A run of fewer than three
+ * consecutive reads at one offset, next to a run of three or more, is taken for stray reads, and so is a run of up to eight whose two
+ * neighbours agree with each other and not with it (a test method printing its own pages 2-7 inside
+ * the report's pages 370-375).
+ * Opt-in: a report whose numbering legitimately changes offset for short stretches (a
+ * two-page appendix numbered on its own) would lose those pages' labels.
+ */
+export declare const foliosInStep: () => PagePass;
 /**
  * A photo credit set between a paragraph and its continuation does not take
  * the continuation (reportsthatmatter-xay).

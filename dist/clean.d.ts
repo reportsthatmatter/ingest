@@ -56,10 +56,20 @@ export declare function noteCandidates(lines: string[], numbers?: FootnoteNumber
  */
 export declare function takePrintedNumber(input: string[], options?: {
     roman?: boolean;
+    paren?: boolean;
+    head?: PageHeadFolio;
 }): {
     printed: number | null;
     roman?: string;
     lines: string[];
+};
+/**
+ * `pageHeadFolios`: a running head that carries the page number as "Page 7", on its own line at the head of
+ * the page, under a line of the head's other words ("January 6, 2025") that goes with it. A page without
+ * the head (a letterhead's first page) is not touched.
+ */
+export type PageHeadFolio = {
+    above?: RegExp;
 };
 /**
  * Separates the footnote block at the foot of a page from the running body.
@@ -88,6 +98,8 @@ export declare function splitPage(page: Page, expectedNote: number, options?: {
     citationRunOver?: boolean;
     footnoteGap?: boolean;
     romanFolios?: boolean;
+    parenFolios?: boolean;
+    pageHeadFolios?: PageHeadFolio;
     footnoteNumbers?: FootnoteNumbers;
 }): SplitPage;
 export type FurnitureOptions = {

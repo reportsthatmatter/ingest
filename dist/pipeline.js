@@ -1,6 +1,7 @@
 import { extractPages, normaliseWhitespace } from "./extract.js";
 import { splitPage, takePrintedNumber, collapseDoubleSpacing } from "./clean.js";
 import { markPrintedNumbers } from "./printed-numbers.js";
+import { strayFolios } from "./folios.js";
 import { extractParagraphNotes } from "./paragraph-notes.js";
 import { applyCorrections } from "./corrections.js";
 import { rejoinHyphenated, vocabulary } from "./hyphens.js";
@@ -102,11 +103,13 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         const splitOptions = {
             citationRunOver: resolved.citationRunOver,
             romanFolios: resolved.romanFolios,
+            parenFolios: resolved.parenFolios,
+            pageHeadFolios: resolved.pageHeadFolios,
             footnoteGap: resolved.footnoteGap,
             footnoteNumbers: resolved.footnoteNumbers,
         };
         let split = resolved.paragraphNotes || resolved.endnotes || resolved.layoutEndnotes
-            ? splitPageNumberOnly(page, { romanFolios: resolved.romanFolios })
+            ? splitPageNumberOnly(page, { romanFolios: resolved.romanFolios, parenFolios: resolved.parenFolios, pageHeadFolios: resolved.pageHeadFolios })
             : splitPage(page, expectedNote, splitOptions);
         // `footnoteNumbers("period")`: a block opening "8. In all of the above cases" in the body's face is
         // the body's own numbered paragraphs (an appendix's), not notes: the page is read without them.
@@ -166,6 +169,26 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         split.body = resolved.bodyPasses.reduce((lines, pass) => pass.run(lines, context, { volume: split.volume, pdfIndex: split.pdfIndex, printed: split.printed }), split.body);
         return split;
     }));
+    // `foliosInStep`: a printed number read off a figure or test-report page's OCR garble, out of step with the
+    // pages round it, is dropped, and the page numbered from its neighbours (reportsthatmatter-uw50).
+    const folios = splitGroups.flatMap((group) => group.map((s) => ({ volume: s.volume, pdfIndex: s.pdfIndex, printed: s.printed, dropped: false })));
+    if (resolved.foliosInStep) {
+        for (const group of splitGroups) {
+            const stray = strayFolios(group.flatMap((s) => (s.printed === null ? [] : [{ pdfIndex: s.pdfIndex, printed: s.printed }])));
+            if (!stray.size)
+                continue;
+            const volume = group[0]?.volume;
+            for (const split of group)
+                if (stray.has(split.pdfIndex))
+                    split.printed = null;
+            for (const row of folios)
+                if (row.volume === volume && stray.has(row.pdfIndex))
+                    row.dropped = true;
+            for (const note of footnotes)
+                if (note.volume === volume && note.pdfIndex !== undefined && stray.has(note.pdfIndex))
+                    note.printed = null;
+        }
+    }
     if (resolved.paragraphNotes) {
         let block = 1;
         for (const group of splitGroups) {
@@ -497,6 +520,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         blocks: outBlocks,
         linkedText,
         pageText,
+        folios,
         ...(markerStats ? { layoutMarkers: markerStats } : {}),
         ...(visionReport ? { vision: visionReport } : {}),
         ...(headingStats ? { typographicHeadings: headingStats } : {}),
@@ -606,7 +630,7 @@ const NUMBERED_OPENER = /^\s{0,8}\d{1,2}\.\d{1,3}[ \uFFFD]{2,}(?=\S)/;
 const PAGE_MARGIN_MIN_LINES = 8;
 /** The printed page number off, and nothing else: no page-foot note block. */
 function splitPageNumberOnly(page, options = {}) {
-    const { printed, roman, lines } = takePrintedNumber(page.lines, { roman: options.romanFolios });
+    const { printed, roman, lines } = takePrintedNumber(page.lines, { roman: options.romanFolios, paren: options.parenFolios, head: options.pageHeadFolios });
     return {
         index: page.index,
         volume: page.volume,
@@ -744,6 +768,7 @@ function ingestEdition(pageGroups, meta, resolved, corrections, context) {
         pages: shadow.pages,
         edition: assembled.report,
         shadow,
+        folios: shadow.folios,
         blocks: assembled.blocks,
         linkedText: assembled.linkedText,
     };

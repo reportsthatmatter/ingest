@@ -47,6 +47,9 @@ export {
   pageBreakContinuations,
   citationRunOver,
   romanFolios,
+  parenFolios,
+  pageHeadFolios,
+  foliosInStep,
   numberedOutsideTables,
   photoCredits,
   footnoteGap,
@@ -65,6 +68,7 @@ export type {
   LayoutPageJoinsPass,
   LayoutMarkersPass,
   TypographicHeadingsPass,
+  PageHeadFoliosPass,
   PageBreakContinuationsPass,
   BodyPass,
   VolumePass,
@@ -205,3 +209,5 @@ export {
 } from "./publish";
 export type { PublishFile, Manifest } from "./publish";
 export { markPrintedNumbers } from "./printed-numbers";
+export { strayFolios, folioReport } from "./folios";
+export type { FolioRead, FolioRow, FolioPage, FolioRun, FolioReport, FolioSource } from "./folios";

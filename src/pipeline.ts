@@ -1,6 +1,7 @@
 import { extractPages, normaliseWhitespace, type Page } from "./extract";
-import { splitPage, takePrintedNumber, collapseDoubleSpacing, type SplitPage } from "./clean";
+import { splitPage, takePrintedNumber, collapseDoubleSpacing, type SplitPage, type PageHeadFolio } from "./clean";
 import { markPrintedNumbers } from "./printed-numbers";
+import { strayFolios, type FolioRow } from "./folios";
 import { extractParagraphNotes } from "./paragraph-notes";
 import type { ResolvedPasses } from "./define";
 import { applyCorrections, type Correction } from "./corrections";
@@ -82,6 +83,8 @@ export type IngestResult = {
   shadow?: IngestResult;
   /** Each page's lines after the furniture passes (running heads, slugs, page numbers) took theirs off. */
   pageText?: Array<{ volume: number; pdfIndex: number; lines: string[]; noteLines?: number }>;
+  /** Every page's printed-number read, before `foliosInStep` dropped any (`folioReport`, `pnpm ingest folios`). */
+  folios?: FolioRow[];
   /** What `layoutMarkers` saw and linked, when the report declares it. */
   layoutMarkers?: LayoutMarkerStats;
   /** `visionStructure`: which pages took the vision model's structure, and why the others did not. */
@@ -197,11 +200,13 @@ export function ingestPageGroups(
       const splitOptions = {
         citationRunOver: resolved.citationRunOver,
         romanFolios: resolved.romanFolios,
+        parenFolios: resolved.parenFolios,
+        pageHeadFolios: resolved.pageHeadFolios,
         footnoteGap: resolved.footnoteGap,
         footnoteNumbers: resolved.footnoteNumbers,
       };
       let split = resolved.paragraphNotes || resolved.endnotes || resolved.layoutEndnotes
-        ? splitPageNumberOnly(page, { romanFolios: resolved.romanFolios })
+        ? splitPageNumberOnly(page, { romanFolios: resolved.romanFolios, parenFolios: resolved.parenFolios, pageHeadFolios: resolved.pageHeadFolios })
         : splitPage(page, expectedNote, splitOptions);
       // `footnoteNumbers("period")`: a block opening "8. In all of the above cases" in the body's face is
       // the body's own numbered paragraphs (an appendix's), not notes: the page is read without them.
@@ -269,6 +274,20 @@ export function ingestPageGroups(
       return split;
     })
   );
+
+  // `foliosInStep`: a printed number read off a figure or test-report page's OCR garble, out of step with the
+  // pages round it, is dropped, and the page numbered from its neighbours (reportsthatmatter-uw50).
+  const folios: FolioRow[] = splitGroups.flatMap((group) => group.map((s) => ({ volume: s.volume, pdfIndex: s.pdfIndex, printed: s.printed, dropped: false })));
+  if (resolved.foliosInStep) {
+    for (const group of splitGroups) {
+      const stray = strayFolios(group.flatMap((s) => (s.printed === null ? [] : [{ pdfIndex: s.pdfIndex, printed: s.printed }])));
+      if (!stray.size) continue;
+      const volume = group[0]?.volume;
+      for (const split of group) if (stray.has(split.pdfIndex)) split.printed = null;
+      for (const row of folios) if (row.volume === volume && stray.has(row.pdfIndex)) row.dropped = true;
+      for (const note of footnotes) if (note.volume === volume && note.pdfIndex !== undefined && stray.has(note.pdfIndex)) note.printed = null;
+    }
+  }
 
   if (resolved.paragraphNotes) {
     let block = 1;
@@ -650,6 +669,7 @@ export function ingestPageGroups(
     blocks: outBlocks,
     linkedText,
     pageText,
+    folios,
     ...(markerStats ? { layoutMarkers: markerStats } : {}),
     ...(visionReport ? { vision: visionReport } : {}),
     ...(headingStats ? { typographicHeadings: headingStats } : {}),
@@ -757,8 +777,8 @@ const NUMBERED_OPENER = /^\s{0,8}\d{1,2}\.\d{1,3}[ \uFFFD]{2,}(?=\S)/;
 const PAGE_MARGIN_MIN_LINES = 8;
 
 /** The printed page number off, and nothing else: no page-foot note block. */
-function splitPageNumberOnly(page: Page, options: { romanFolios?: boolean } = {}): SplitPage {
-  const { printed, roman, lines } = takePrintedNumber(page.lines, { roman: options.romanFolios });
+function splitPageNumberOnly(page: Page, options: { romanFolios?: boolean; parenFolios?: boolean; pageHeadFolios?: PageHeadFolio } = {}): SplitPage {
+  const { printed, roman, lines } = takePrintedNumber(page.lines, { roman: options.romanFolios, paren: options.parenFolios, head: options.pageHeadFolios });
   return {
     index: page.index,
     volume: page.volume,
@@ -907,6 +927,7 @@ function ingestEdition(
     pages: shadow.pages,
     edition: assembled.report,
     shadow,
+    folios: shadow.folios,
     blocks: assembled.blocks,
     linkedText: assembled.linkedText,
   };
