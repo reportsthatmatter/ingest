@@ -23,6 +23,8 @@ const PAGE_EDGE_DEPTH = 3;
 const MIN_REPEATED_FURNITURE = 3;
 
 const PAGE_NUMBER = /^\s*(\d{1,4}|[ivxlcdm]{1,8})\s*$/i;
+/** A folio set in parentheses, "(3)" (`parenFolios`). */
+const PAREN_NUMBER = /^\s*\(\s*(\d{1,4})\s*\)\s*$/;
 
 /**
  * Two layouts, both common.
@@ -98,7 +100,7 @@ export function noteCandidates(
  * uses a footer, the PSI report a header, and looking in only one place loses
  * page anchors for half the archive.
  */
-export function takePrintedNumber(input: string[], options: { roman?: boolean } = {}): {
+export function takePrintedNumber(input: string[], options: { roman?: boolean; paren?: boolean; head?: PageHeadFolio } = {}): {
   printed: number | null;
   roman?: string;
   lines: string[];
@@ -107,7 +109,7 @@ export function takePrintedNumber(input: string[], options: { roman?: boolean } 
   let printed: number | null = null;
 
   const takeNumber = (index: number) => {
-    const value = Number.parseInt(lines[index].trim(), 10);
+    const value = Number.parseInt(lines[index].trim().replace(/^\(\s*|\s*\)$/g, ""), 10);
     if (Number.isNaN(value)) return;
     printed = value;
     lines.splice(index, 1);
@@ -134,14 +136,16 @@ export function takePrintedNumber(input: string[], options: { roman?: boolean } 
         takeNumber(j);
         lines.splice(i - 1, 1);
       } else if (PAGE_NUMBER.test(lines[i])) takeNumber(i);
-    } else if (PAGE_NUMBER.test(lines[i])) takeNumber(i);
+    } else if (PAGE_NUMBER.test(lines[i]) || (options.paren && PAREN_NUMBER.test(lines[i]))) takeNumber(i);
     break;
   }
+
+  if (printed === null && options.head) printed = takePageHead(lines, options.head);
 
   if (printed === null) {
     for (let i = 0; i < Math.min(3, lines.length); i++) {
       if (!lines[i].trim()) continue;
-      if (PAGE_NUMBER.test(lines[i])) takeNumber(i);
+      if (PAGE_NUMBER.test(lines[i]) || (options.paren && PAREN_NUMBER.test(lines[i]))) takeNumber(i);
       break;
     }
   }
@@ -152,6 +156,26 @@ export function takePrintedNumber(input: string[], options: { roman?: boolean } 
   }
 
   return { printed, lines };
+}
+
+/**
+ * `pageHeadFolios`: a running head that carries the page number as "Page 7", on its own line at the head of
+ * the page, under a line of the head's other words ("January 6, 2025") that goes with it. A page without
+ * the head (a letterhead's first page) is not touched.
+ */
+export type PageHeadFolio = { above?: RegExp };
+const PAGE_HEAD = /^\s*Page\s+(\d{1,4})\s*$/;
+function takePageHead(lines: string[], head: PageHeadFolio): number | null {
+  const at: number[] = [];
+  for (let i = 0; i < lines.length && at.length < 2; i++) if (lines[i].trim()) at.push(i);
+  const pageLine = at.find((i, k) => k < 2 && PAGE_HEAD.test(lines[i]));
+  if (pageLine === undefined) return null;
+  const k = at.indexOf(pageLine);
+  if (k === 1 && !(head.above && head.above.test(lines[at[0]]))) return null;
+  const value = Number.parseInt(PAGE_HEAD.exec(lines[pageLine])![1], 10);
+  lines.splice(pageLine, 1);
+  if (k === 1) lines.splice(at[0], 1);
+  return value;
 }
 
 /**
@@ -469,9 +493,9 @@ function provenance(page: Page): Pick<SplitPage, "index" | "volume" | "pdfIndex"
 export function splitPage(
   page: Page,
   expectedNote: number,
-  options: { citationRunOver?: boolean; footnoteGap?: boolean; romanFolios?: boolean; footnoteNumbers?: FootnoteNumbers } = {}
+  options: { citationRunOver?: boolean; footnoteGap?: boolean; romanFolios?: boolean; parenFolios?: boolean; pageHeadFolios?: PageHeadFolio; footnoteNumbers?: FootnoteNumbers } = {}
 ): SplitPage {
-  const { printed, roman, lines } = takePrintedNumber(page.lines, { roman: options.romanFolios });
+  const { printed, roman, lines } = takePrintedNumber(page.lines, { roman: options.romanFolios, paren: options.parenFolios, head: options.pageHeadFolios });
   const { body, footnotes, runOver } = splitFootnoteBlock(lines, expectedNote, options);
   return { ...provenance(page), printed, ...(roman ? { roman } : {}), body, footnotes, ...(runOver.length ? { runOver } : {}) };
 }

@@ -1,4 +1,5 @@
 import type { Pass, VolumePass, BodyPass } from "./passes.js";
+import type { PageHeadFolio } from "./clean.js";
 import type { PageBreakOptions } from "./pagebreaks.js";
 import type { EditionPass } from "./edition.js";
 import type { VisionStructurePass } from "./vision/hybrid.js";
@@ -74,6 +75,10 @@ export type ResolvedPasses = {
     pageBreakQuoteTails?: boolean;
     citationRunOver?: boolean;
     romanFolios?: boolean;
+    parenFolios?: boolean;
+    /** `pageHeadFolios`: on, with the line that goes with the "Page N" head. */
+    pageHeadFolios?: PageHeadFolio;
+    foliosInStep?: boolean;
     numberedOutsideTables?: boolean;
     photoCredits?: boolean;
     footnoteGap?: boolean;
