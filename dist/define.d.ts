@@ -98,6 +98,17 @@ export type ResolvedPasses = {
 /** Validates a report's definition. Throws rather than ingesting nonsense. */
 export declare function pipeline(def: PipelineDef): PipelineDef;
 /**
+ * The names of the `stage: "page"` passes this library reads. A page pass does nothing by being in the list: it
+ * is a flag `resolvePasses` looks up by name, so a name nobody looks up is a pass that silently never runs
+ * (reportsthatmatter-5xln: a report declared `typographicHeadings` under a library that predated it, and its
+ * output came out byte-identical). `tests/resolve-passes.test.ts` builds every exported page pass and checks it
+ * is named here, so a new pass cannot be added without being added to this list.
+ * It also names the page passes of ingest#62 (parenFolios, pageHeadFolios, foliosInStep), #63 (pdfPageNumbers) and
+ * #64 (footnoteRestarts, sequencedNoteOpenings), opened alongside this one: without them a report declaring one would
+ * throw once all are merged (review v0.23.0).
+ */
+export declare const KNOWN_PAGE_PASSES: ReadonlySet<string>;
+/**
  * Reads a definition's passes into the shape the executor wants.
  *
  * A report that declares nothing gets the single-volume defaults, which is
