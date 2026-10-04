@@ -87,11 +87,13 @@ export function paragraphIndex(sections) {
  *   Threat"), and folding it backwards put it at the *foot* of the previous
  *   chapter's last section instead. Detected structurally — an h2 with
  *   nothing before the next heading, immediately followed by an h3 numbered
- *   "N.N " — so this only ever fires on a document shaped that way, not on
- *   report identity.
+ *   "N.N " or lettered "a. " (the Post Office Horizon IT Inquiry's "3. THE
+ *   HUMAN IMPACT" then "a. Introduction", which otherwise sat at the foot of
+ *   the Recommendations) — so this only ever fires on a document shaped that
+ *   way, not on report identity.
  */
 const DIVISION_HEADING = /^<h2\b[^>]*>(?:<[^>]+>)*\s*(?:Part|Appendix|Annex|Volume)\s+(?:\d|[IVXLC])/i;
-const NUMBERED_SECTION_HEADING = /^<h3\b[^>]*>(?:<[^>]+>)*\s*\d{1,2}\.\d{1,2}\s/;
+const NUMBERED_SECTION_HEADING = /^<h3\b[^>]*>(?:<[^>]+>)*\s*(?:\d{1,2}\.\d{1,2}|[a-z]\.)\s/;
 function isBodylessH2(part) {
     const match = part.match(/^<h2\b[^>]*>[\s\S]*?<\/h2>([\s\S]*)$/);
     return match !== null && textLength(match[1]) === 0;

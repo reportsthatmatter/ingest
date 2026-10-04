@@ -41,6 +41,17 @@ export type TypographicHeadingsOptions = {
   minPages?: number;
   /** ... and be at least this many lines. Default 5. */
   minLines?: number;
+  /**
+   * The heading faces themselves, one list per level from `firstLevel` down, each a layout face key
+   * (`family|size|color`, then `|b`, `|i`, as `pnpm ingest page` prints them). Declared, these faces
+   * and no others are headings, whatever their size, weight or slant and however often they recur:
+   * for a report whose levels are not told apart by size alone. The Post Office Horizon IT Inquiry sets
+   * its subsections in 18 to 20pt bold (one 20pt in Open Sans, one in Roboto, the rest 18pt) and the
+   * topics under them in 18pt italic, against a 17pt body, so `sizes` can neither group the first nor
+   * tell the 18pt bold from the 18pt italic. The other tests (short, not a bare label, not ending a
+   * sentence) still apply. Overrides `sizes`, `minRatio`, `minPages` and `minLines`.
+   */
+  faces?: string[][];
 };
 
 export type TypographicHeadingStats = {
@@ -66,9 +77,10 @@ const LABEL_ONLY = /^\s*(?:\(?\d{1,4}(?:\.\d{1,4})*[.)]?|\(?[a-z][.)]|[ivxlc]{1,
 type Heading = { volume: number; pdfIndex: number; text: string; level: number };
 
 /** A heading line's candidacy, before the face's recurrence is known. */
-function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<TypographicHeadingsOptions, "sizes">> & { sizes?: number[] }): boolean {
+function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces">> & { sizes?: number[]; faces?: string[][] }): boolean {
   const text = line.text.trim();
   if (!text || text.length > o.maxChars) return false;
+  if (o.faces) return o.faces.some((level) => level.includes(line.font)) && !LABEL_ONLY.test(text) && /\p{L}/u.test(text) && !SENTENCE_END.test(text);
   if (line.body || line.italic) return false;
   if (bodySize <= 0 || line.size < o.minRatio * bodySize) return false;
   if (LABEL_ONLY.test(text) || !/\p{L}/u.test(text)) return false;
@@ -85,9 +97,10 @@ const faceSize = (face: string) => Number(face.split("|")[1]) || 0;
  * Exported for the tests.
  */
 export function layoutHeadings(layout: Layout, options: TypographicHeadingsOptions = {}): { headings: Heading[]; faces: TypographicHeadingStats["faces"] } {
-  const o: Required<Omit<TypographicHeadingsOptions, "sizes">> & { sizes?: number[] } = {
+  const o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces">> & { sizes?: number[]; faces?: string[][] } = {
     firstLevel: options.firstLevel ?? 2,
     ...(options.sizes ? { sizes: options.sizes } : {}),
+    ...(options.faces ? { faces: options.faces } : {}),
     minRatio: options.minRatio ?? 1.15,
     maxChars: options.maxChars ?? 160,
     minPages: options.minPages ?? 3,
@@ -112,10 +125,15 @@ export function layoutHeadings(layout: Layout, options: TypographicHeadingsOptio
     }
   }
   const ranked = [...byFace]
-    .filter(([, e]) => e.lines >= o.minLines && e.pages.size >= o.minPages)
+    .filter(([, e]) => o.faces || (e.lines >= o.minLines && e.pages.size >= o.minPages))
     .sort((a, b) => faceSize(b[0]) - faceSize(a[0]) || Number(b[0].endsWith("|b")) - Number(a[0].endsWith("|b")) || b[1].lines - a[1].lines);
   // (declared sizes fix the levels; otherwise the faces that qualified are ranked)
-  const rank = (face: string, i: number) => (o.sizes ? o.sizes.findIndex((size) => Math.abs(size - faceSize(face)) <= 0.5) : i);
+  const rank = (face: string, i: number) =>
+    o.faces
+      ? o.faces.findIndex((level) => level.includes(face))
+      : o.sizes
+        ? o.sizes.findIndex((size) => Math.abs(size - faceSize(face)) <= 0.5)
+        : i;
   const levels = new Map(ranked.map(([face], i) => [face, Math.min(6, o.firstLevel + rank(face, i))]));
   const faces = ranked.map(([face, e]) => ({ face, level: levels.get(face)!, lines: e.lines, pages: e.pages.size }));
 

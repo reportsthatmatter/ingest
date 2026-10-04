@@ -35,7 +35,10 @@ const NOTE_STACKED = /^\s{0,10}(\d{1,4})\s*$/;
 const NOTE_INLINE_PERIOD = /^\s{0,20}(\d{1,4})\.\s{0,6}(?=[A-Za-z"“(])/;
 const NOTE_STACKED_PERIOD = /^\s{0,20}(\d{1,4})\.\s*$/;
 
-type NoteStyle = "bare" | "period";
+/** `footnoteNumbers("tabbed")`: the number flush, its text at a tab stop, possibly opening on "[" (clean.ts). */
+const NOTE_INLINE_TABBED = /^\s{0,1}(\d{1,4})\s{1,8}(?=[A-Za-z"“‘'(\[])/;
+
+type NoteStyle = "bare" | "period" | "tabbed";
 
 /**
  * A note-start whose digit is followed by exactly one stray OCR character
@@ -61,7 +64,8 @@ type Token =
   | { kind: "text"; raw: string };
 
 function classify(line: string, style: NoteStyle = "bare"): Token {
-  const inline = line.match(style === "period" ? NOTE_INLINE_PERIOD : NOTE_INLINE);
+  const inline =
+    line.match(style === "period" ? NOTE_INLINE_PERIOD : style === "tabbed" ? NOTE_INLINE_TABBED : NOTE_INLINE);
   if (inline) {
     return {
       kind: "inline",

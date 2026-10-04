@@ -7,6 +7,8 @@ function candidate(line, bodySize, o) {
     const text = line.text.trim();
     if (!text || text.length > o.maxChars)
         return false;
+    if (o.faces)
+        return o.faces.some((level) => level.includes(line.font)) && !LABEL_ONLY.test(text) && /\p{L}/u.test(text) && !SENTENCE_END.test(text);
     if (line.body || line.italic)
         return false;
     if (bodySize <= 0 || line.size < o.minRatio * bodySize)
@@ -29,6 +31,7 @@ export function layoutHeadings(layout, options = {}) {
     const o = {
         firstLevel: options.firstLevel ?? 2,
         ...(options.sizes ? { sizes: options.sizes } : {}),
+        ...(options.faces ? { faces: options.faces } : {}),
         minRatio: options.minRatio ?? 1.15,
         maxChars: options.maxChars ?? 160,
         minPages: options.minPages ?? 3,
@@ -53,10 +56,14 @@ export function layoutHeadings(layout, options = {}) {
         }
     }
     const ranked = [...byFace]
-        .filter(([, e]) => e.lines >= o.minLines && e.pages.size >= o.minPages)
+        .filter(([, e]) => o.faces || (e.lines >= o.minLines && e.pages.size >= o.minPages))
         .sort((a, b) => faceSize(b[0]) - faceSize(a[0]) || Number(b[0].endsWith("|b")) - Number(a[0].endsWith("|b")) || b[1].lines - a[1].lines);
     // (declared sizes fix the levels; otherwise the faces that qualified are ranked)
-    const rank = (face, i) => (o.sizes ? o.sizes.findIndex((size) => Math.abs(size - faceSize(face)) <= 0.5) : i);
+    const rank = (face, i) => o.faces
+        ? o.faces.findIndex((level) => level.includes(face))
+        : o.sizes
+            ? o.sizes.findIndex((size) => Math.abs(size - faceSize(face)) <= 0.5)
+            : i;
     const levels = new Map(ranked.map(([face], i) => [face, Math.min(6, o.firstLevel + rank(face, i))]));
     const faces = ranked.map(([face, e]) => ({ face, level: levels.get(face), lines: e.lines, pages: e.pages.size }));
     const headings = [];

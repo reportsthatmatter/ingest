@@ -103,19 +103,5 @@ export type MarkerNotes =
     } | undefined;
 };
 export declare function linkLayoutMarkers(blocks: Block[], layout: Layout, notes: MarkerNotes): LayoutMarkerStats;
-/**
- * Whether the layout shows a note being defined on this page: a line that opens
- * on a raised number (a footnote's own number, set like its marker) or on a
- * number in a face smaller than the body (a note set in the notes' size).
- * A contents page whose entries the page-foot reader took for notes ("1
- * Introduction 3" in the body's own face, nothing raised: Leveson's contents)
- * has neither.
- */
-/**
- * `footnoteNumbers("period")`: whether the line that opens a page's note block ("104. Letter from…") is
- * set in the notes' smaller face. A body paragraph numbered the same way at the page foot (Hillsborough's
- * Appendix 1, "8. In all of the above cases, …") is in the body's face, and stays body. A line the layout
- * does not find is given the benefit of the doubt.
- */
-export declare function inNoteFace(layout: Layout, volume: number, pdfIndex: number, line: string): boolean;
-export declare function pageDefinesNotes(layout: Layout, volume: number, pdfIndex: number): boolean;
+export declare function inNoteFace(layout: Layout, volume: number, pdfIndex: number, line: string, otherFamily?: boolean): boolean;
+export declare function pageDefinesNotes(layout: Layout, volume: number, pdfIndex: number, otherFamily?: boolean): boolean;

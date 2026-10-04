@@ -433,9 +433,22 @@ export declare const footnoteGap: () => PagePass;
  * a paragraph with every marker bare. Opt-in: a numbered list item at a page
  * foot has the same shape.
  */
-export declare const footnoteNumbers: (numbers: "period") => PagePass & {
-    numbers: "period";
+export declare const footnoteNumbers: <N extends "period" | "tabbed">(numbers: N) => PagePass & {
+    numbers: N;
 };
+/**
+ * The report prints no page numbers, and its own contents cite the PDF's page
+ * order (the Post Office Horizon IT Inquiry's Volume 1: "1. INTRODUCTION 6" is
+ * the PDF's sixth page, and no page carries a folio). Each page is numbered by
+ * its place in its volume's PDF, so page anchors are the numbers the contents
+ * gives.
+ *
+ * Without it such a report has no page anchors at all, or worse: a running head
+ * carrying a constant number ("…Report: Volume 1") is read by
+ * `runningFurniture` as every page's folio. Opt-in: only a report whose
+ * contents is checked against its PDF pages declares it.
+ */
+export declare const pdfPageNumbers: () => PagePass;
 /**
  * Reads the report's chapter-and-section numbering from its contents
  * ("8.1   The Summer of Threat 254") and takes each numbered section's heading

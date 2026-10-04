@@ -54,6 +54,7 @@ export {
   photoCredits,
   footnoteGap,
   footnoteNumbers,
+  pdfPageNumbers,
   runningFurniture,
   geometry,
   columns,

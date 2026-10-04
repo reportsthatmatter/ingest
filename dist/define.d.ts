@@ -83,7 +83,9 @@ export type ResolvedPasses = {
     photoCredits?: boolean;
     footnoteGap?: boolean;
     /** `footnoteNumbers`: how page-foot notes are numbered. */
-    footnoteNumbers?: "bare" | "period";
+    footnoteNumbers?: "bare" | "period" | "tabbed";
+    /** `pdfPageNumbers`: each page is numbered by its place in its PDF. */
+    pdfPageNumbers?: boolean;
     quoteInset?: number;
     allCapsHeadings: boolean;
     numberedHeadings?: boolean;

@@ -92,7 +92,9 @@ export type ResolvedPasses = {
   photoCredits?: boolean;
   footnoteGap?: boolean;
   /** `footnoteNumbers`: how page-foot notes are numbered. */
-  footnoteNumbers?: "bare" | "period";
+  footnoteNumbers?: "bare" | "period" | "tabbed";
+  /** `pdfPageNumbers`: each page is numbered by its place in its PDF. */
+  pdfPageNumbers?: boolean;
   quoteInset?: number;
   allCapsHeadings: boolean;
   numberedHeadings?: boolean;
@@ -246,7 +248,9 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),
     photoCredits: passes.some((pass) => pass.name === "photoCredits"),
     footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
-    footnoteNumbers: passes.some((pass) => pass.name === "footnoteNumbers") ? "period" : undefined,
+    footnoteNumbers: (passes.find((pass) => pass.name === "footnoteNumbers") as { numbers?: "period" | "tabbed" } | undefined)
+      ?.numbers,
+    pdfPageNumbers: passes.some((pass) => pass.name === "pdfPageNumbers"),
     quoteInset: passes.find(
       (pass): pass is QuoteInsetPass => pass.stage === "quoteInset"
     )?.columns,

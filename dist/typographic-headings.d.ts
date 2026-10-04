@@ -39,6 +39,17 @@ export type TypographicHeadingsOptions = {
     minPages?: number;
     /** ... and be at least this many lines. Default 5. */
     minLines?: number;
+    /**
+     * The heading faces themselves, one list per level from `firstLevel` down, each a layout face key
+     * (`family|size|color`, then `|b`, `|i`, as `pnpm ingest page` prints them). Declared, these faces
+     * and no others are headings, whatever their size, weight or slant and however often they recur:
+     * for a report whose levels are not told apart by size alone. The Post Office Horizon IT Inquiry sets
+     * its subsections in 18 to 20pt bold (one 20pt in Open Sans, one in Roboto, the rest 18pt) and the
+     * topics under them in 18pt italic, against a 17pt body, so `sizes` can neither group the first nor
+     * tell the 18pt bold from the 18pt italic. The other tests (short, not a bare label, not ending a
+     * sentence) still apply. Overrides `sizes`, `minRatio`, `minPages` and `minLines`.
+     */
+    faces?: string[][];
 };
 export type TypographicHeadingStats = {
     /** Heading faces found, largest first, with the level each was given. */
