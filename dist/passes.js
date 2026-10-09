@@ -353,6 +353,25 @@ export const foliosInStep = () => ({ name: "foliosInStep", stage: "page" });
  */
 export const foiaRedactions = () => ({ name: "foiaRedactions", stage: "page" });
 /**
+ * A section break set as a line of asterisks ("* * *", "***") is a block of its own (reportsthatmatter-gqsy.5,
+ * `separateAsterisks` in src/redactions.ts). The Mueller report centres one before a new train of thought;
+ * read as text, it was taken with the next paragraph's indented first line for a quotation, and the rest of
+ * that paragraph was cut off below it (Volume I pp.2, 13, Volume II p.2). Opt-in: it moves the paragraphs
+ * round every such line.
+ */
+export const asteriskBreaks = () => ({ name: "asteriskBreaks", stage: "page" });
+/**
+ * A note's run-over is read off the layout (reportsthatmatter-gqsy.5, `runOverByFace` in src/markers.ts). A
+ * note too long for its page runs on at the head of the next page's note block, above that page's first note
+ * number. On a single-spaced page the text reading cannot tell it from the body's last paragraph, so it was
+ * appended to the paragraph, which then never joined its continuation on the next page (the Mueller report,
+ * Volume II pp.49-50). With this pass a run of lines at the end of the page's body, below a gap of two or more
+ * blank lines, every line set at least two points smaller than the body, is the run-over and goes to the note
+ * before. Needs the layout. Opt-in: a report that sets quotations or captions smaller than its body, low on a
+ * page, would lose them to a note.
+ */
+export const layoutRunOvers = () => ({ name: "layoutRunOvers", stage: "page" });
+/**
  * A photo credit set between a paragraph and its continuation does not take
  * the continuation (reportsthatmatter-xay).
  *
@@ -674,11 +693,18 @@ export const wrappedHeadings = () => ({
  * labelled line on one or two body lines that differs from exactly one entry at its level by a few
  * letters (at most one in eight, and never its first) is that heading, spelt as the contents
  * spells it.
+ *
+ * `contentsOutline({ centredMinor: true })`: a centred line the outline does not number ("STATUTORY AND
+ * CONSTITUTIONAL DEFENSES" and "CONCLUSION" in the Mueller report's Volume II executive summary) is a level-4
+ * subhead inside its section, not a top-level section beside the numbered ones (where the executive summary's
+ * "Conclusion" stood as a section of its own beside the report's "IV. CONCLUSION"). Philip Morris's centred
+ * "FINDINGS OF FACT" is a top-level heading, which is why it is an option.
  */
 export const contentsOutline = (options = {}) => ({
     name: "contentsOutline",
     stage: "page",
     ...(options.scanned ? { scanned: true } : {}),
+    ...(options.centredMinor ? { centredMinor: true } : {}),
 });
 /**
  * Rejoins a sentence the page break left in pieces (reportsthatmatter-ca3,

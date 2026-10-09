@@ -32,8 +32,10 @@ const RUN = String.raw `${CODE}(?:\s?[,.]?\s?${CODE})*`;
 const SUFFIX = String.raw `(?:\s?-\s?[0-9lI]?(?![A-Za-z0-9])|/(?:\s?${O}\s?b\s?${C})?)`;
 /** "(b)(3)-2, (b)(7)(E)-1", "(b)(6)/", "(b)(6)/(b)": a margin label (possibly several). */
 const MARGIN = new RegExp(String.raw `(?<![0-9§])${RUN}${SUFFIX}(?:\s?,?\s?${RUN}${SUFFIX})*`, "g");
-/** "(7)(C)-4": a margin label's second line, after "(b)(6)/(b)". */
-const MARGIN_TAIL = new RegExp(String.raw `(?<![0-9A-Za-z§)])${O}7${C}(?:${O}[A-F]${C})?\s?-\s?[0-9lI](?![A-Za-z0-9])`, "g");
+/** "(7)(C)-4", "(E)-2": a margin label's second line, after "(b)(6)/(b)" or "(b)(7)". */
+const MARGIN_TAIL = new RegExp(String.raw `(?<![0-9A-Za-z§)])(?:${O}7${C}(?:${O}[A-F]${C})?|${O}[A-F]${C})\s?-\s?[0-9lI](?![A-Za-z0-9])`, "g");
+/** A line that is nothing but unspaced codes ("(b)(7)" over "(E)-2"): a margin label broken over two lines. */
+const MARGIN_LINE = new RegExp(String.raw `^\s*\(b\)\((?:[1-9])\)(?:\([A-F]\))?\s*$`);
 /** A box label: a run of codes not inside a statute citation. */
 const BOX = new RegExp(String.raw `(?<![0-9§])${RUN}(?!\s?${O}[A-Z]${C})`, "g");
 /** One code within a matched run, brackets normalised. */
@@ -58,8 +60,13 @@ export const REDACTION_MARKER = /\[Redacted: (?=\(b\))/g;
  * line that held nothing but margin labels.
  */
 export function redactLine(line, counts) {
-    if (!/[({]\s?[b7]\s?[)}]/.test(line))
+    if (!/[({]\s?[b7A-F]\s?[)}]/.test(line))
         return line;
+    if (MARGIN_LINE.test(line)) {
+        if (counts)
+            counts.margin++;
+        return null;
+    }
     let out = line.replace(MARGIN, (m) => {
         if (counts)
             counts.margin++;
@@ -89,4 +96,27 @@ export function redactPage(lines, counts) {
         const out = redactLine(line, counts);
         return out === null ? [] : [out];
     });
+}
+/** A line of three or more asterisks and nothing else: a section break ("* * *", "***"). */
+const ASTERISKS = /^\s*\*(?:\s*\*){2,}\s*$/;
+/**
+ * `asteriskBreaks` (reportsthatmatter-gqsy.5): a section break set as a line of asterisks stands apart from
+ * the paragraphs either side. Read as text, the centred "* * *" was taken for the first line of a quotation
+ * with the next paragraph's indented first line, and the paragraph's other lines were cut off below it (the
+ * Mueller report, Volume I p.2, p.13; Volume II p.2). A blank line either side keeps it a block of its own.
+ */
+export function separateAsterisks(lines) {
+    if (!lines.some((line) => ASTERISKS.test(line)))
+        return lines;
+    const out = [];
+    lines.forEach((line, i) => {
+        if (!ASTERISKS.test(line))
+            return void out.push(line);
+        if (out.length && out[out.length - 1].trim())
+            out.push("");
+        out.push(line);
+        if (i + 1 < lines.length && lines[i + 1].trim())
+            out.push("");
+    });
+    return out;
 }

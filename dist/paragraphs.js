@@ -888,8 +888,8 @@ export function contentsHeadings(blocks) {
     }
     return out;
 }
-export function emptyOutline(scanned = false) {
-    return { entries: new Map(), prefixes: new Set(), ...(scanned ? { scanned: true } : {}) };
+export function emptyOutline(scanned = false, centredMinor = false) {
+    return { entries: new Map(), prefixes: new Set(), ...(scanned ? { scanned: true } : {}), ...(centredMinor ? { centredMinor: true } : {}) };
 }
 /** Levenshtein distance, capped: returns `cap + 1` as soon as it must exceed `cap`. */
 function editDistance(a, b, cap) {
@@ -943,9 +943,10 @@ const OUTLINE_LABEL = /^\s*(\((?:\d{1,2}|[a-z]{1,4})\)|[a-z]\)|(?:[IVXLC]{1,6}|[
 /**
  * Spaced leaders to a page number, ". . . . 219", ending a contents entry —
  * two dots at the least, where a long title leaves no room for more — or
- * ellipsis characters ("Acts……… 162", the Mueller report's Volume II).
+ * ellipsis characters ("Acts……… 162", the Mueller report's Volume II), or one dot set apart by spaces where
+ * the title left no room for more ("(FARA and 18 U.S.C. § 951) . 181", its Volume I).
  */
-const LEADER_TAIL = /\s*(?:(?:…\s?)+(?:\.\s?)*|(?:\.\s?){2,})\s*(\d{1,4})\s*$/;
+const LEADER_TAIL = /\s*(?:(?:…\s?)+(?:\.\s?)*|(?:\.\s?){2,}|(?<=\S)\s\.\s)\s*(\d{1,4})\s*$/;
 /**
  * An outline label's level. A roman numeral over a title in capitals is a
  * top-level part ("V. DEFENDANTS DEVISED…"); "I." over a title in title case
@@ -1009,6 +1010,23 @@ export function outlineContentsBlocks(lines, entries) {
         blocks.push({ kind: "contents", text: `${label} ${entry.title}`, page: entry.page });
     }
     return blocks;
+}
+/**
+ * `contentsOutline({ centredMinor: true })`: the contents' entries that carry no label, a title then leaders to
+ * a page ("INTRODUCTION TO VOLUME I ......... 1"), on a page read as an outline. Learnt as titles only: they are
+ * not outline entries (nothing in the body is read against them), they only keep their level.
+ */
+export function learnUnlabelled(outline, lines) {
+    for (const line of lines) {
+        if (!line.trim() || OUTLINE_LABEL.test(line))
+            continue;
+        const tail = normaliseWhitespace(line).match(LEADER_TAIL);
+        if (!tail)
+            continue;
+        const letters = titleLetters(normaliseWhitespace(line).replace(LEADER_TAIL, "").replace(/^TABLE OF CONTENTS\b.*?(?=[A-Z]{3})/i, ""));
+        if (letters)
+            (outline.unlabelled ??= new Set()).add(letters);
+    }
 }
 /** Adds a contents page's entries to the outline the body is read against. */
 export function learnOutline(outline, entries) {
@@ -1200,7 +1218,16 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
     // and the usual rejoin makes one heading of them.
     const joinsWith = (a, b) => a >= 0 && b < lines.length && Boolean(lines[a].trim()) && Boolean(lines[b].trim()) &&
         Boolean(listed?.has(headingKey(normaliseWhitespace(`${lines[a].trim()} ${lines[b].trim()}`))));
+    // `contentsOutline({ centredMinor: true })`: with the outline read, a centred line the outline does not
+    // number is a subhead inside the section it sits in, not a section of its own.
     const isHeading = (text, allowDivisions, at) => {
+        const found = readHeading(text, allowDivisions, at);
+        // (a centred title the contents lists without a label, "INTRODUCTION TO VOLUME I", keeps its level)
+        return found && outlined && outline?.centredMinor && !outline.unlabelled?.has(titleLetters(found.text))
+            ? { ...found, level: 4 }
+            : found;
+    };
+    const readHeading = (text, allowDivisions, at) => {
         if (outlined && (at === undefined || !isCentred(lines[at], width) || runsOn(at)))
             return null;
         if (at !== undefined && opensUnclosedQuotation(text, lines, at))
@@ -1641,7 +1668,9 @@ function hangingItems(lines, numbered = true, letteredBelow = 0) {
         // `letteredItems`: a sub-item's own letter ("a.", "(b)", "iv.") over its
         // wrapped lines, wherever it sits short of a quotation's inset.
         if (!label && letteredBelow) {
-            label = lines[i].match(/^(\s*)(\(?(?:[a-z]|[ivx]{1,4})[.)])( {2,})\S/);
+            // (one space after a bracketed letter, "(a) The President's…", the Mueller report's Volume II p.12, when
+            // the wrapped lines hang at the text: the column test below decides)
+            label = lines[i].match(/^(\s*)(\(?(?:[a-z]|[ivx]{1,4})[.)])( {2,})\S/) ?? lines[i].match(/^(\s*)(\((?:[a-z]|[ivx]{1,4})\))( )\S/);
             if (label && indentOf(lines[i]) >= letteredBelow)
                 label = null;
         }

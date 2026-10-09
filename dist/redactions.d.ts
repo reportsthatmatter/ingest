@@ -46,3 +46,10 @@ export type RedactionCounts = {
 export declare function redactLine(line: string, counts?: RedactionCounts): string | null;
 /** `redactLine` over a page's lines; a line that held only margin labels is taken out. */
 export declare function redactPage(lines: string[], counts?: RedactionCounts): string[];
+/**
+ * `asteriskBreaks` (reportsthatmatter-gqsy.5): a section break set as a line of asterisks stands apart from
+ * the paragraphs either side. Read as text, the centred "* * *" was taken for the first line of a quotation
+ * with the next paragraph's indented first line, and the paragraph's other lines were cut off below it (the
+ * Mueller report, Volume I p.2, p.13; Volume II p.2). A blank line either side keeps it a block of its own.
+ */
+export declare function separateAsterisks(lines: string[]): string[];
