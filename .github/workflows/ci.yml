@@ -26,6 +26,10 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # tests/poppler.test.ts reads the version from a real pdftotext (and layout tests use pdftohtml when present).
+      - name: poppler
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils && pdftotext -v
+
       - name: dist/ is current
         run: |
           pnpm check-dist || { echo "::error::dist/ is behind src/. Run 'pnpm build' and commit dist/ in this PR."; exit 1; }
