@@ -514,7 +514,12 @@ export function assembleEdition(
   for (let c = 0; c < clean.length; c++) {
     if (isNote(c)) continue;
     const b = fields[clean[c].field].block;
-    if (!blockPage.has(b) && map[c] >= 0) blockPage.set(b, pdf[map[c]].page);
+    if (blockPage.has(b) || map[c] < 0) continue;
+    // a float the PDF prints away from where the edition sets it (a caption at the head of the next page) is
+    // aligned, if at all, by stray common words ("on", "2020") in the text around it: its page is that of the
+    // first run of three words aligned in a row, or else its opening words' (below)
+    if (blocks[b].float && !(map[c + 1] === map[c] + 1 && map[c + 2] === map[c] + 2 && fields[clean[c + 2]?.field]?.block === b)) continue;
+    blockPage.set(b, pdf[map[c]].page);
   }
   // a table's rows are placed one by one: the PDF page each row's first aligned word is on, and the
   // first token of each row, so a page that begins inside a table is stamped at its row
@@ -1250,7 +1255,9 @@ export function fillGaps(edition: Edition, pages: Page[], shadow: ShadowText): {
 /** Text that stops mid-sentence: no closing punctuation once its note markers and emphasis are off. */
 function unfinished(text: string): boolean {
   const end = text.replace(/(\[\^[^\]]*\])+$/, "").replace(/[*_]+$/, "").trimEnd();
-  return !/[.?!:;"')\]]$/.test(end) || /[a-z]-$/.test(end);
+  // curly closing quotes and the ellipsis end a sentence too: "…at that time.”[^85-5]" before a caption glued the
+  // next paragraph onto it (January 6th, 41 paragraphs; the 9/11 HTML's quotes are straight)
+  return !/[.?!:;"')\]\u2019\u201d\u2026]$/.test(end) || /[a-z]-$/.test(end);
 }
 
 /** A paragraph opening that Markdown would read as syntax. */
