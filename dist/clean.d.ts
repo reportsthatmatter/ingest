@@ -105,7 +105,9 @@ export declare function splitPage(page: Page, expectedNote: number, options?: {
     parenFolios?: boolean;
     pageHeadFolios?: PageHeadFolio;
     footnoteNumbers?: FootnoteNumbers;
+    thumbIndexNotes?: boolean;
 }): SplitPage;
+export declare const blankThumbLetter: (line: string) => string;
 export type FurnitureOptions = {
     /**
      * Strip a line that repeats only once its digits are blanked only where its

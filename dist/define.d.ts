@@ -87,6 +87,8 @@ export type ResolvedPasses = {
     sequencedNoteOpenings?: boolean;
     /** `footnoteRestarts`: a page-foot numbering that starts over at 1 is read without corroboration. */
     footnoteRestarts?: boolean;
+    /** `thumbIndexNotes`: a thumb-index letter beside a note's number is blanked before the note block is found. */
+    thumbIndexNotes?: boolean;
     /** `footnoteNumbers`: how page-foot notes are numbered. */
     footnoteNumbers?: "bare" | "period" | "tabbed";
     /** `pdfPageNumbers`: each page is numbered by its place in its PDF. */

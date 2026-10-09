@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { buildLayout, parseLayoutXml } from "../src/layout";
-import { splitFootnoteBlock } from "../src/clean";
+import { blankThumbLetter, splitFootnoteBlock, splitPage } from "../src/clean";
 import { parseFootnotes } from "../src/footnotes";
 import { assembleEdition, type Edition, type PrintedPage } from "../src/edition";
 import { pipeline, resolvePasses } from "../src/define";
-import { footnoteRestarts, sequencedNoteOpenings, strandedMarkers } from "../src/passes";
+import { footnoteRestarts, sequencedNoteOpenings, strandedMarkers, thumbIndexNotes } from "../src/passes";
 import type { Page } from "../src/extract";
 
 /**
@@ -120,6 +120,35 @@ describe("a stacked note whose text is a statute's section (reportsthatmatter-u0
       [265, "s7(3)(a)"],
       [266, "s52A"],
     ]);
+  });
+});
+
+describe("thumbIndexNotes (reportsthatmatter-qai, -u00i)", () => {
+  const page = [
+    "    personal friendship until after 2007 by which time he had left office.70",
+    "",
+    "69",
+    "      Campbell, A, Diaries Volume One: Prelude to Power 1994-1997, pp631 and 634 in particular",
+    "I   70",
+    "      p23, para 92, http://www.levesoninquiry.org.uk/wp-content/uploads/2012/04/Witness-Statement.pdf",
+    "    71",
+    "      p6, http://www.levesoninquiry.org.uk/wp-content/uploads/2012/05/Witness-Statement-of-Lord-Mandelson.pdf",
+  ];
+  const notes = (thumbIndexNotes: boolean) =>
+    parseFootnotes(splitPage({ index: 1, volume: 3, pdfIndex: 161, lines: page }, 69, { thumbIndexNotes }).footnotes, 1).map((n) => n.number);
+
+  it("reads the note whose number shares its line with the Part letter", () => {
+    expect(notes(false)).not.toContain(70);
+    expect(notes(true)).toEqual([69, 70, 71]);
+  });
+  it("blanks only a letter beside a lone number or one before a gap, never a word", () => {
+    expect(blankThumbLetter("K   3   p4, http://x")).toBe("    3   p4, http://x");
+    expect(blankThumbLetter("I   2011 Mr Hunt announced the referral")).toBe("I   2011 Mr Hunt announced the referral");
+    expect(blankThumbLetter("A  further 12 cases")).toBe("A  further 12 cases");
+    expect(blankThumbLetter("M   70")).toBe("M   70");
+  });
+  it("resolves from the declared pass", () => {
+    expect(resolvePasses(pipeline({ id: "t", title: "T", repo: ".", volumes: [{ path: "a.pdf" }], passes: [thumbIndexNotes()] })).thumbIndexNotes).toBe(true);
   });
 });
 

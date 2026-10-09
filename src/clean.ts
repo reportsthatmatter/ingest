@@ -540,12 +540,17 @@ function provenance(page: Page): Pick<SplitPage, "index" | "volume" | "pdfIndex"
 export function splitPage(
   page: Page,
   expectedNote: number,
-  options: { citationRunOver?: boolean; footnoteGap?: boolean; footnoteRestarts?: boolean; sequencedNoteOpenings?: boolean; romanFolios?: boolean; parenFolios?: boolean; pageHeadFolios?: PageHeadFolio; footnoteNumbers?: FootnoteNumbers } = {}
+  options: { citationRunOver?: boolean; footnoteGap?: boolean; footnoteRestarts?: boolean; sequencedNoteOpenings?: boolean; romanFolios?: boolean; parenFolios?: boolean; pageHeadFolios?: PageHeadFolio; footnoteNumbers?: FootnoteNumbers; thumbIndexNotes?: boolean } = {}
 ): SplitPage {
-  const { printed, roman, lines } = takePrintedNumber(page.lines, { roman: options.romanFolios, paren: options.parenFolios, head: options.pageHeadFolios });
+  const { printed, roman, lines: read } = takePrintedNumber(page.lines, { roman: options.romanFolios, paren: options.parenFolios, head: options.pageHeadFolios });
+  const lines = options.thumbIndexNotes ? read.map(blankThumbLetter) : read;
   const { body, footnotes, runOver } = splitFootnoteBlock(lines, expectedNote, options);
   return { ...provenance(page), printed, ...(roman ? { roman } : {}), body, footnotes, ...(runOver.length ? { runOver } : {}) };
 }
+
+/** `thumbIndexNotes`: "I   70" or "K   3   p4, http://…", a thumb-index letter beside a note's number. */
+const THUMB_LETTER_NOTE = /^(\s{0,2})[A-L](?=\s{2,}\d{1,4}(?:\s*$|\s{2,}\S))/;
+export const blankThumbLetter = (line: string): string => line.replace(THUMB_LETTER_NOTE, "$1 ");
 
 /**
  * Removes running headers and footers that recur at a page edge. PDF text
