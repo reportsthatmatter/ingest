@@ -552,7 +552,29 @@ export function assembleEdition(
     const close = hits.filter((j) => Math.abs(j - anchor) < 3000);
     if (close.length === 1) blockPage.set(b, pdf[close[0]].page);
   }
+  // a paragraph that a float interrupted mid-sentence is served joined (below): head block -> tail block
+  const joins = new Map<number, number>();
+  for (let b = 0; b < blocks.length; b++) {
+    const block = blocks[b];
+    if (block.kind !== "paragraph" || block.float || !unfinished(block.text)) continue;
+    let j = b + 1;
+    while (j < blocks.length && blocks[j].float) j++;
+    const next = blocks[j];
+    if (j > b + 1 && next?.kind === "paragraph" && !next.float) joins.set(b, j);
+  }
+  const inJoin = new Set<number>();
+  for (const [b, j] of joins) for (let k = b + 1; k < j; k++) inJoin.add(k);
   const markersBefore = new Map<number, PrintedPage[]>();
+  /**
+   * Floats served after a page's marker rather than where the edition sets them (reportsthatmatter-bqu0). The rule
+   * for every float: a float is served under the marker of the page the PDF prints it on, and no block follows the
+   * marker of a page later than the one its first word is printed on. The edition sets a photograph's caption
+   * where the HTML put it, often ahead of a paragraph that began on the page before the one the PDF prints the
+   * photograph on (at its head); the page's marker then lands after that paragraph, so the caption read under the
+   * earlier page. Such a float now follows the marker. (Rejoined paragraphs keep their own placement, below.)
+   */
+  const deferred = new Map<PrintedPage, number[]>();
+  const deferredFloats = new Set<number>();
   // markers that fall inside a table: block -> row the page opens at -> pages (the table is cut there)
   const markersInTable = new Map<number, Map<number, PrintedPage[]>>();
   // A page that prints only notes placed among the body (`EditionNote.after`: a chapter's endnotes) has no
@@ -601,6 +623,16 @@ export function assembleEdition(
       if (!opens) while (before < blocks.length && (blockPage.get(before) ?? marked[i].p) < marked[i].p) before++;
     }
     before = Math.max(before, lastBefore);
+    // the floats served under the previous marker that the PDF prints on this page (or later) follow this one
+    const moved: number[] = [];
+    for (let k = lastBefore; k < before; k++) {
+      if (!blocks[k].float || inJoin.has(k) || deferredFloats.has(k)) continue;
+      if ((blockPage.get(k) ?? -1) >= marked[i].p) moved.push(k);
+    }
+    if (moved.length) {
+      deferred.set(marked[i].entry, moved);
+      for (const k of moved) deferredFloats.add(k);
+    }
     lastBefore = before;
     if (!markersBefore.has(before)) markersBefore.set(before, []);
     markersBefore.get(before)!.push(marked[i].entry);
@@ -723,16 +755,6 @@ export function assembleEdition(
     }
   }
 
-  // serialise, joining a paragraph that a float interrupted mid-sentence
-  const joins = new Map<number, number>();
-  for (let b = 0; b < blocks.length; b++) {
-    const block = blocks[b];
-    if (block.kind !== "paragraph" || block.float || !unfinished(block.text)) continue;
-    let j = b + 1;
-    while (j < blocks.length && blocks[j].float) j++;
-    const next = blocks[j];
-    if (j > b + 1 && next?.kind === "paragraph" && !next.float) joins.set(b, j);
-  }
   // `floats: "by-notes"`: the joins whose floats read first, by where their notes are numbered
   const floatsFirst = new Set<number>();
   if (options.floats === "by-notes") {
@@ -745,16 +767,29 @@ export function assembleEdition(
       const head = cited(b, b + 1);
       const floats = cited(b + 1, j);
       const tail = cited(j, j + 1);
+      // the same rule as for every float: a page that turns among the floats would put its marker ahead of
+      // the paragraph's head, printed on the page before (reportsthatmatter-smof), so the page order wins
+      let turns = false;
+      for (let k = b + 1; k < j; k++) if (markersBefore.get(k)?.length || deferredFloats.has(k)) turns = true;
+      if (turns) continue;
       if (!head.length && floats.length && tail.length && Math.min(...tail) > Math.max(...floats)) floatsFirst.add(b);
     }
   }
   const out: string[] = [];
   const order: Array<{ block: EditionBlock; source: number }> = [];
-  const marker = (p: PrintedPage) => (p.occurrence ? `%%page ${p.number}#${p.occurrence}%%` : `%%page ${p.number}%%`);
+  const markerText = (p: PrintedPage) => (p.occurrence ? `%%page ${p.number}#${p.occurrence}%%` : `%%page ${p.number}%%`);
+  /** A page's marker, then any floats deferred to it. */
+  const marker = (p: PrintedPage) => {
+    const moved = deferred.get(p);
+    if (!moved) return markerText(p);
+    for (const k of moved) order.push({ block: blocks[k], source: k });
+    return [markerText(p), ...moved.map((k) => blockMarkdown(blocks[k]))].join("\n\n");
+  };
   let carried: PrintedPage[] = [];
   for (let b = 0; b < blocks.length; b++) {
     for (const p of [...carried, ...(markersBefore.get(b) ?? [])]) out.push(marker(p));
     carried = [];
+    if (deferredFloats.has(b)) continue;
     const j = joins.get(b);
     const cuts = markersInTable.get(b);
     if (cuts && blocks[b].kind === "table") {
