@@ -51,6 +51,7 @@ export {
   parenFolios,
   pageHeadFolios,
   foliosInStep,
+  foiaRedactions,
   numberedOutsideTables,
   photoCredits,
   footnoteGap,

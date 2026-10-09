@@ -78,6 +78,8 @@ export type ResolvedPasses = {
   numberedFindings?: boolean;
   doubleSpaced?: boolean;
   contentsOutline?: boolean;
+  /** `contentsOutline({ scanned: true })`: a heading the OCR misspelt is matched to its entry by a few letters' difference. */
+  contentsOutlineScanned?: boolean;
   listedDivisions?: boolean;
   wrappedHeadings?: boolean;
   pageBreakContinuations?: boolean;
@@ -100,6 +102,8 @@ export type ResolvedPasses = {
   footnoteNumbers?: "bare" | "period" | "tabbed";
   /** `pdfPageNumbers`: each page is numbered by its place in its PDF. */
   pdfPageNumbers?: boolean;
+  /** `foiaRedactions`: a FOIA release's box labels marked as redactions, its margin labels taken out. */
+  foiaRedactions?: boolean;
   quoteInset?: number;
   allCapsHeadings: boolean;
   numberedHeadings?: boolean;
@@ -183,7 +187,7 @@ export function pipeline(def: PipelineDef): PipelineDef {
 export const KNOWN_PAGE_PASSES: ReadonlySet<string> = new Set([
   "chapterContents", "citationRunOver", "contentsEntries", "contentsOutline", "doubleSpaced",
   "endnotes", "escapeLeadingHash", "escapeNumberedParagraphs", "flushFootnoteMarkers",
-  "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteRestarts", "hangingIndents",
+  "foiaRedactions", "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteRestarts", "hangingIndents",
   "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "letteredItems", "listedDivisions", "listedHeadings",
   "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
   "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
@@ -244,6 +248,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     numberedFindings: passes.some((pass) => pass.name === "numberedFindings"),
     doubleSpaced: passes.some((pass) => pass.name === "doubleSpaced"),
     contentsOutline: passes.some((pass) => pass.name === "contentsOutline"),
+    contentsOutlineScanned: passes.some((pass) => pass.name === "contentsOutline" && (pass as { scanned?: boolean }).scanned === true),
     listedDivisions: passes.some((pass) => pass.name === "listedDivisions"),
     wrappedHeadings: passes.some((pass) => pass.name === "wrappedHeadings"),
     pageBreakContinuations: passes.some((pass) => pass.name === "pageBreakContinuations"),
@@ -263,6 +268,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     footnoteNumbers: (passes.find((pass) => pass.name === "footnoteNumbers") as { numbers?: "period" | "tabbed" } | undefined)
       ?.numbers,
     pdfPageNumbers: passes.some((pass) => pass.name === "pdfPageNumbers"),
+    foiaRedactions: passes.some((pass) => pass.name === "foiaRedactions"),
     quoteInset: passes.find(
       (pass): pass is QuoteInsetPass => pass.stage === "quoteInset"
     )?.columns,

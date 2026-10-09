@@ -400,6 +400,16 @@ export declare const pageHeadFolios: (options?: PageHeadFolio) => PageHeadFolios
  */
 export declare const foliosInStep: () => PagePass;
 /**
+ * Reads a FOIA release's redactions (reportsthatmatter-gqsy.5, `src/redactions.ts`). Each black box prints the
+ * exemption it was withheld under ("(b) (6), (b) (7)(C)"), and the margin beside it repeats the codes with a
+ * processing number ("(b)(6)/" over "(b)(7)(C)-2"). Read as text, both were words welded into the sentence
+ * ("Richard Gates, (b) (6), (b) (7)(C) Roger Stone, and …", "…in the 2016 (b)(6)/"). With this pass a box label
+ * becomes `[Redacted: (b)(6), (b)(7)(C)]` and a margin label is taken out, on every line of the page (notes
+ * included), before the page is split. A statute's subsection ("§ 1512(b)(3)") is never read as one.
+ * Opt-in: only a FOIA-processed release prints these labels.
+ */
+export declare const foiaRedactions: () => PagePass;
+/**
  * A photo credit set between a paragraph and its continuation does not take
  * the continuation (reportsthatmatter-xay).
  *
@@ -686,8 +696,18 @@ export declare const wrappedHeadings: () => PagePass;
  *
  * Opt-in: only a report whose contents lists every heading can say that
  * whatever it does not list is text.
+ *
+ * `contentsOutline({ scanned: true })`: a scan's OCR misspells a heading the contents spells right
+ * ("1. Trnmp Tower Moscow Project", "6. Caiier Page Contact with…", the Mueller report's Volume I): a
+ * labelled line on one or two body lines that differs from exactly one entry at its level by a few
+ * letters (at most one in eight, and never its first) is that heading, spelt as the contents
+ * spells it.
  */
-export declare const contentsOutline: () => PagePass;
+export declare const contentsOutline: (options?: {
+    scanned?: boolean;
+}) => PagePass & {
+    scanned?: boolean;
+};
 /**
  * Rejoins a sentence the page break left in pieces (reportsthatmatter-ca3,
  * reportsthatmatter-kb4; jack-smith-report#1).

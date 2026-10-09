@@ -234,8 +234,10 @@ export type Outline = {
         level: number;
     }>;
     prefixes: Set<string>;
+    /** `contentsOutline({ scanned: true })`: an OCR-misspelt heading matches its entry approximately. */
+    scanned?: boolean;
 };
-export declare function emptyOutline(): Outline;
+export declare function emptyOutline(scanned?: boolean): Outline;
 export type OutlineEntry = {
     label: string;
     title: string;

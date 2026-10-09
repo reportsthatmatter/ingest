@@ -39,8 +39,10 @@ const PAREN_NUMBER = /^\s*\(\s*(\d{1,4})\s*\)\s*$/;
  * The Jack Smith report uses the first, the PSI financial crisis report the
  * second, and supporting only one finds seven notes in a document with
  * thousands.
+ *
+ * A note whose whole text was withheld opens on the `foiaRedactions` marker ("124 [Redacted: (b) (7)(A)]").
  */
-export const FOOTNOTE_INLINE = /^\s{0,8}(\d{1,4})\s{0,3}(?=[A-Za-z"“(])/;
+export const FOOTNOTE_INLINE = /^\s{0,8}(\d{1,4})\s{0,3}(?=[A-Za-z"“(]|\[Redacted: )/;
 const FOOTNOTE_STACKED = /^\s{0,10}(\d{1,4})\s*$/;
 /**
  * `footnoteNumbers("period")`: a page-foot note numbered "104. Letter from…"

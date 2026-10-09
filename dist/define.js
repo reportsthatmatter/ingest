@@ -56,7 +56,7 @@ export function pipeline(def) {
 export const KNOWN_PAGE_PASSES = new Set([
     "chapterContents", "citationRunOver", "contentsEntries", "contentsOutline", "doubleSpaced",
     "endnotes", "escapeLeadingHash", "escapeNumberedParagraphs", "flushFootnoteMarkers",
-    "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteRestarts", "hangingIndents",
+    "foiaRedactions", "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteRestarts", "hangingIndents",
     "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "letteredItems", "listedDivisions", "listedHeadings",
     "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
     "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
@@ -110,6 +110,7 @@ export function resolvePasses(def) {
         numberedFindings: passes.some((pass) => pass.name === "numberedFindings"),
         doubleSpaced: passes.some((pass) => pass.name === "doubleSpaced"),
         contentsOutline: passes.some((pass) => pass.name === "contentsOutline"),
+        contentsOutlineScanned: passes.some((pass) => pass.name === "contentsOutline" && pass.scanned === true),
         listedDivisions: passes.some((pass) => pass.name === "listedDivisions"),
         wrappedHeadings: passes.some((pass) => pass.name === "wrappedHeadings"),
         pageBreakContinuations: passes.some((pass) => pass.name === "pageBreakContinuations"),
@@ -127,6 +128,7 @@ export function resolvePasses(def) {
         footnoteNumbers: passes.find((pass) => pass.name === "footnoteNumbers")
             ?.numbers,
         pdfPageNumbers: passes.some((pass) => pass.name === "pdfPageNumbers"),
+        foiaRedactions: passes.some((pass) => pass.name === "foiaRedactions"),
         quoteInset: passes.find((pass) => pass.stage === "quoteInset")?.columns,
         allCapsHeadings: passes.find((pass) => pass.stage === "allCapsHeadings")?.enabled ?? true,
         numberedHeadings: passes.find((pass) => pass.stage === "numberedHeadings")?.enabled ?? true,

@@ -888,21 +888,64 @@ export function contentsHeadings(blocks) {
     }
     return out;
 }
-export function emptyOutline() {
-    return { entries: new Map(), prefixes: new Set() };
+export function emptyOutline(scanned = false) {
+    return { entries: new Map(), prefixes: new Set(), ...(scanned ? { scanned: true } : {}) };
+}
+/** Levenshtein distance, capped: returns `cap + 1` as soon as it must exceed `cap`. */
+function editDistance(a, b, cap) {
+    if (Math.abs(a.length - b.length) > cap)
+        return cap + 1;
+    let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++) {
+        const row = [i];
+        let best = i;
+        for (let j = 1; j <= b.length; j++) {
+            row[j] = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+            best = Math.min(best, row[j]);
+        }
+        if (best > cap)
+            return cap + 1;
+        prev = row;
+    }
+    return prev[b.length];
+}
+/**
+ * The one entry at `level` that `letters` misspells by a few letters (`contentsOutline({ scanned: true })`):
+ * at most one edit in eight, the first letter right, and no other entry as close.
+ */
+function nearEntry(outline, level, letters) {
+    if (letters.length < 8)
+        return undefined;
+    const cap = Math.floor(letters.length / 8);
+    let found;
+    let best = cap + 1;
+    let tied = false;
+    for (const [key, entry] of outline.entries) {
+        const [l, want] = [Number(key.slice(0, key.indexOf(":"))), key.slice(key.indexOf(":") + 1)];
+        if (l !== level || want[0] !== letters[0])
+            continue;
+        const d = editDistance(letters, want, cap);
+        if (d < best)
+            [found, best, tied] = [entry, d, false];
+        else if (d === best)
+            tied = true;
+    }
+    return found && !tied && best <= cap ? found : undefined;
 }
 /**
  * An outline label and the title after it: "IV.", "A.", "3.", "c.", "(2)",
  * "(b)", "(iii)", and the single letter closing on its bracket alone, "a)"
  * (the Valukas Report's Repo 105 sections run a) to j) before they turn to
- * "(1)").
+ * "(1)"). A lower-case roman numeral, "ii.", "vii.": the Mueller report's
+ * fourth level runs i. to vii. under each lettered heading.
  */
-const OUTLINE_LABEL = /^\s*(\((?:\d{1,2}|[a-z]{1,4})\)|[a-z]\)|(?:[IVXLC]{1,6}|[A-Za-z]|\d{1,2})\.)\s+(\S.*)$/;
+const OUTLINE_LABEL = /^\s*(\((?:\d{1,2}|[a-z]{1,4})\)|[a-z]\)|(?:[IVXLC]{1,6}|[ivxlc]{2,6}|[A-Za-z]|\d{1,2})\.)\s+(\S.*)$/;
 /**
  * Spaced leaders to a page number, ". . . . 219", ending a contents entry —
- * two dots at the least, where a long title leaves no room for more.
+ * two dots at the least, where a long title leaves no room for more — or
+ * ellipsis characters ("Acts……… 162", the Mueller report's Volume II).
  */
-const LEADER_TAIL = /\s*(?:\.\s?){2,}\s*(\d{1,4})\s*$/;
+const LEADER_TAIL = /\s*(?:(?:…\s?)+(?:\.\s?)*|(?:\.\s?){2,})\s*(\d{1,4})\s*$/;
 /**
  * An outline label's level. A roman numeral over a title in capitals is a
  * top-level part ("V. DEFENDANTS DEVISED…"); "I." over a title in title case
@@ -1001,8 +1044,18 @@ function readOutline(lines, outline) {
             end++;
             read += titleLetters(next);
         }
-        const entry = at(read);
+        let entry = at(read);
         const marked = entry ? null : at(read.replace(/\d+$/, ""));
+        if (!entry && !marked && outline.scanned) {
+            // an OCR-misspelt heading: its own line, or that and the next, close to one entry
+            const one = titleLetters(label[2]);
+            const two = lines[i + 1]?.trim() ? one + titleLetters(lines[i + 1]) : "";
+            const near = nearEntry(outline, level, one) ?? (two ? nearEntry(outline, level, two) : undefined);
+            if (near) {
+                entry = near;
+                end = near === nearEntry(outline, level, one) ? i : i + 1;
+            }
+        }
         if (!entry && !marked)
             continue;
         const marker = marked ? read.match(/\d+$/)[0] : "";

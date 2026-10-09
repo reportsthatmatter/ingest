@@ -1,3 +1,4 @@
+import { redactPage } from "./redactions.js";
 import { extractPages, normaliseWhitespace } from "./extract.js";
 import { splitPage, takePrintedNumber, collapseDoubleSpacing } from "./clean.js";
 import { markPrintedNumbers } from "./printed-numbers.js";
@@ -77,8 +78,11 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     // Volume is assigned here because this is the only place that knows the
     // order the volumes were given in — and that order is semantic: footnote
     // numbering and page indices run continuously across them.
-    const pages = pageGroups.flatMap((group, groupIndex) => group.map((page) => ({ ...page, volume: groupIndex + 1 }))).map((page, i) => ({ ...page, index: i + 1 }));
-    const sourceText = pages.map((page) => page.lines.join("\n")).join("\n");
+    const allPages = pageGroups.flatMap((group, groupIndex) => group.map((page) => ({ ...page, volume: groupIndex + 1 }))).map((page, i) => ({ ...page, index: i + 1 }));
+    const sourceText = allPages.map((page) => page.lines.join("\n")).join("\n");
+    // `foiaRedactions`: every line of the page, notes included, before it is split (src/redactions.ts).
+    const redactions = resolved.foiaRedactions ? { boxes: 0, margin: 0 } : undefined;
+    const pages = redactions ? allPages.map((page) => ({ ...page, lines: redactPage(page.lines, redactions) })) : allPages;
     const footnotes = [];
     const bodyChunks = [];
     let expectedNote = 1;
@@ -239,7 +243,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     // `numberedFindings`: the finding number expected next, across pages.
     const findings = resolved.numberedFindings ? { next: 1 } : undefined;
     // `contentsOutline`: the headings the contents lists, learnt as it goes by.
-    const outline = resolved.contentsOutline ? emptyOutline() : undefined;
+    const outline = resolved.contentsOutline ? emptyOutline(resolved.contentsOutlineScanned) : undefined;
     // `listedDivisions`: the parts, chapters and appendices the contents lists.
     const divisions = { entries: [], used: new Set() };
     // `visionStructure`: a vision model's verified block structure, page by page (vision/hybrid.ts).
@@ -530,6 +534,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         ...(markerStats ? { layoutMarkers: markerStats } : {}),
         ...(visionReport ? { vision: visionReport } : {}),
         ...(headingStats ? { typographicHeadings: headingStats } : {}),
+        ...(redactions ? { redactions } : {}),
     };
 }
 /**

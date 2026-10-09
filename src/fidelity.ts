@@ -7,6 +7,7 @@
  * source?", which is not.
  */
 
+import { REDACTION_MARKER } from "./redactions";
 import { autoFix } from "./ocr";
 import { endsSentence } from "./paragraphs";
 
@@ -135,7 +136,8 @@ export function losslessCheck(
   // as a piece of a token or two tokens joined, so it is not invented; a word
   // that is in neither form still has nothing to match.
   for (const word of sourcePieces(sourceText)) source.add(word);
-  const output = words(stripFrontMatter(markdown));
+  // `foiaRedactions` writes "[Redacted: (b)(3)]" where a box printed "(b) (3)": the codes are the PDF's, the word is ours.
+  const output = words(stripFrontMatter(markdown).replace(REDACTION_MARKER, "["));
 
   const foreign = output.filter((word) => !source.has(word));
   const ratio = output.length ? foreign.length / output.length : 1;
