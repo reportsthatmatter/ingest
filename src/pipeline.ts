@@ -26,6 +26,7 @@ import {
   emptyOutline,
   readContentsOutline,
   learnOutline,
+  learnUnlabelled,
   outlineContentsBlocks,
   divisionContents,
   type ListedDivisions,
@@ -363,7 +364,7 @@ export function ingestPageGroups(
   // `numberedFindings`: the finding number expected next, across pages.
   const findings: FindingCounter | undefined = resolved.numberedFindings ? { next: 1 } : undefined;
   // `contentsOutline`: the headings the contents lists, learnt as it goes by.
-  const outline: Outline | undefined = resolved.contentsOutline ? emptyOutline(resolved.contentsOutlineScanned) : undefined;
+  const outline: Outline | undefined = resolved.contentsOutline ? emptyOutline(resolved.contentsOutlineScanned, resolved.contentsOutlineCentredMinor) : undefined;
   // `listedDivisions`: the parts, chapters and appendices the contents lists.
   const divisions: ListedDivisions = { entries: [], used: new Set() };
   // `visionStructure`: a vision model's verified block structure, page by page (vision/hybrid.ts).
@@ -412,6 +413,7 @@ export function ingestPageGroups(
       const at = { volume: split.volume, pdfIndex: split.pdfIndex, printed: split.printed };
       const outlineEntries = outline ? readContentsOutline(pageLines) : [];
       if (outline) learnOutline(outline, outlineEntries);
+      if (outline?.centredMinor && outlineEntries.length) learnUnlabelled(outline, pageLines);
       const readBody = (lines: string[]): Block[] =>
         toBlocks(
               lines,

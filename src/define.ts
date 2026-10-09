@@ -80,6 +80,8 @@ export type ResolvedPasses = {
   contentsOutline?: boolean;
   /** `contentsOutline({ scanned: true })`: a heading the OCR misspelt is matched to its entry by a few letters' difference. */
   contentsOutlineScanned?: boolean;
+  /** `contentsOutline({ centredMinor: true })`: a centred heading the outline does not number is a level-4 subhead. */
+  contentsOutlineCentredMinor?: boolean;
   listedDivisions?: boolean;
   wrappedHeadings?: boolean;
   pageBreakContinuations?: boolean;
@@ -253,6 +255,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     doubleSpaced: passes.some((pass) => pass.name === "doubleSpaced"),
     contentsOutline: passes.some((pass) => pass.name === "contentsOutline"),
     contentsOutlineScanned: passes.some((pass) => pass.name === "contentsOutline" && (pass as { scanned?: boolean }).scanned === true),
+    contentsOutlineCentredMinor: passes.some((pass) => pass.name === "contentsOutline" && (pass as { centredMinor?: boolean }).centredMinor === true),
     listedDivisions: passes.some((pass) => pass.name === "listedDivisions"),
     wrappedHeadings: passes.some((pass) => pass.name === "wrappedHeadings"),
     pageBreakContinuations: passes.some((pass) => pass.name === "pageBreakContinuations"),

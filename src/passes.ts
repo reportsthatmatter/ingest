@@ -853,11 +853,20 @@ export const wrappedHeadings = (): PagePass => ({
  * labelled line on one or two body lines that differs from exactly one entry at its level by a few
  * letters (at most one in eight, and never its first) is that heading, spelt as the contents
  * spells it.
+ *
+ * `contentsOutline({ centredMinor: true })`: a centred line the outline does not number ("STATUTORY AND
+ * CONSTITUTIONAL DEFENSES" and "CONCLUSION" in the Mueller report's Volume II executive summary) is a level-4
+ * subhead inside its section, not a top-level section beside the numbered ones (where the executive summary's
+ * "Conclusion" stood as a section of its own beside the report's "IV. CONCLUSION"). Philip Morris's centred
+ * "FINDINGS OF FACT" is a top-level heading, which is why it is an option.
  */
-export const contentsOutline = (options: { scanned?: boolean } = {}): PagePass & { scanned?: boolean } => ({
+export const contentsOutline = (
+  options: { scanned?: boolean; centredMinor?: boolean } = {}
+): PagePass & { scanned?: boolean; centredMinor?: boolean } => ({
   name: "contentsOutline",
   stage: "page",
   ...(options.scanned ? { scanned: true } : {}),
+  ...(options.centredMinor ? { centredMinor: true } : {}),
 });
 
 /**

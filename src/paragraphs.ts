@@ -1032,10 +1032,14 @@ export type Outline = {
   prefixes: Set<string>;
   /** `contentsOutline({ scanned: true })`: an OCR-misspelt heading matches its entry approximately. */
   scanned?: boolean;
+  /** `contentsOutline({ centredMinor: true })`: a centred heading the outline does not number is a level-4 subhead. */
+  centredMinor?: boolean;
+  /** The titles of the contents' unlabelled entries ("INTRODUCTION TO VOLUME I …… 1"), by their letters. */
+  unlabelled?: Set<string>;
 };
 
-export function emptyOutline(scanned = false): Outline {
-  return { entries: new Map(), prefixes: new Set(), ...(scanned ? { scanned: true } : {}) };
+export function emptyOutline(scanned = false, centredMinor = false): Outline {
+  return { entries: new Map(), prefixes: new Set(), ...(scanned ? { scanned: true } : {}), ...(centredMinor ? { centredMinor: true } : {}) };
 }
 
 /** Levenshtein distance, capped: returns `cap + 1` as soon as it must exceed `cap`. */
@@ -1087,9 +1091,10 @@ const OUTLINE_LABEL =
 /**
  * Spaced leaders to a page number, ". . . . 219", ending a contents entry —
  * two dots at the least, where a long title leaves no room for more — or
- * ellipsis characters ("Acts……… 162", the Mueller report's Volume II).
+ * ellipsis characters ("Acts……… 162", the Mueller report's Volume II), or one dot set apart by spaces where
+ * the title left no room for more ("(FARA and 18 U.S.C. § 951) . 181", its Volume I).
  */
-const LEADER_TAIL = /\s*(?:(?:…\s?)+(?:\.\s?)*|(?:\.\s?){2,})\s*(\d{1,4})\s*$/;
+const LEADER_TAIL = /\s*(?:(?:…\s?)+(?:\.\s?)*|(?:\.\s?){2,}|(?<=\S)\s\.\s)\s*(\d{1,4})\s*$/;
 
 /**
  * An outline label's level. A roman numeral over a title in capitals is a
@@ -1151,6 +1156,21 @@ export function outlineContentsBlocks(lines: string[], entries: OutlineEntry[]):
     blocks.push({ kind: "contents", text: `${label} ${entry.title}`, page: entry.page });
   }
   return blocks;
+}
+
+/**
+ * `contentsOutline({ centredMinor: true })`: the contents' entries that carry no label, a title then leaders to
+ * a page ("INTRODUCTION TO VOLUME I ......... 1"), on a page read as an outline. Learnt as titles only: they are
+ * not outline entries (nothing in the body is read against them), they only keep their level.
+ */
+export function learnUnlabelled(outline: Outline, lines: string[]): void {
+  for (const line of lines) {
+    if (!line.trim() || OUTLINE_LABEL.test(line)) continue;
+    const tail = normaliseWhitespace(line).match(LEADER_TAIL);
+    if (!tail) continue;
+    const letters = titleLetters(normaliseWhitespace(line).replace(LEADER_TAIL, "").replace(/^TABLE OF CONTENTS\b.*?(?=[A-Z]{3})/i, ""));
+    if (letters) (outline.unlabelled ??= new Set()).add(letters);
+  }
 }
 
 /** Adds a contents page's entries to the outline the body is read against. */
@@ -1360,7 +1380,20 @@ export function toBlocks(
   const joinsWith = (a: number, b: number): boolean =>
     a >= 0 && b < lines.length && Boolean(lines[a].trim()) && Boolean(lines[b].trim()) &&
     Boolean(listed?.has(headingKey(normaliseWhitespace(`${lines[a].trim()} ${lines[b].trim()}`))));
+  // `contentsOutline({ centredMinor: true })`: with the outline read, a centred line the outline does not
+  // number is a subhead inside the section it sits in, not a section of its own.
   const isHeading = (
+    text: string,
+    allowDivisions: boolean,
+    at?: number
+  ): { level: number; text: string; bare?: boolean } | null => {
+    const found = readHeading(text, allowDivisions, at);
+    // (a centred title the contents lists without a label, "INTRODUCTION TO VOLUME I", keeps its level)
+    return found && outlined && outline?.centredMinor && !outline.unlabelled?.has(titleLetters(found.text))
+      ? { ...found, level: 4 }
+      : found;
+  };
+  const readHeading = (
     text: string,
     allowDivisions: boolean,
     at?: number

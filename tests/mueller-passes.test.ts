@@ -141,3 +141,58 @@ describe("layoutRunOvers (reportsthatmatter-gqsy.5)", () => {
     });
   });
 });
+
+describe("contentsOutline: one spaced dot as a leader, and centredMinor (reportsthatmatter-gqsy.5)", () => {
+  it("ends an entry on a single dot set apart by spaces", () => {
+    const titles = readContentsOutline([
+      "      1. Potential Coordination: Conspiracy and Collusion............................................. 180",
+      "      2. Potential Coordination: Foreign Agent Statutes (FARA and 18 U.S.C. § 951) . 181",
+      "           a. Governing Law............................................................................... 181",
+    ]).map((e) => `${e.label} ${e.title}`);
+    expect(titles).toEqual([
+      "1. Potential Coordination: Conspiracy and Collusion",
+      "2. Potential Coordination: Foreign Agent Statutes (FARA and 18 U.S.C. § 951)",
+      "a. Governing Law",
+    ]);
+    // an abbreviation's own full stop before the page is not a leader
+    const titles2 = readContentsOutline(["A. Smith v. Jones Inc. 26", "B. Two ..... 27", "C. Three ..... 28", "D. Four ..... 29"]).map((e) => e.title);
+    expect(titles2).not.toContain("Smith v. Jones Inc");
+  });
+
+  const page = (lines: string[]) => lines;
+  const contents = page([
+    "                         TABLE OF CONTENTS – VOLUME II",
+    "INTRODUCTION TO VOLUME II .............................................. 1",
+    "EXECUTIVE SUMMARY TO VOLUME II ......................................... 3",
+    "I. BACKGROUND LEGAL AND EVIDENTIARY PRINCIPLES ......................... 9",
+    "     A. Legal Framework of Obstruction of Justice ....................... 9",
+    "IV. CONCLUSION ........................................................ 182",
+  ]);
+  const body = page([
+    "                              INTRODUCTION TO VOLUME II",
+    "",
+    "        This report is submitted to the Attorney General pursuant to 28 C.F.R. § 600.8(c), which",
+    "states that the Special Counsel shall provide a confidential report to the Attorney General.",
+    "",
+    "                                     CONCLUSION",
+    "",
+    "        Because we determined not to make a traditional prosecutorial judgment, we did not draw",
+    "ultimate conclusions about the President’s conduct, and so on for the rest of this paragraph.",
+  ]);
+  const runPages = (passes: Pass[]) =>
+    ingestPageGroups(
+      [[contents, body].map((lines, i) => ({ index: i + 1, volume: 1, pdfIndex: i + 1, lines }))],
+      { title: "T" },
+      resolvePasses(pipeline({ ...base, passes }))
+    ).markdown;
+
+  it("the defect: a centred subhead the contents does not number is a top-level section", () => {
+    expect(headings(runPages([contentsOutline()]))).toContain("## CONCLUSION");
+  });
+
+  it("with centredMinor it is a subhead; a centred title the contents lists keeps its level", () => {
+    const found = headings(runPages([contentsOutline({ centredMinor: true })]));
+    expect(found).toContain("#### CONCLUSION");
+    expect(found).toContain("## INTRODUCTION TO VOLUME II");
+  });
+});
