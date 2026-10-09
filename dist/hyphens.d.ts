@@ -24,4 +24,11 @@ export declare function vocabulary(sourceText: string): Set<string>;
  * fall back to the case of the following word, which is the same guess
  * `mergeAcrossPages` has always made at a page break.
  */
-export declare function rejoinHyphenated(text: string, words: Set<string>): string;
+export declare function rejoinHyphenated(text: string, words: Set<string>, options?: {
+    fragments?: Set<string>;
+}): string;
+/**
+ * Words the source writes whole: not as the head of a line-end break and not as its tail.
+ * `vocabulary` counts "indel-" as "indel", so a fragment looks like a word; this does not.
+ */
+export declare function wholeWords(sourceText: string): Set<string>;

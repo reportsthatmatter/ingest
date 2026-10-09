@@ -4,7 +4,7 @@ import { markPrintedNumbers } from "./printed-numbers.js";
 import { strayFolios } from "./folios.js";
 import { extractParagraphNotes } from "./paragraph-notes.js";
 import { applyCorrections } from "./corrections.js";
-import { rejoinHyphenated, vocabulary } from "./hyphens.js";
+import { rejoinHyphenated, vocabulary, wholeWords } from "./hyphens.js";
 import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, spacedContentsBlocks, shortSubheadAt, isIllustrationList, mergeAcrossPages, contentsHeadings, contentsTitles, headingKey, numberedContents, emptyOutline, readContentsOutline, learnOutline, outlineContentsBlocks, divisionContents, bodyIndent, } from "./paragraphs.js";
 import { parseFootnotes, linkInlineMarkers, linkFlushMarkers, renderEndnotes, isNotesChapterHead, parseNotesAppendix, linkFlushMarkersByChapter, } from "./footnotes.js";
 import { applyTypographicHeadings } from "./typographic-headings.js";
@@ -455,7 +455,8 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     // Rejoin words the typesetter broke at a line end, decided from the
     // document's own vocabulary. Before autoFix, so a repaired word is judged
     // whole rather than as two fragments.
-    body = rejoinHyphenated(body, vocabulary(sourceText));
+    const hyphenOptions = resolved.hyphenFragments ? { fragments: wholeWords(sourceText) } : {};
+    body = rejoinHyphenated(body, vocabulary(sourceText), hyphenOptions);
     const fixed = autoFix(body);
     body = fixed.text;
     // Paragraph notes are linked where they were read, against the paragraph
@@ -487,7 +488,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         const words = vocabulary(sourceText);
         for (const note of notes)
             if (note.label)
-                note.text = rejoinHyphenated(note.text, words);
+                note.text = rejoinHyphenated(note.text, words, hyphenOptions);
     }
     for (const note of notes) {
         const result = autoFix(note.text);

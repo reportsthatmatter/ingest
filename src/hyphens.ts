@@ -35,7 +35,7 @@ export function vocabulary(sourceText: string): Set<string> {
  * fall back to the case of the following word, which is the same guess
  * `mergeAcrossPages` has always made at a page break.
  */
-export function rejoinHyphenated(text: string, words: Set<string>): string {
+export function rejoinHyphenated(text: string, words: Set<string>, options: { fragments?: Set<string> } = {}): string {
   return text.replace(BREAK, (whole, head: string, tail: string) => {
     const joined = `${head}${tail}`.toLowerCase();
     const hyphenated = `${head}-${tail}`.toLowerCase();
@@ -52,6 +52,35 @@ export function rejoinHyphenated(text: string, words: Set<string>): string {
     }
     // The document has never written either whole. Leave it alone rather than
     // invent a word: a visible break is honest, an invented word is not.
+    // Opt-in (`hyphenFragments`): a head that is no word of the document's own is a
+    // fragment, so the break is the typesetter's.
+    if (options.fragments && isFragmentBreak(head, tail, options.fragments)) return `${head}${tail}`;
     return whole;
   });
+}
+
+/**
+ * Words the source writes whole: not as the head of a line-end break and not as its tail.
+ * `vocabulary` counts "indel-" as "indel", so a fragment looks like a word; this does not.
+ */
+export function wholeWords(sourceText: string): Set<string> {
+  return vocabulary(sourceText.replace(BREAK, " "));
+}
+
+/**
+ * A line-end hyphen the vocabulary could not decide (`hyphenFragments`): "indel- ible",
+ * "constitu- ents", "Hamp- ton". The typesetter's break, when the head is not a word the
+ * document writes whole ("indel" is not; "mid" in "mid- to" and "million" in "million- pounds"
+ * are, and stay compounds, unless the tail is no word either: "weld- ing"). A short head ("in- tends", "Boe- amount") before a tail that is a
+ * word is as likely a compound or a garble, and a tail of one or two letters is a function word
+ * as often as a suffix: those keep their hyphen.
+ */
+function isFragmentBreak(head: string, tail: string, whole: Set<string>): boolean {
+  const h = head.toLowerCase();
+  const t = tail.toLowerCase();
+  if (t.length <= 2) return false;
+  // A head that is a word ("weld- ing", "con- stituents") breaks only before a tail that is no word.
+  if (whole.has(h)) return !whole.has(t);
+  if (h.length <= 3 && whole.has(t)) return false;
+  return true;
 }

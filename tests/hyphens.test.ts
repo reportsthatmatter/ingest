@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rejoinHyphenated, vocabulary } from "../src/hyphens";
+import { rejoinHyphenated, vocabulary, wholeWords } from "../src/hyphens";
 
 const words = (source: string) => vocabulary(source);
 
@@ -48,5 +48,29 @@ describe("rejoinHyphenated", () => {
 describe("vocabulary", () => {
   it("keeps hyphenated compounds as their own entry", () => {
     expect(vocabulary("a well-known fact").has("well-known")).toBe(true);
+  });
+});
+
+describe("rejoinHyphenated with hyphenFragments", () => {
+  const source = "the indel- ible mark. a mid- to late period. million- pounds. in- tends here. Boe- amount. well-known";
+  const whole = wholeWords(source + " to late pounds amount tends");
+  const v = vocabulary(source);
+  const join = (text: string) => rejoinHyphenated(text, v, { fragments: whole });
+
+  it("closes a break whose head is no word of the document", () => {
+    expect(join("an indel- ible mark and Hamp- ton")).toBe("an indelible mark and Hampton");
+  });
+
+  it("keeps a head the document writes whole", () => {
+    expect(join("mid- to late")).toBe("mid- to late");
+  });
+
+  it("keeps a short head before a word, and a tail of one or two letters", () => {
+    expect(join("in- tends")).toBe("in- tends");
+    expect(join("Ling- of")).toBe("Ling- of");
+  });
+
+  it("does nothing without the option", () => {
+    expect(rejoinHyphenated("an indel- ible mark", v)).toBe("an indel- ible mark");
   });
 });

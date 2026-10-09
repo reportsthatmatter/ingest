@@ -1019,3 +1019,15 @@ export const strandedMarkers = () => ({
         return out;
     },
 });
+/**
+ * Closes the line-end hyphens the document's vocabulary cannot decide (reportsthatmatter-pt6, g3h).
+ * `rejoinHyphenated` joins "re- cords" when the report writes "records" elsewhere and keeps "well-
+ * known" when it writes that; a word it writes only here ("indel- ible", "constitu- ents", "Hamp-
+ * ton") stayed broken, 161 of them in Columbia and 169 in Challenger. With this pass a break whose
+ * head is no word of the document's own ("indel" is not) is the typesetter's and is closed; a head
+ * that is a word ("mid- to", "million- pounds") or a short head before a word ("in- tends") keeps
+ * the hyphen, as does a tail of one or two letters.
+ *
+ * Opt-in: a report whose source breaks words at the line end declares it.
+ */
+export const hyphenFragments = () => ({ name: "hyphenFragments", stage: "page" });

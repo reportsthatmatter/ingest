@@ -91,6 +91,7 @@ export type ResolvedPasses = {
   foliosInStep?: boolean;
   numberedOutsideTables?: boolean;
   photoCredits?: boolean;
+  hyphenFragments?: boolean;
   footnoteGap?: boolean;
   /** `sequencedNoteOpenings`: a note line opening on the next note's number starts it, whatever follows. */
   sequencedNoteOpenings?: boolean;
@@ -183,7 +184,7 @@ export function pipeline(def: PipelineDef): PipelineDef {
 export const KNOWN_PAGE_PASSES: ReadonlySet<string> = new Set([
   "chapterContents", "citationRunOver", "contentsEntries", "contentsOutline", "doubleSpaced",
   "endnotes", "escapeLeadingHash", "escapeNumberedParagraphs", "flushFootnoteMarkers",
-  "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteRestarts", "hangingIndents",
+  "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteRestarts", "hangingIndents", "hyphenFragments",
   "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "letteredItems", "listedDivisions", "listedHeadings",
   "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
   "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
@@ -257,6 +258,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     foliosInStep: passes.some((pass) => pass.name === "foliosInStep"),
     numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),
     photoCredits: passes.some((pass) => pass.name === "photoCredits"),
+    hyphenFragments: passes.some((pass) => pass.name === "hyphenFragments"),
     footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
     footnoteRestarts: passes.some((pass) => pass.name === "footnoteRestarts"),
     sequencedNoteOpenings: passes.some((pass) => pass.name === "sequencedNoteOpenings"),
