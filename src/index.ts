@@ -49,6 +49,7 @@ export {
   citationRunOver,
   noteFaceRunOver,
   holdNoteSequence,
+  footnoteResets,
   romanFolios,
   parenFolios,
   pageHeadFolios,

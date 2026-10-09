@@ -9,6 +9,8 @@ import type {
   LayoutPageJoinsPass,
   LayoutMarkersPass,
   TypographicHeadingsPass,
+  FootnoteResetsPass,
+  FootnoteReset,
   PageHeadFoliosPass,
 } from "./passes";
 import type { PageHeadFolio } from "./clean";
@@ -88,6 +90,8 @@ export type ResolvedPasses = {
   noteFaceRunOver?: boolean;
   /** `holdNoteSequence`: a page whose notes all fall below the expected number leaves it where it was. */
   holdNoteSequence?: boolean;
+  /** `footnoteResets`: the pages where the note numbering starts over, and at which number. */
+  footnoteResets?: FootnoteReset[];
   romanFolios?: boolean;
   parenFolios?: boolean;
   /** `pageHeadFolios`: on, with the line that goes with the "Page N" head. */
@@ -187,7 +191,7 @@ export function pipeline(def: PipelineDef): PipelineDef {
 export const KNOWN_PAGE_PASSES: ReadonlySet<string> = new Set([
   "chapterContents", "citationRunOver", "contentsEntries", "contentsOutline", "doubleSpaced",
   "endnotes", "escapeLeadingHash", "escapeNumberedParagraphs", "flushFootnoteMarkers",
-  "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteRestarts", "hangingIndents", "holdNoteSequence",
+  "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteResets", "footnoteRestarts", "hangingIndents", "holdNoteSequence",
   "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "letteredItems", "listedDivisions", "listedHeadings",
   "noteFaceRunOver", "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
   "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
@@ -257,6 +261,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     citationRunOver: passes.some((pass) => pass.name === "citationRunOver"),
     noteFaceRunOver: passes.some((pass) => pass.name === "noteFaceRunOver"),
     holdNoteSequence: passes.some((pass) => pass.name === "holdNoteSequence"),
+    footnoteResets: passes.find((pass): pass is FootnoteResetsPass => pass.name === "footnoteResets")?.at,
     romanFolios: passes.some((pass) => pass.name === "romanFolios"),
     parenFolios: passes.some((pass) => pass.name === "parenFolios"),
     pageHeadFolios: passes.find((pass): pass is PageHeadFoliosPass => pass.name === "pageHeadFolios")?.options ?? undefined,

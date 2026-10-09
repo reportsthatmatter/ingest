@@ -99,6 +99,16 @@ export type TypographicHeadingsPass = {
   readonly options: TypographicHeadingsOptions;
 };
 
+/** Where a report's note numbering starts over at a number the sequence cannot guess. */
+export type FootnoteReset = { page: number; note: number; volume?: number };
+
+/** `footnoteResets`, with where. */
+export type FootnoteResetsPass = {
+  readonly name: "footnoteResets";
+  readonly stage: "page";
+  readonly at: FootnoteReset[];
+};
+
 /** `pageHeadFolios`: the page number is a running head "Page N" (reportsthatmatter-ssfk). */
 export type PageHeadFoliosPass = {
   readonly name: "pageHeadFolios";
@@ -107,6 +117,7 @@ export type PageHeadFoliosPass = {
 };
 
 export type Pass =
+  | FootnoteResetsPass
   | PageHeadFoliosPass
   | EditionPass
   | VisionStructurePass
@@ -434,12 +445,23 @@ export const layoutEndnotes = (): PagePass => ({ name: "layoutEndnotes", stage: 
 export const citationRunOver = (): PagePass => ({ name: "citationRunOver", stage: "page" });
 
 /**
+ * The note numbering starts over on a given PDF page, at a given number (reportsthatmatter-7go). The
+ * Philip Morris opinion numbers its notes 1-43 through the Findings of Fact and 7-58 through the rest (PDF
+ * p.1507 prints "7", with no 1-6 anywhere): `footnoteRestarts` only knows a restart to 1, and the page
+ * looked for 44, found 7 and read its note in the body, and so did every note after it. The notes keep
+ * their numbers and are told apart by position (the first note of the new run is marked as a restart).
+ * Opt-in, and declared with the page, which is a property of the source.
+ */
+export const footnoteResets = (at: FootnoteReset[]): FootnoteResetsPass => ({ name: "footnoteResets", stage: "page", at });
+
+/**
  * A page whose notes all fall below the number the sequence expects (a table's own notes, "1 2 3" among the
  * 650s of the Valukas Report, Volume 1 PDF p.178) does not move the number the next page expects. Without it
  * the next page looks for note 4, finds 655, and its notes (655-660) stay in the body with their markers
  * bare (reportsthatmatter-0bf). Opt-in: a numbering that restarts (per chapter, per Part) also falls below
  * the expected number, and must move it (`footnoteRestarts`).
  */
+
 export const holdNoteSequence = (): PagePass => ({ name: "holdNoteSequence", stage: "page" });
 
 /**

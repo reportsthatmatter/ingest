@@ -196,6 +196,9 @@ export function ingestPageGroups(
   const splitGroups = pageGroups.map((group) =>
     group.map(() => {
       const page = pages[pageOffset++];
+      // `footnoteResets`: the page where the numbering starts over at a number the sequence cannot guess
+      const reset = resolved.footnoteResets?.find((r) => r.page === page.pdfIndex && (r.volume ?? 1) === page.volume);
+      if (reset) expectedNote = reset.note;
       // Notes under each paragraph are read across the volume below, not
       // as a block at the page foot; endnotes are not read as notes at all.
       const splitOptions = {
@@ -276,6 +279,7 @@ export function ingestPageGroups(
         }));
         // `footnoteRestarts`: a block that opens below the expected number starts the numbering over
         if (resolved.footnoteRestarts && parsed.length && parsed[0].number < expectedNote) parsed[0].restart = true;
+        if (reset && parsed.length) parsed[0].restart = true;
         footnotes.push(...parsed);
         // `holdNoteSequence`: a table's own notes ("1 2 3" under a table in the running 650s) do not move the
         // number the next page expects
