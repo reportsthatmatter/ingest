@@ -54,6 +54,7 @@ export {
   numberedOutsideTables,
   photoCredits,
   hyphenFragments,
+  divisionLabels,
   footnoteGap,
   footnoteRestarts,
   strandedMarkers,

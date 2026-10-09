@@ -978,3 +978,12 @@ export declare const strandedMarkers: () => BodyPass;
  * Opt-in: a report whose source breaks words at the line end declares it.
  */
 export declare const hyphenFragments: () => PagePass;
+/**
+ * A line that is only a division label, "Findings", "Recommendations:", "Issue 3", is a level-4 heading
+ * (reportsthatmatter-liv). The committees that wrote Challenger and Columbia set one over each run of
+ * findings and recommendations; left as paragraphs, each took a paragraph id of its own and counted as
+ * furniture (Challenger 29 after its vision pages, Columbia 50). A trailing colon is dropped from the heading.
+ *
+ * Opt-in: only where a lone "Issue" or "Findings" line is never anything else.
+ */
+export declare const divisionLabels: () => PagePass;

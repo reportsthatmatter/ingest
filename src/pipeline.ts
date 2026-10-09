@@ -131,6 +131,19 @@ function readWithSubheads(lines: string[], read: (lines: string[]) => Block[]): 
   return blocks;
 }
 
+/** A paragraph that is only a division label (`divisionLabels`): "Findings", "Recommendation:", "Issue 3". */
+const DIVISION_LABEL = /^(Recommendations?|Findings?|Issue(?:\s+(?:[0-9]{1,2}|[IVXLC]{1,4}))?):?$/;
+
+function divisionLabelHeadings(blocks: Block[]): Block[] {
+  return blocks.map((block) => {
+    if (block.kind !== "paragraph") return block;
+    const text = block.text.replace(/\s+/g, " ").trim();
+    if (!DIVISION_LABEL.test(text)) return block;
+    const { finding: _finding, printedNumber: _printed, ...rest } = block;
+    return { ...rest, kind: "heading", level: 4, text: text.replace(/:$/, "") } as Block;
+  });
+}
+
 /**
  * PDF → Markdown, deterministically. The same input always produces the same
  * output, so fixes belong in this pipeline rather than in hand-edits of the
@@ -427,17 +440,18 @@ export function ingestPageGroups(
             ? readWithSubheads(pageLines, readBody)
             : readBody(pageLines)
       ).map((block) => ({ ...block, at }));
+      const labelled = resolved.divisionLabels ? divisionLabelHeadings(read) : read;
       const blocks = hybrid
         ? hybrid.page({
             volume: split.volume,
             pdfIndex: split.pdfIndex,
             body: pageLines,
             footLines: split.footnotes,
-            blocks: read,
+            blocks: labelled,
             at,
             pipelineNotes: footnotes.filter((note) => note.volume === split.volume && note.pdfIndex === split.pdfIndex).map((note) => note.text),
           })
-        : read;
+        : labelled;
 
       // Record where each printed page begins. These documents are cited by page
       // ("Report at 62"), so the printed number is the citation unit readers

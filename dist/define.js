@@ -56,7 +56,7 @@ export function pipeline(def) {
 export const KNOWN_PAGE_PASSES = new Set([
     "chapterContents", "citationRunOver", "contentsEntries", "contentsOutline", "doubleSpaced",
     "endnotes", "escapeLeadingHash", "escapeNumberedParagraphs", "flushFootnoteMarkers",
-    "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteRestarts", "hangingIndents", "hyphenFragments",
+    "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteRestarts", "divisionLabels", "hangingIndents", "hyphenFragments",
     "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "letteredItems", "listedDivisions", "listedHeadings",
     "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
     "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
@@ -122,6 +122,7 @@ export function resolvePasses(def) {
         numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),
         photoCredits: passes.some((pass) => pass.name === "photoCredits"),
         hyphenFragments: passes.some((pass) => pass.name === "hyphenFragments"),
+        divisionLabels: passes.some((pass) => pass.name === "divisionLabels"),
         footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
         footnoteRestarts: passes.some((pass) => pass.name === "footnoteRestarts"),
         sequencedNoteOpenings: passes.some((pass) => pass.name === "sequencedNoteOpenings"),

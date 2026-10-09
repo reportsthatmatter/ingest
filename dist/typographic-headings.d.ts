@@ -59,6 +59,12 @@ export type TypographicHeadingsOptions = {
      * with `faces`. Default false.
      */
     relevel?: boolean;
+    /**
+     * A face line that opens a block whose rest begins in lower case is a bold lead-in to a sentence, not a
+     * heading ("The Launch Readiness Review is conducted within one" / "month of the launch…"): leave it
+     * in the paragraph. Columbia sets some paragraphs' first line in its subheading face. Default false.
+     */
+    skipRunIns?: boolean;
 };
 export type TypographicHeadingStats = {
     /** Heading faces found, largest first, with the level each was given. */
