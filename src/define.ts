@@ -102,6 +102,8 @@ export type ResolvedPasses = {
   footnoteNumbers?: "bare" | "period" | "tabbed";
   /** `pdfPageNumbers`: each page is numbered by its place in its PDF. */
   pdfPageNumbers?: boolean;
+  /** `asteriskBreaks`: a line of asterisks is a block of its own. */
+  asteriskBreaks?: boolean;
   /** `foiaRedactions`: a FOIA release's box labels marked as redactions, its margin labels taken out. */
   foiaRedactions?: boolean;
   quoteInset?: number;
@@ -185,7 +187,7 @@ export function pipeline(def: PipelineDef): PipelineDef {
  * throw once all are merged (review v0.23.0).
  */
 export const KNOWN_PAGE_PASSES: ReadonlySet<string> = new Set([
-  "chapterContents", "citationRunOver", "contentsEntries", "contentsOutline", "doubleSpaced",
+  "asteriskBreaks", "chapterContents", "citationRunOver", "contentsEntries", "contentsOutline", "doubleSpaced",
   "endnotes", "escapeLeadingHash", "escapeNumberedParagraphs", "flushFootnoteMarkers",
   "foiaRedactions", "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteRestarts", "hangingIndents",
   "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "letteredItems", "listedDivisions", "listedHeadings",
@@ -269,6 +271,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
       ?.numbers,
     pdfPageNumbers: passes.some((pass) => pass.name === "pdfPageNumbers"),
     foiaRedactions: passes.some((pass) => pass.name === "foiaRedactions"),
+    asteriskBreaks: passes.some((pass) => pass.name === "asteriskBreaks"),
     quoteInset: passes.find(
       (pass): pass is QuoteInsetPass => pass.stage === "quoteInset"
     )?.columns,

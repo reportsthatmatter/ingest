@@ -1834,7 +1834,9 @@ function hangingItems(
     // `letteredItems`: a sub-item's own letter ("a.", "(b)", "iv.") over its
     // wrapped lines, wherever it sits short of a quotation's inset.
     if (!label && letteredBelow) {
-      label = lines[i].match(/^(\s*)(\(?(?:[a-z]|[ivx]{1,4})[.)])( {2,})\S/);
+      // (one space after a bracketed letter, "(a) The President's…", the Mueller report's Volume II p.12, when
+      // the wrapped lines hang at the text: the column test below decides)
+      label = lines[i].match(/^(\s*)(\(?(?:[a-z]|[ivx]{1,4})[.)])( {2,})\S/) ?? lines[i].match(/^(\s*)(\((?:[a-z]|[ivx]{1,4})\))( )\S/);
       if (label && indentOf(lines[i]) >= letteredBelow) label = null;
     }
     if (!label) continue;

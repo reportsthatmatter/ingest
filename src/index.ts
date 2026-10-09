@@ -52,6 +52,7 @@ export {
   pageHeadFolios,
   foliosInStep,
   foiaRedactions,
+  asteriskBreaks,
   numberedOutsideTables,
   photoCredits,
   footnoteGap,

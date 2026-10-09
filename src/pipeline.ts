@@ -1,4 +1,4 @@
-import { redactPage, type RedactionCounts } from "./redactions";
+import { redactPage, separateAsterisks, type RedactionCounts } from "./redactions";
 import { extractPages, normaliseWhitespace, type Page } from "./extract";
 import { splitPage, takePrintedNumber, collapseDoubleSpacing, type SplitPage, type PageHeadFolio } from "./clean";
 import { markPrintedNumbers } from "./printed-numbers";
@@ -176,7 +176,12 @@ export function ingestPageGroups(
   const sourceText = allPages.map((page) => page.lines.join("\n")).join("\n");
   // `foiaRedactions`: every line of the page, notes included, before it is split (src/redactions.ts).
   const redactions: RedactionCounts | undefined = resolved.foiaRedactions ? { boxes: 0, margin: 0 } : undefined;
-  const pages = redactions ? allPages.map((page) => ({ ...page, lines: redactPage(page.lines, redactions) })) : allPages;
+  const pages = allPages.map((page) => {
+    let lines = redactions ? redactPage(page.lines, redactions) : page.lines;
+    // `asteriskBreaks`: a "* * *" section break is a block of its own.
+    if (resolved.asteriskBreaks) lines = separateAsterisks(lines);
+    return lines === page.lines ? page : { ...page, lines };
+  });
 
   const footnotes: Footnote[] = [];
   const bodyChunks: Block[] = [];

@@ -495,6 +495,15 @@ export const foliosInStep = (): PagePass => ({ name: "foliosInStep", stage: "pag
 export const foiaRedactions = (): PagePass => ({ name: "foiaRedactions", stage: "page" });
 
 /**
+ * A section break set as a line of asterisks ("* * *", "***") is a block of its own (reportsthatmatter-gqsy.5,
+ * `separateAsterisks` in src/redactions.ts). The Mueller report centres one before a new train of thought;
+ * read as text, it was taken with the next paragraph's indented first line for a quotation, and the rest of
+ * that paragraph was cut off below it (Volume I pp.2, 13, Volume II p.2). Opt-in: it moves the paragraphs
+ * round every such line.
+ */
+export const asteriskBreaks = (): PagePass => ({ name: "asteriskBreaks", stage: "page" });
+
+/**
  * A photo credit set between a paragraph and its continuation does not take
  * the continuation (reportsthatmatter-xay).
  *

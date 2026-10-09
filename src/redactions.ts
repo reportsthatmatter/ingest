@@ -95,3 +95,24 @@ export function redactPage(lines: string[], counts?: RedactionCounts): string[] 
     return out === null ? [] : [out];
   });
 }
+
+/** A line of three or more asterisks and nothing else: a section break ("* * *", "***"). */
+const ASTERISKS = /^\s*\*(?:\s*\*){2,}\s*$/;
+
+/**
+ * `asteriskBreaks` (reportsthatmatter-gqsy.5): a section break set as a line of asterisks stands apart from
+ * the paragraphs either side. Read as text, the centred "* * *" was taken for the first line of a quotation
+ * with the next paragraph's indented first line, and the paragraph's other lines were cut off below it (the
+ * Mueller report, Volume I p.2, p.13; Volume II p.2). A blank line either side keeps it a block of its own.
+ */
+export function separateAsterisks(lines: string[]): string[] {
+  if (!lines.some((line) => ASTERISKS.test(line))) return lines;
+  const out: string[] = [];
+  lines.forEach((line, i) => {
+    if (!ASTERISKS.test(line)) return void out.push(line);
+    if (out.length && out[out.length - 1].trim()) out.push("");
+    out.push(line);
+    if (i + 1 < lines.length && lines[i + 1].trim()) out.push("");
+  });
+  return out;
+}
