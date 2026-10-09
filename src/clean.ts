@@ -567,7 +567,8 @@ function furnitureKey(text: string): string {
  * tracks it closely, a year does not.
  */
 function numberIn(text: string, near: number): number | null {
-  const numbers = (normaliseWhitespace(text).match(/\b\d{1,4}\b/g) ?? [])
+  // a number with a bracketed subsection after it is a rule or section cited in the head ("Fed. R. Crim. P. 6(e)")
+  const numbers = (normaliseWhitespace(text).match(/\b\d{1,4}\b(?!\()/g) ?? [])
     .map((n) => Number.parseInt(n, 10))
     .filter((n) => !Number.isNaN(n));
   if (!numbers.length) return null;
@@ -672,7 +673,9 @@ export function stripRepeatedPageFurniture(
     // Recovering it here is what keeps the page anchors — the citation unit
     // readers actually use — for a document laid out that way.
     let printed = page.printed;
-    if (printed === null) {
+    // A page `romanFolios` numbered has its number: a running head's "6(e)" is not it (the Mueller report's
+    // contents pages, "Fed. R. Crim. P. 6(e)" over "i").
+    if (printed === null && !page.roman) {
       for (const lineIndex of edgeIndices[pageIndex]) {
         const line = page.body[lineIndex];
         if (!isFurniture(line)) continue;
