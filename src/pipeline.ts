@@ -134,7 +134,7 @@ function readWithSubheads(lines: string[], read: (lines: string[]) => Block[]): 
 /** A paragraph that is only a division label (`divisionLabels`): "Findings", "Recommendation:", "Issue 3". */
 const DIVISION_LABEL = /^(Recommendations?|Findings?|Issue(?:\s+(?:[0-9]{1,2}|[IVXLC]{1,4}))?):?$/;
 
-function divisionLabelHeadings(blocks: Block[]): Block[] {
+export function divisionLabelHeadings(blocks: Block[]): Block[] {
   return blocks.map((block) => {
     if (block.kind !== "paragraph") return block;
     const text = block.text.replace(/\s+/g, " ").trim();
@@ -427,7 +427,8 @@ export function ingestPageGroups(
               resolved.unmarkedHeadings,
               resolved.numberedOutsideTables,
               resolved.recoverListedHeadings,
-              resolved.letteredItems
+              resolved.letteredItems,
+              resolved.speakerTurns
         );
       const read = (
         resolved.contentsEntries && (entries?.sections.size || isIllustrationList(pageLines))

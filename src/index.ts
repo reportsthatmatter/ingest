@@ -55,6 +55,7 @@ export {
   photoCredits,
   hyphenFragments,
   divisionLabels,
+  speakerTurns,
   footnoteGap,
   footnoteRestarts,
   strandedMarkers,

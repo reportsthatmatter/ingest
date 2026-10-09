@@ -93,6 +93,7 @@ export type ResolvedPasses = {
   photoCredits?: boolean;
   hyphenFragments?: boolean;
   divisionLabels?: boolean;
+  speakerTurns?: boolean;
   footnoteGap?: boolean;
   /** `sequencedNoteOpenings`: a note line opening on the next note's number starts it, whatever follows. */
   sequencedNoteOpenings?: boolean;
@@ -191,7 +192,7 @@ export const KNOWN_PAGE_PASSES: ReadonlySet<string> = new Set([
   "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
   "printedPageNumber", "quoteListRunOns", "quoteRunOn", "recoverListedHeadings", "romanFolios",
   "sequencedNoteOpenings", "shiftedPages", "shortSubheads", "typographicHeadings", "unlistedHeadingsMinor",
-  "unmarkedHeadings", "wrappedHeadings",
+  "speakerTurns", "unmarkedHeadings", "wrappedHeadings",
 ]);
 
 /**
@@ -261,6 +262,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     photoCredits: passes.some((pass) => pass.name === "photoCredits"),
     hyphenFragments: passes.some((pass) => pass.name === "hyphenFragments"),
     divisionLabels: passes.some((pass) => pass.name === "divisionLabels"),
+    speakerTurns: passes.some((pass) => pass.name === "speakerTurns"),
     footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
     footnoteRestarts: passes.some((pass) => pass.name === "footnoteRestarts"),
     sequencedNoteOpenings: passes.some((pass) => pass.name === "sequencedNoteOpenings"),

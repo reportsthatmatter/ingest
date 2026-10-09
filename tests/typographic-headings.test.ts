@@ -207,3 +207,23 @@ describe("the pass", () => {
     expect(resolvePasses(pipeline({ id: "t", title: "T", repo: ".", volumes: [{ path: "a.pdf" }], passes: [] })).typographicHeadings).toBeUndefined();
   });
 });
+
+describe("skipRunIns (wck)", () => {
+  // "A third subhead" is a face line that may open a sentence that runs on in lower case.
+  const opts = { firstLevel: 4, faces: [["HelveticaNeue-Medium|21|#780030"]] };
+
+  it("cuts a face line out of the paragraph it opens by default", () => {
+    const b: Block[] = [para("A third subhead 2.5.2 More is said.", 3)];
+    applyTypographicHeadings(b, layout, opts);
+    expect(b.map((x) => x.kind)).toEqual(["heading", "paragraph"]);
+  });
+
+  it("leaves a lead-in whose rest begins in lower case in its paragraph", () => {
+    const b: Block[] = [para("A third subhead of the report runs on in lower case, the way a bold first line does.", 3)];
+    applyTypographicHeadings(b, layout, { ...opts, skipRunIns: true });
+    expect(b.map((x) => x.kind)).toEqual(["paragraph"]);
+    const c: Block[] = [para("A third subhead 2.5.2 More is said.", 3)];
+    applyTypographicHeadings(c, layout, { ...opts, skipRunIns: true });
+    expect(c.map((x) => x.kind)).toEqual(["heading", "paragraph"]);
+  });
+});

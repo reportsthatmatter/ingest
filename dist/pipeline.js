@@ -50,7 +50,7 @@ function readWithSubheads(lines, read) {
 }
 /** A paragraph that is only a division label (`divisionLabels`): "Findings", "Recommendation:", "Issue 3". */
 const DIVISION_LABEL = /^(Recommendations?|Findings?|Issue(?:\s+(?:[0-9]{1,2}|[IVXLC]{1,4}))?):?$/;
-function divisionLabelHeadings(blocks) {
+export function divisionLabelHeadings(blocks) {
     return blocks.map((block) => {
         if (block.kind !== "paragraph")
             return block;
@@ -301,7 +301,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
                 ? pageMargin(split.body, margins[0])
                 : resolved.shiftedPages
                     ? shiftedPageMargin(split.body, margins[resolved.geometry === "per-volume" ? groupIndex : 0])
-                    : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings, resolved.hangingIndents, resolved.unmarkedHeadings, resolved.numberedOutsideTables, resolved.recoverListedHeadings, resolved.letteredItems);
+                    : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings, resolved.hangingIndents, resolved.unmarkedHeadings, resolved.numberedOutsideTables, resolved.recoverListedHeadings, resolved.letteredItems, resolved.speakerTurns);
             const read = (resolved.contentsEntries && (entries?.sections.size || isIllustrationList(pageLines))
                 ? spacedContentsBlocks(pageLines)
                 : isContentsPage(pageLines)

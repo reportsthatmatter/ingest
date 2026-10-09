@@ -1040,3 +1040,13 @@ export const hyphenFragments = () => ({ name: "hyphenFragments", stage: "page" }
  * Opt-in: only where a lone "Issue" or "Findings" line is never anything else.
  */
 export const divisionLabels = () => ({ name: "divisionLabels", stage: "page" });
+/**
+ * A transcript's speaker turn that wraps ("Flight: “And there's no commonality between all these tire" /
+ * "        pressure instrumentations and the hydraulic return instrumentations.”") keeps its wrapped lines
+ * (reportsthatmatter-98u). Set under the opening quotation mark, they sat further in than the body and
+ * read as a block quotation cut from the turn's first line, 6 of them on one page of Columbia's
+ * Mission Control exchange. The wrap is held to the turn; consecutive turns stay one paragraph.
+ *
+ * Opt-in: a line that opens "Label: “" is also a heading's lead-in or a quotation's attribution elsewhere.
+ */
+export const speakerTurns = () => ({ name: "speakerTurns", stage: "page" });

@@ -62,7 +62,7 @@ export const KNOWN_PAGE_PASSES = new Set([
     "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
     "printedPageNumber", "quoteListRunOns", "quoteRunOn", "recoverListedHeadings", "romanFolios",
     "sequencedNoteOpenings", "shiftedPages", "shortSubheads", "typographicHeadings", "unlistedHeadingsMinor",
-    "unmarkedHeadings", "wrappedHeadings",
+    "speakerTurns", "unmarkedHeadings", "wrappedHeadings",
 ]);
 /**
  * Reads a definition's passes into the shape the executor wants.
@@ -123,6 +123,7 @@ export function resolvePasses(def) {
         photoCredits: passes.some((pass) => pass.name === "photoCredits"),
         hyphenFragments: passes.some((pass) => pass.name === "hyphenFragments"),
         divisionLabels: passes.some((pass) => pass.name === "divisionLabels"),
+        speakerTurns: passes.some((pass) => pass.name === "speakerTurns"),
         footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
         footnoteRestarts: passes.some((pass) => pass.name === "footnoteRestarts"),
         sequencedNoteOpenings: passes.some((pass) => pass.name === "sequencedNoteOpenings"),
