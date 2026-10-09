@@ -48,6 +48,7 @@ export {
   pageBreakContinuations,
   citationRunOver,
   noteFaceRunOver,
+  holdNoteSequence,
   romanFolios,
   parenFolios,
   pageHeadFolios,

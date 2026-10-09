@@ -434,6 +434,15 @@ export const layoutEndnotes = (): PagePass => ({ name: "layoutEndnotes", stage: 
 export const citationRunOver = (): PagePass => ({ name: "citationRunOver", stage: "page" });
 
 /**
+ * A page whose notes all fall below the number the sequence expects (a table's own notes, "1 2 3" among the
+ * 650s of the Valukas Report, Volume 1 PDF p.178) does not move the number the next page expects. Without it
+ * the next page looks for note 4, finds 655, and its notes (655-660) stay in the body with their markers
+ * bare (reportsthatmatter-0bf). Opt-in: a numbering that restarts (per chapter, per Part) also falls below
+ * the expected number, and must move it (`footnoteRestarts`).
+ */
+export const holdNoteSequence = (): PagePass => ({ name: "holdNoteSequence", stage: "page" });
+
+/**
  * The lines at the foot of a page's body that are set in the face of the page's own notes belong to the
  * note that ran over the page break from the page before (reportsthatmatter-07k): its tail opens the page's
  * footnote area, above the first numbered note, and the text reading leaves it in the body (a quotation,

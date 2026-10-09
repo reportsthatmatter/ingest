@@ -277,7 +277,10 @@ export function ingestPageGroups(
         // `footnoteRestarts`: a block that opens below the expected number starts the numbering over
         if (resolved.footnoteRestarts && parsed.length && parsed[0].number < expectedNote) parsed[0].restart = true;
         footnotes.push(...parsed);
-        if (parsed.length) expectedNote = Math.max(...parsed.map((n) => n.number)) + 1;
+        // `holdNoteSequence`: a table's own notes ("1 2 3" under a table in the running 650s) do not move the
+        // number the next page expects
+        const top = parsed.length ? Math.max(...parsed.map((n) => n.number)) : 0;
+        if (parsed.length && !(resolved.holdNoteSequence && top < expectedNote - 1)) expectedNote = top + 1;
       }
       // Body passes rewrite the page's own lines once its furniture is off:
       // reading two columns in order, for instance.

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { buildLayout, parseLayoutXml } from "../src/layout";
 import { noteFaceRunOverCount } from "../src/note-run-over";
+import { pipeline, resolvePasses } from "../src/define";
+import { holdNoteSequence, noteFaceRunOver } from "../src/passes";
 
 const xml = (pages: string[]) =>
   `<?xml version="1.0" encoding="UTF-8"?>\n<pdf2xml producer="poppler" version="26.08.0">\n${pages.join("\n")}\n</pdf2xml>`;
@@ -47,5 +49,15 @@ describe("noteFaceRunOverCount", () => {
 
   it("is zero where the body ends in the body's face", () => {
     expect(noteFaceRunOverCount(layout, 1, 1, body.slice(0, 2), notes)).toBe(0);
+  });
+});
+
+describe("the passes resolve from a report's definition", () => {
+  const def = (passes: Parameters<typeof pipeline>[0]["passes"]) => resolvePasses(pipeline({ id: "t", title: "T", repo: ".", volumes: [{ path: "a.pdf" }], passes }));
+  it("noteFaceRunOver and holdNoteSequence are off unless declared", () => {
+    expect(def([]).noteFaceRunOver).toBe(false);
+    expect(def([]).holdNoteSequence).toBe(false);
+    expect(def([noteFaceRunOver()]).noteFaceRunOver).toBe(true);
+    expect(def([holdNoteSequence()]).holdNoteSequence).toBe(true);
   });
 });
