@@ -196,6 +196,10 @@ export function isPlausibleUrl(text) {
         .replace(/^[a-z][a-z0-9+.-]*:\/\//i, "")
         .split(/[/?#:]/)[0]
         .toLowerCase();
+    // A URL that stops at a hyphen, or at a bare upload directory, was cut by a
+    // line or paragraph break: the target is a 404 or a directory listing.
+    if (/-$/.test(text) || /\/wp-content\/(uploads\/(\d{4}\/(\d{2}\/)?)?)?$/.test(text))
+        return false;
     const labels = host.split(".");
     if (labels.length < 2 || labels.some((l) => l === ""))
         return false;
