@@ -172,9 +172,7 @@ export function parseLayoutXml(xml: string): RawLine[] {
           Math.abs(f.top - base.top) <= 3 ||
           (f.top >= base.top - base.height / 2 && f.top + f.height <= base.top + base.height + 2 && f.height < base.height);
         // A paragraph label ("2.4") often stands off from its text by an indent's width.
-        // (and a raised marker may stand off from its word by more than a space's width: Philip Morris sets
-        // "privilege.   2" with a gap of two ems)
-        const reach = LABEL_ONLY.test(parts[parts.length - 1].text) ? 100 : MARKER.test(f.text) && f.height < base.height ? 48 : 24;
+        const reach = LABEL_ONLY.test(parts[parts.length - 1].text) ? 100 : 24;
         // (a marker-shaped fragment smaller than the line may overlap the one before: see `markerOverlap`)
         const tolerance = MARKER.test(f.text) && f.height < base.height ? markerOverlap(base.height) : 2;
         if (sameLine && f.left >= right - tolerance && f.left - right < reach) {
