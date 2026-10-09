@@ -142,6 +142,7 @@ function layoutPageJoinsOf(passes) {
         return undefined;
     return {
         ...(pass.scanned ? { scanned: true } : {}),
+        ...(pass.numberedBody ? { numberedBody: true } : {}),
         ...(pass.referee ? { referee: pass.referee } : {}),
         ...(pass.refer ? { refer: pass.refer } : {}),
     };

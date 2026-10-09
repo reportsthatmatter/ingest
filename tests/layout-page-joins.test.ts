@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { buildLayout, parseLayoutXml } from "../src/layout";
-import { decidePageBreak, findPageBreakLines, layoutJoins, pageBreakKey, type PageBreakCase } from "../src/pagebreaks";
+import { decidePageBreak, findPageBreakLines, inlineSequel, layoutJoins, numberedBodyJoin, pageBreakKey, type PageBreakCase } from "../src/pagebreaks";
 import { mergeAcrossPages, type Block } from "../src/paragraphs";
 import { pipeline, resolvePasses } from "../src/define";
 import { layoutPageJoins } from "../src/passes";
@@ -229,5 +229,55 @@ describe("a scan's stray glyph inside a paragraph (reportsthatmatter-ky1o, Jack 
     const done = stream();
     (done[0] as { text: string }).text = "He was told so.";
     expect(mergeAcrossPages(done, { layoutJoins: { scanned: true } })).toHaveLength(2);
+  });
+});
+
+describe("layoutPageJoins({ numberedBody: true }): every body paragraph is numbered (reportsthatmatter-sh1b, ni9o)", () => {
+  it("N1: an unnumbered body line under a numbered paragraph runs on past a finished sentence (Post Office p.26, 3.71)", () => {
+    // "…she was still a serving prisoner." / "Mrs McDonald had anticipated seeing her daughter…", at the hanging indent.
+    expect(decide("pohorizon-p26")).toMatchObject({ join: false, reason: "finished, next line flush", confidence: "medium" });
+    expect(decide("pohorizon-p26", { numberedBody: true })).toMatchObject({ join: true, rule: "N1", confidence: "medium" });
+  });
+
+  it("N1: the same with a flush hanging indent and footnote markers (Grenfell printed p.94, 7.44)", () => {
+    expect(decide("grenfell-p102").join).toBe(false);
+    expect(decide("grenfell-p102", { numberedBody: true })).toMatchObject({ join: true, rule: "N1" });
+  });
+
+  it("N2: '(ii)' after a sentence that set '(i)' inline runs on (Grenfell printed p.55, 5.23)", () => {
+    expect(decide("grenfell-p63")).toMatchObject({ join: false, reason: "next opens on a label" });
+    expect(decide("grenfell-p63", { numberedBody: true })).toMatchObject({ join: true, rule: "N2" });
+  });
+
+  it("N1 needs a numbered paragraph above, no colon introducing, no quotation opening, and body text", () => {
+    const f = fixture("pohorizon-p26");
+    const lines = findPageBreakLines(f.layout, f.prev, f.next, f.at)!;
+    expect(numberedBodyJoin(lines, f.prev, f.next)).toBe(true);
+    // An unnumbered paragraph above (a quoted letter's paragraph, Post Office p.103): no call.
+    expect(numberedBodyJoin(lines, f.prev.replace(/^3\.71\.\s/, ""), f.next)).toBe(false);
+    // "…the Department wrote:" / "“3. Recommendations…": a quotation the paragraph introduces.
+    expect(numberedBodyJoin(lines, `${f.prev.replace(/\.$/, "")} wrote:[^244]`, f.next)).toBe(false);
+    expect(numberedBodyJoin(lines, f.prev, `"${f.next}`)).toBe(false);
+    // A heading or caption set in the body face.
+    expect(numberedBodyJoin({ ...lines, underContinues: false }, f.prev, "Late Claims")).toBe(false);
+    expect(numberedBodyJoin(lines, f.prev, "Figure 5.1: the chimney and combustion chamber of the test rig")).toBe(false);
+  });
+
+  it("N2 only follows the label set inline before it, in a numbered paragraph", () => {
+    const prev = "5.23 … it identifies three areas: (i) an homogeneous material of limited combustibility,";
+    expect(inlineSequel(prev, "(ii) a composite product")).toBe(true);
+    expect(inlineSequel(prev, "(iii) a composite product")).toBe(false);
+    expect(inlineSequel(prev, "(i) a composite product")).toBe(false);
+    expect(inlineSequel("5.23 the regulations require (a) a test, (b) a certificate,", "(c) a report")).toBe(true);
+    // A list read as one block: its items end "; and" (Leveson p.102), and it has no paragraph number.
+    expect(inlineSequel("(a) into s1(…) to …; (b) into s51 to …; and", "(c) into s52 to include")).toBe(false);
+    expect(inlineSequel("7.2 It recommended (a) that …; (b) that …; and", "(c) that")).toBe(false);
+  });
+
+  it("is off by default and carried through resolvePasses", () => {
+    const def = (passes: Parameters<typeof pipeline>[0]["passes"]) =>
+      pipeline({ id: "x", title: "X", repo: ".", volumes: [{ path: "a.pdf" }], passes });
+    expect(resolvePasses(def([layoutPageJoins({ numberedBody: true })])).layoutPageJoins).toEqual({ numberedBody: true });
+    expect(resolvePasses(def([layoutPageJoins()])).layoutPageJoins).toEqual({});
   });
 });

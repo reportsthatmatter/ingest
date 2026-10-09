@@ -803,6 +803,7 @@ export const layoutPageJoins = (options = {}) => ({
     name: "layoutPageJoins",
     stage: "page",
     ...(options.scanned ? { scanned: true } : {}),
+    ...(options.numberedBody ? { numberedBody: true } : {}),
     ...(options.referee ? { referee: options.referee } : {}),
     ...(options.referee && options.refer === "medium" ? { refer: "medium" } : {}),
 });

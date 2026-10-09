@@ -115,6 +115,11 @@ export function decidePageBreak(lines, prevText, nextText, options = {}) {
         confidence,
     });
     const finished = endsSentence(prevText);
+    // `numberedBody`: "…areas: (i) an homogeneous material of limited combustibility," / "(ii) a composite
+    // product…" (Grenfell p.55): the label is the next of a run the sentence set inline, not a list item.
+    if (options.numberedBody && !finished && inlineSequel(prevText, nextText) && sameFace(prev, next, options.scanned)) {
+        return decided({ join: true, rule: "N2", reason: "unfinished, next opens on the inline sequel of a label in it" }, "medium");
+    }
     if (TEXT_LABEL.test(nextText.trim()))
         return decided({ join: false, rule: "split", reason: "next opens on a label" }, "high");
     // The layout's own label test also takes a bare number and a space. That is not a label to the text
@@ -152,6 +157,9 @@ export function decidePageBreak(lines, prevText, nextText, options = {}) {
             indentEm,
         }, indentEm === undefined || near ? "low" : "high");
     }
+    if (options.numberedBody && flush && numberedBodyJoin(lines, prevText, nextText)) {
+        return decided({ join: true, rule: "N1", reason: "finished, but an unnumbered body line under a numbered paragraph", indentEm }, "medium");
+    }
     const justified = isJustified(lines.prevPage);
     const full = Math.abs(prev.rightGapEm) < FULL_LINE_EM;
     if (justified && full && flush && words(next.text) > R2_MIN_WORDS) {
@@ -160,6 +168,65 @@ export function decidePageBreak(lines, prevText, nextText, options = {}) {
     // A finished sentence and a flush first line in the same face: a new paragraph in a document that sets
     // them flush, or the paragraph running on (Saville p.162, p.487; Chilcot p.112). Only the words can say.
     return decided({ join: false, rule: "split", reason: flush ? "finished, next line flush" : "finished", indentEm }, flush ? "medium" : "high");
+}
+/** A paragraph's own number at its head: "3.71. ", "7.44 ", "123. " (Chilcot), not "1972 and". */
+const NUMBERED_PARAGRAPH = /^\d{1,4}(?:(?:\.\d{1,4})+\.?|\.)\s/;
+/** Opens on a quotation mark or a bracket: a quotation, an editorial insertion, a citation. */
+const OPENS_QUOTE_OR_BRACKET = /^["'\u201c\u2018([]/;
+/** Ends on a colon: introduces what follows (a quotation, a list). */
+const INTRODUCES = /:["'\u201d\u2019)\]]*\s?(?:\d{1,4}|\[\^[\w-]{1,12}\])?$/;
+/**
+ * Rule N1 (`numberedBody`, reportsthatmatter-sh1b/ni9o). In a report whose body paragraphs are all
+ * numbered, a block of body text opening a page without a number of its own is the numbered paragraph
+ * above it running on, whether or not the old page ended on a full stop: "…she was still a serving
+ * prisoner." / "Mrs McDonald had anticipated seeing her daughter…" (Post Office p.26, 3.71); "…from the
+ * department." / "The Select Committee heard evidence…" (Grenfell p.94, 7.44). Called once the label,
+ * face and flush tests have passed (`decidePageBreak`). It also needs: the paragraph above opens on its
+ * number; it does not end on a colon and the new block does not open on a quotation mark or bracket (a
+ * quotation the paragraph introduces); and the new block is body text, not a heading or a caption set in
+ * the body face: more than four words, and either a second line on the page or a sentence end.
+ */
+export function numberedBodyJoin(lines, prevText, nextText) {
+    const prev = prevText.trim();
+    const next = nextText.trim();
+    if (!NUMBERED_PARAGRAPH.test(prev))
+        return false;
+    if (INTRODUCES.test(prev) || OPENS_QUOTE_OR_BRACKET.test(next))
+        return false;
+    if (isCaption(next))
+        return false;
+    if (words(next) <= R2_MIN_WORDS)
+        return false;
+    return lines.underContinues || endsSentence(next);
+}
+const ROMAN = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xi", "xii", "xiii", "xiv", "xv"];
+/** "(ii) " or "(b) " at the head of a block. */
+const BRACKET_LABEL = /^\(([ivx]{1,4}|[a-z])\)\s/;
+/**
+ * Rule N2: `nextText` opens on "(ii)" or "(b)", `prevText` is a numbered paragraph, and the last
+ * bracketed label it set inline (not at its head) is the one before, "(i)" or "(a)": the sentence's own
+ * enumeration running over the page, not a list item. "(i)" itself never matches (nothing precedes it).
+ * Not after "…; and" or "…; or", which end a list's item: a list read as one block ("(a) …; (b) …; and"
+ * / "(c) into s52…", Leveson p.102) carries its labels inline too.
+ */
+export function inlineSequel(prevText, nextText) {
+    if (!NUMBERED_PARAGRAPH.test(prevText.trim()) || /;\s*(?:and|or)?$/.test(prevText.trim()))
+        return false;
+    const m = nextText.trim().match(BRACKET_LABEL);
+    if (!m)
+        return false;
+    const label = m[1];
+    const before = [];
+    const r = ROMAN.indexOf(label);
+    if (r > 0)
+        before.push(ROMAN[r - 1]);
+    if (label.length === 1 && label > "a")
+        before.push(String.fromCharCode(label.charCodeAt(0) - 1));
+    if (!before.length)
+        return false;
+    const inline = [...prevText.trim().matchAll(/\s\(([ivx]{1,4}|[a-z])\)\s/g)];
+    const last = inline[inline.length - 1];
+    return last !== undefined && before.includes(last[1]);
 }
 /**
  * Letters only, lower case, ligatures and diacritics folded: the two texts
@@ -315,6 +382,8 @@ export function layoutJoins(layout, prevText, nextText, at, options = {}) {
     if (!lines)
         return false;
     const decision = decidePageBreak(lines, prevText, nextText, options);
+    if (process.env.RTM_PB_TRACE && decision.rule.startsWith("N"))
+        console.error(`PBTRACE ${decision.rule} p.${at.pdfIndex} | ${prevText.slice(0, 12)} … ${prevText.slice(-70)} || ${nextText.slice(0, 90)}`); // TEMP
     const refer = decision.confidence === "low" || (decision.confidence === "medium" && options.refer === "medium");
     if (options.referee && refer) {
         const answer = options.referee({
