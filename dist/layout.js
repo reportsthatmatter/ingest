@@ -21,11 +21,21 @@ const MARKER = /^\s*(?:\d{1,4}|[*†‡§])\s*$/;
 /** A raised number with the sentence's stop set inside it ("232."): the digits. */
 const MARKER_STOPPED = /^\s*(\d{1,4})[.,;]\s*$/;
 /**
- * Raised numbers set as one fragment with commas or spaces between ("24,25",
- * Leveson's "8 9 10" after "perceptions:"), perhaps behind the sentence's own
- * stop, set raised with them (".113", ":6"): each number is a marker.
+ * Raised numbers set as one fragment with commas between ("24,25"), or behind
+ * the sentence's own stop, set raised with them (".113", ":6"): each number is
+ * a marker. Spaces between are taken only for numbers in sequence (Leveson's
+ * "8 9 10" after "perceptions:"): a scan's raised "1 2" or "3 17" in a table
+ * or a figure is not a list of notes (Challenger's oracle read 89 of them).
  */
 const MARKER_LIST = /^\s*[.,:;]?\s?\d{1,4}(?:(?:,\s?|\s)\d{1,4})*\s*$/;
+function isMarkerList(text) {
+    if (!MARKER_LIST.test(text))
+        return false;
+    if (/\d,/.test(text) || !/\d\s+\d/.test(text))
+        return true;
+    const numbers = [...text.matchAll(/\d{1,4}/g)].map((m) => Number(m[0]));
+    return numbers.every((n, i) => i === 0 || n === numbers[i - 1] + 1);
+}
 /**
  * How far a footnote marker's box may start inside the box before it. A fragment's box includes its
  * trailing space, and an italic one's is wider still, so a marker set after a closing quotation mark
@@ -121,7 +131,7 @@ export function parseLayoutXml(xml) {
                     const offset = joined.starts[k] + (p.text.length - p.text.trimStart().length);
                     raised.push({ text: marker, size: pf?.size ?? p.height, left: p.left, offset });
                 }
-                else if (smaller && p.top < main.top + main.height / 2 && MARKER_LIST.test(p.text)) {
+                else if (smaller && p.top < main.top + main.height / 2 && isMarkerList(p.text)) {
                     // "£3.8m.²⁴,²⁵" set as one raised fragment: each number is a marker (Hillsborough p.235;
                     // reportsthatmatter-kgpr); so is each of "⁸ ⁹ ¹⁰", and the ".¹¹³" whose stop was set
                     // raised with it (Leveson pp.78, 767; reportsthatmatter-u00i)
