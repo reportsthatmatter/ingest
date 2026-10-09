@@ -67,3 +67,9 @@ describe("foiaRedactions (reportsthatmatter-gqsy.5)", () => {
     expect(resolvePasses(def)).toMatchObject({ foiaRedactions: true });
   });
 });
+
+describe("foiaRedactions: a margin label broken over two lines (Volume I PDF p.47)", () => {
+  it("takes out '(b)(7)' over '(E)-2'", () => {
+    expect(redactPage(["text of the body.", "                    (b)(7)", "                    (E)-2", "more body"])).toEqual(["text of the body.", "more body"]);
+  });
+});

@@ -34,8 +34,10 @@ const SUFFIX = String.raw`(?:\s?-\s?[0-9lI]?(?![A-Za-z0-9])|/(?:\s?${O}\s?b\s?${
 
 /** "(b)(3)-2, (b)(7)(E)-1", "(b)(6)/", "(b)(6)/(b)": a margin label (possibly several). */
 const MARGIN = new RegExp(String.raw`(?<![0-9§])${RUN}${SUFFIX}(?:\s?,?\s?${RUN}${SUFFIX})*`, "g");
-/** "(7)(C)-4": a margin label's second line, after "(b)(6)/(b)". */
-const MARGIN_TAIL = new RegExp(String.raw`(?<![0-9A-Za-z§)])${O}7${C}(?:${O}[A-F]${C})?\s?-\s?[0-9lI](?![A-Za-z0-9])`, "g");
+/** "(7)(C)-4", "(E)-2": a margin label's second line, after "(b)(6)/(b)" or "(b)(7)". */
+const MARGIN_TAIL = new RegExp(String.raw`(?<![0-9A-Za-z§)])(?:${O}7${C}(?:${O}[A-F]${C})?|${O}[A-F]${C})\s?-\s?[0-9lI](?![A-Za-z0-9])`, "g");
+/** A line that is nothing but unspaced codes ("(b)(7)" over "(E)-2"): a margin label broken over two lines. */
+const MARGIN_LINE = new RegExp(String.raw`^\s*\(b\)\((?:[1-9])\)(?:\([A-F]\))?\s*$`);
 /** A box label: a run of codes not inside a statute citation. */
 const BOX = new RegExp(String.raw`(?<![0-9§])${RUN}(?!\s?${O}[A-Z]${C})`, "g");
 /** One code within a matched run, brackets normalised. */
@@ -67,7 +69,11 @@ export type RedactionCounts = { boxes: number; margin: number };
  * line that held nothing but margin labels.
  */
 export function redactLine(line: string, counts?: RedactionCounts): string | null {
-  if (!/[({]\s?[b7]\s?[)}]/.test(line)) return line;
+  if (!/[({]\s?[b7A-F]\s?[)}]/.test(line)) return line;
+  if (MARGIN_LINE.test(line)) {
+    if (counts) counts.margin++;
+    return null;
+  }
   let out = line.replace(MARGIN, (m) => {
     if (counts) counts.margin++;
     return " ".repeat(m.length);
