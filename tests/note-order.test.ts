@@ -210,6 +210,20 @@ describe("raised fragments (reportsthatmatter-qsfc, kgpr, kvxj)", () => {
     expect(line.raised.map((r) => r.text)).toEqual(["24", "25"]);
     expect(line.text.slice(line.raised[1].offset, line.raised[1].offset + 2)).toBe("25");
   });
+  it("a raised '8 9 10' is markers 8, 9 and 10, and a raised '.113' is marker 113 (Leveson, reportsthatmatter-u00i)", () => {
+    const spaced = xmlPage([
+      `<text top="100" left="100" width="300" height="16" font="0">shape culture and change perceptions:</text>`,
+      `<text top="96" left="400" width="30" height="11" font="1">8 9 10</text>`,
+    ]).lines(1, 1)[0];
+    expect(spaced.raised.map((r) => r.text)).toEqual(["8", "9", "10"]);
+    expect(spaced.text.slice(spaced.raised[2].offset, spaced.raised[2].offset + 2)).toBe("10");
+    const stopped = xmlPage([
+      `<text top="100" left="100" width="300" height="16" font="0">the reputation of the force concerned</text>`,
+      `<text top="96" left="400" width="24" height="11" font="1">.113</text>`,
+    ]).lines(1, 1)[0];
+    expect(stopped.raised.map((r) => r.text)).toEqual(["113"]);
+    expect(stopped.text.slice(stopped.raised[0].offset, stopped.raised[0].offset + 3)).toBe("113");
+  });
   it("a line of a short label and a longer raised marker is in the body's face", () => {
     const layout = xmlPage([
       `<text top="100" left="100" width="18" height="16" font="0">7.</text>`,

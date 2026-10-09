@@ -122,8 +122,12 @@ const LABEL_ONLY = /^\s*(?:\d{1,4}(?:\.\d{1,4})*[.)]?|[a-z][.)]|\([a-z0-9]{1,4}\
 const MARKER = /^\s*(?:\d{1,4}|[*†‡§])\s*$/;
 /** A raised number with the sentence's stop set inside it ("232."): the digits. */
 const MARKER_STOPPED = /^\s*(\d{1,4})[.,;]\s*$/;
-/** Raised numbers set as one fragment with commas between ("24,25"). */
-const MARKER_LIST = /^\s*\d{1,4}(?:,\s?\d{1,4})+\s*$/;
+/**
+ * Raised numbers set as one fragment with commas or spaces between ("24,25",
+ * Leveson's "8 9 10" after "perceptions:"), perhaps behind the sentence's own
+ * stop, set raised with them (".113", ":6"): each number is a marker.
+ */
+const MARKER_LIST = /^\s*[.,:;]?\s?\d{1,4}(?:(?:,\s?|\s)\d{1,4})*\s*$/;
 
 type RawLine = Omit<LayoutLine, "volume" | "body" | "indentEm" | "rightGapEm" | "reachesRight" | "label" | "index">;
 
@@ -218,7 +222,8 @@ export function parseLayoutXml(xml: string): RawLine[] {
           raised.push({ text: marker, size: pf?.size ?? p.height, left: p.left, offset });
         } else if (smaller && p.top < main.top + main.height / 2 && MARKER_LIST.test(p.text)) {
           // "£3.8m.²⁴,²⁵" set as one raised fragment: each number is a marker (Hillsborough p.235;
-          // reportsthatmatter-kgpr)
+          // reportsthatmatter-kgpr); so is each of "⁸ ⁹ ¹⁰", and the ".¹¹³" whose stop was set
+          // raised with it (Leveson pp.78, 767; reportsthatmatter-u00i)
           const from = joined.starts[k];
           for (const m of p.text.matchAll(/\d{1,4}/g)) raised.push({ text: m[0], size: pf?.size ?? p.height, left: p.left, offset: from + m.index! });
         }
