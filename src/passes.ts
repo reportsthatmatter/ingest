@@ -504,6 +504,18 @@ export const foiaRedactions = (): PagePass => ({ name: "foiaRedactions", stage: 
 export const asteriskBreaks = (): PagePass => ({ name: "asteriskBreaks", stage: "page" });
 
 /**
+ * A note's run-over is read off the layout (reportsthatmatter-gqsy.5, `runOverByFace` in src/markers.ts). A
+ * note too long for its page runs on at the head of the next page's note block, above that page's first note
+ * number. On a single-spaced page the text reading cannot tell it from the body's last paragraph, so it was
+ * appended to the paragraph, which then never joined its continuation on the next page (the Mueller report,
+ * Volume II pp.49-50). With this pass a run of lines at the end of the page's body, below a gap of two or more
+ * blank lines, every line set at least two points smaller than the body, is the run-over and goes to the note
+ * before. Needs the layout. Opt-in: a report that sets quotations or captions smaller than its body, low on a
+ * page, would lose them to a note.
+ */
+export const layoutRunOvers = (): PagePass => ({ name: "layoutRunOvers", stage: "page" });
+
+/**
  * A photo credit set between a paragraph and its continuation does not take
  * the continuation (reportsthatmatter-xay).
  *

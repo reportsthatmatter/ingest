@@ -45,7 +45,7 @@ import {
   type NotesChapter,
 } from "./footnotes";
 import { applyTypographicHeadings, type TypographicHeadingStats } from "./typographic-headings";
-import { inNoteFace, linkLayoutMarkers, pageDefinesNotes, type LayoutMarkerStats } from "./markers";
+import { inNoteFace, linkLayoutMarkers, pageDefinesNotes, runOverByFace, type LayoutMarkerStats } from "./markers";
 import { LayoutEndnotesReader, chapterOfBlocks } from "./layout-endnotes";
 import { autoFix, findSuspects, rankSuspects, type Suspect } from "./ocr";
 import type { PipelineContext } from "./context";
@@ -234,6 +234,16 @@ export function ingestPageGroups(
       }
       // `pdfPageNumbers`: the report prints no folios; its pages are numbered by their place in the PDF.
       if (resolved.pdfPageNumbers) split.printed = split.pdfIndex;
+
+      // `layoutRunOvers`: a note's run-over the text reading left at the end of the body, by its smaller face.
+      if (resolved.layoutRunOvers && context.layout) {
+        const n = runOverByFace(context.layout, split.volume, split.pdfIndex, split.body);
+        if (n) {
+          const run = split.body.slice(split.body.length - n).filter((line) => line.trim());
+          split.body = split.body.slice(0, split.body.length - n);
+          split.runOver = [...run, ...(split.runOver ?? [])];
+        }
+      }
 
       // `layoutMarkers` (page scope): page-foot "notes" on a page whose layout
       // defines none (nothing raised, nothing in a smaller face) are the body's

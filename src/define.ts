@@ -102,6 +102,8 @@ export type ResolvedPasses = {
   footnoteNumbers?: "bare" | "period" | "tabbed";
   /** `pdfPageNumbers`: each page is numbered by its place in its PDF. */
   pdfPageNumbers?: boolean;
+  /** `layoutRunOvers`: a note's run-over at the end of a page's body, read by its smaller face. */
+  layoutRunOvers?: boolean;
   /** `asteriskBreaks`: a line of asterisks is a block of its own. */
   asteriskBreaks?: boolean;
   /** `foiaRedactions`: a FOIA release's box labels marked as redactions, its margin labels taken out. */
@@ -190,7 +192,7 @@ export const KNOWN_PAGE_PASSES: ReadonlySet<string> = new Set([
   "asteriskBreaks", "chapterContents", "citationRunOver", "contentsEntries", "contentsOutline", "doubleSpaced",
   "endnotes", "escapeLeadingHash", "escapeNumberedParagraphs", "flushFootnoteMarkers",
   "foiaRedactions", "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteRestarts", "hangingIndents",
-  "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "letteredItems", "listedDivisions", "listedHeadings",
+  "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "layoutRunOvers", "letteredItems", "listedDivisions", "listedHeadings",
   "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
   "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
   "printedPageNumber", "quoteListRunOns", "quoteRunOn", "recoverListedHeadings", "romanFolios",
@@ -272,6 +274,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     pdfPageNumbers: passes.some((pass) => pass.name === "pdfPageNumbers"),
     foiaRedactions: passes.some((pass) => pass.name === "foiaRedactions"),
     asteriskBreaks: passes.some((pass) => pass.name === "asteriskBreaks"),
+    layoutRunOvers: passes.some((pass) => pass.name === "layoutRunOvers"),
     quoteInset: passes.find(
       (pass): pass is QuoteInsetPass => pass.stage === "quoteInset"
     )?.columns,
