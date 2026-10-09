@@ -122,7 +122,9 @@ function anchorPattern(before: string, earlier: Array<{ offset: number; text: st
       .map(escape)
       .join("\\s+");
   for (const r of marks) {
-    out += plain(trimmed.slice(at, r.offset));
+    // The space between two raised numbers ("8 9 10") is gone once they are linked ("[^8][^9]").
+    const gap = trimmed.slice(at, r.offset);
+    out += at > from && /^\s+$/.test(gap) ? "\\s*" : plain(gap);
     out += `(?:\\[\\^${r.text}(?:-\\d+)?\\]|${r.text})`;
     at = r.offset + r.text.length;
   }

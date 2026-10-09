@@ -110,6 +110,19 @@ describe("a stacked note whose text is a witness cipher (reportsthatmatter-n7fb)
   });
 });
 
+describe("a stacked note whose text is a statute's section (reportsthatmatter-u00i)", () => {
+  it("'264 / s1(1)' opens note 264 (Leveson's legal annex)", () => {
+    const lines = ["        the Act provides as follows.", "", "", "263", "  Data Protection Act 1998, Schedule 1", "264", "    s1(1)", "265", "    s7(3)(a)", "266", "    s52A"];
+    const split = splitFootnoteBlock(lines, 263);
+    expect(parseFootnotes(split.footnotes, 1).map((n) => [n.number, n.text])).toEqual([
+      [263, "Data Protection Act 1998, Schedule 1"],
+      [264, "s1(1)"],
+      [265, "s7(3)(a)"],
+      [266, "s52A"],
+    ]);
+  });
+});
+
 describe("the expected note opening twice on a page (reportsthatmatter-kvxj)", () => {
   it("a body line opening on the number is passed over for the foot's note", () => {
     // PSI PDF p.482: "2006 and 2007 securitization…" above the foot's note 2006 (no 2007 on the page)

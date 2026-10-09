@@ -42,6 +42,8 @@ const PAREN_NUMBER = /^\s*\(\s*(\d{1,4})\s*\)\s*$/;
  */
 export const FOOTNOTE_INLINE = /^\s{0,8}(\d{1,4})\s{0,3}(?=[A-Za-z"“(])/;
 const FOOTNOTE_STACKED = /^\s{0,10}(\d{1,4})\s*$/;
+/** A note that is only a statute's section: "s1(1)", "s7(3)(a)", "s52A". */
+const STATUTE_SECTION = /^\s*s\d{1,3}[A-Z]{0,2}(?:\([0-9a-z]{1,4}\))*\s*$/;
 /**
  * `footnoteNumbers("period")`: a page-foot note numbered "104. Letter from…"
  * (Hillsborough), the number followed by a full stop, flush at the page's
@@ -87,9 +89,15 @@ export function noteCandidates(
     // frequently opens with a date or a docket number ("4/2010 Evaluation of
     // …"), so require words rather than a leading letter — or a witness's
     // cipher and a transcript reference, Litvinenko's commonest note ("A1
-    // 2/114", "C2 24/14-39"), which has no word in it (reportsthatmatter-n7fb).
+    // 2/114", "C2 24/14-39"), which has no word in it (reportsthatmatter-n7fb),
+    // or a statute's section and nothing else, Leveson's legal annex ("264" /
+    // "s1(1)", "368" / "s40", "418" / "s52A"; reportsthatmatter-u00i).
     const next = lines.slice(i + 1).find((line) => line.trim());
-    if (next && (/[A-Za-z]{2}/.test(next) || /^\s*[A-Z]\d{1,2}\s+\d{1,3}\/\d/.test(next)) && !FOOTNOTE_STACKED.test(next)) {
+    if (
+      next &&
+      (/[A-Za-z]{2}/.test(next) || /^\s*[A-Z]\d{1,2}\s+\d{1,3}\/\d/.test(next) || STATUTE_SECTION.test(next)) &&
+      !FOOTNOTE_STACKED.test(next)
+    ) {
       candidates.push({ line: i, note: Number.parseInt(stacked[1], 10) });
     }
   }
