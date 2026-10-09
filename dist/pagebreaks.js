@@ -382,8 +382,6 @@ export function layoutJoins(layout, prevText, nextText, at, options = {}) {
     if (!lines)
         return false;
     const decision = decidePageBreak(lines, prevText, nextText, options);
-    if (process.env.RTM_PB_TRACE && decision.rule.startsWith("N"))
-        console.error(`PBTRACE ${decision.rule} p.${at.pdfIndex} | ${prevText.slice(0, 12)} … ${prevText.slice(-70)} || ${nextText.slice(0, 90)}`); // TEMP
     const refer = decision.confidence === "low" || (decision.confidence === "medium" && options.refer === "medium");
     if (options.referee && refer) {
         const answer = options.referee({
