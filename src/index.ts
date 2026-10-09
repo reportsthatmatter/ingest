@@ -47,6 +47,7 @@ export {
   wrappedHeadings,
   pageBreakContinuations,
   citationRunOver,
+  noteFaceRunOver,
   romanFolios,
   parenFolios,
   pageHeadFolios,

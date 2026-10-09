@@ -43,6 +43,7 @@ import {
   type NotesLine,
   type NotesChapter,
 } from "./footnotes";
+import { noteFaceRunOverCount } from "./note-run-over";
 import { applyTypographicHeadings, type TypographicHeadingStats } from "./typographic-headings";
 import { inNoteFace, linkLayoutMarkers, pageDefinesNotes, type LayoutMarkerStats } from "./markers";
 import { LayoutEndnotesReader, chapterOfBlocks } from "./layout-endnotes";
@@ -220,6 +221,16 @@ export function ingestPageGroups(
         !inNoteFace(context.layout, split.volume, split.pdfIndex, firstNote, resolved.footnoteNumbers === "tabbed")
       ) {
         split = splitPage(page, expectedNote, { ...splitOptions, footnoteNumbers: undefined });
+      }
+      // `noteFaceRunOver`: body lines at the foot of the page in the notes' own face are the tail of the note
+      // from the page before, which opens the footnote area above this page's first note.
+      if (resolved.noteFaceRunOver && context.layout && split.footnotes.length) {
+        const n = noteFaceRunOverCount(context.layout, split.volume, split.pdfIndex, split.body, split.footnotes);
+        if (n) {
+          const tail = split.body.slice(split.body.length - n);
+          split.body = split.body.slice(0, split.body.length - n);
+          split.runOver = [...tail, ...(split.runOver ?? [])];
+        }
       }
       // `pdfPageNumbers`: the report prints no folios; its pages are numbered by their place in the PDF.
       if (resolved.pdfPageNumbers) split.printed = split.pdfIndex;

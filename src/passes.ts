@@ -434,6 +434,17 @@ export const layoutEndnotes = (): PagePass => ({ name: "layoutEndnotes", stage: 
 export const citationRunOver = (): PagePass => ({ name: "citationRunOver", stage: "page" });
 
 /**
+ * The lines at the foot of a page's body that are set in the face of the page's own notes belong to the
+ * note that ran over the page break from the page before (reportsthatmatter-07k): its tail opens the page's
+ * footnote area, above the first numbered note, and the text reading leaves it in the body (a quotation,
+ * paragraphs of an email exchange). Read off the layout: the first note's size and family against the
+ * body's, from the end of the body up while each line has that face. See `note-run-over.ts`.
+ *
+ * Opt-in: it reads `context.layout`, and a report whose notes are set in the body's face gains nothing.
+ */
+export const noteFaceRunOver = (): PagePass => ({ name: "noteFaceRunOver", stage: "page" });
+
+/**
  * Reads lowercase roman-numeral folios ("vii", set twice on one line as
  * "vii   vii" when a spread's folio is repeated) as the printed page number
  * of front matter, and takes them off the page (reportsthatmatter-cbr).

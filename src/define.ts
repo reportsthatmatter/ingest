@@ -84,6 +84,8 @@ export type ResolvedPasses = {
   /** `pageBreakContinuations({ quoteTails: true })`. */
   pageBreakQuoteTails?: boolean;
   citationRunOver?: boolean;
+  /** `noteFaceRunOver`: a run-over set in the notes' face is read off the layout. */
+  noteFaceRunOver?: boolean;
   romanFolios?: boolean;
   parenFolios?: boolean;
   /** `pageHeadFolios`: on, with the line that goes with the "Page N" head. */
@@ -185,7 +187,7 @@ export const KNOWN_PAGE_PASSES: ReadonlySet<string> = new Set([
   "endnotes", "escapeLeadingHash", "escapeNumberedParagraphs", "flushFootnoteMarkers",
   "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteRestarts", "hangingIndents",
   "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "letteredItems", "listedDivisions", "listedHeadings",
-  "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
+  "noteFaceRunOver", "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
   "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
   "printedPageNumber", "quoteListRunOns", "quoteRunOn", "recoverListedHeadings", "romanFolios",
   "sequencedNoteOpenings", "shiftedPages", "shortSubheads", "typographicHeadings", "unlistedHeadingsMinor",
@@ -251,6 +253,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
       (pass) => pass.name === "pageBreakContinuations" && "quoteTails" in pass && pass.quoteTails === true
     ),
     citationRunOver: passes.some((pass) => pass.name === "citationRunOver"),
+    noteFaceRunOver: passes.some((pass) => pass.name === "noteFaceRunOver"),
     romanFolios: passes.some((pass) => pass.name === "romanFolios"),
     parenFolios: passes.some((pass) => pass.name === "parenFolios"),
     pageHeadFolios: passes.find((pass): pass is PageHeadFoliosPass => pass.name === "pageHeadFolios")?.options ?? undefined,
