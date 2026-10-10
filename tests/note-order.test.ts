@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { buildLayout, parseLayoutXml } from "../src/layout";
-import { splitFootnoteBlock } from "../src/clean";
+import { blankThumbLetter, splitFootnoteBlock, splitPage } from "../src/clean";
 import { parseFootnotes } from "../src/footnotes";
 import { assembleEdition, type Edition, type PrintedPage } from "../src/edition";
 import { pipeline, resolvePasses } from "../src/define";
-import { footnoteRestarts, sequencedNoteOpenings, strandedMarkers } from "../src/passes";
+import { footnoteRestarts, sequencedNoteOpenings, strandedMarkers, thumbIndexNotes } from "../src/passes";
 import type { Page } from "../src/extract";
 
 /**
@@ -110,6 +110,48 @@ describe("a stacked note whose text is a witness cipher (reportsthatmatter-n7fb)
   });
 });
 
+describe("a stacked note whose text is a statute's section (reportsthatmatter-u00i)", () => {
+  it("'264 / s1(1)' opens note 264 (Leveson's legal annex)", () => {
+    const lines = ["        the Act provides as follows.", "", "", "263", "  Data Protection Act 1998, Schedule 1", "264", "    s1(1)", "265", "    s7(3)(a)", "266", "    s52A"];
+    const split = splitFootnoteBlock(lines, 263);
+    expect(parseFootnotes(split.footnotes, 1).map((n) => [n.number, n.text])).toEqual([
+      [263, "Data Protection Act 1998, Schedule 1"],
+      [264, "s1(1)"],
+      [265, "s7(3)(a)"],
+      [266, "s52A"],
+    ]);
+  });
+});
+
+describe("thumbIndexNotes (reportsthatmatter-qai, -u00i)", () => {
+  const page = [
+    "    personal friendship until after 2007 by which time he had left office.70",
+    "",
+    "69",
+    "      Campbell, A, Diaries Volume One: Prelude to Power 1994-1997, pp631 and 634 in particular",
+    "I   70",
+    "      p23, para 92, http://www.levesoninquiry.org.uk/wp-content/uploads/2012/04/Witness-Statement.pdf",
+    "    71",
+    "      p6, http://www.levesoninquiry.org.uk/wp-content/uploads/2012/05/Witness-Statement-of-Lord-Mandelson.pdf",
+  ];
+  const notes = (thumbIndexNotes: boolean) =>
+    parseFootnotes(splitPage({ index: 1, volume: 3, pdfIndex: 161, lines: page }, 69, { thumbIndexNotes }).footnotes, 1).map((n) => n.number);
+
+  it("reads the note whose number shares its line with the Part letter", () => {
+    expect(notes(false)).not.toContain(70);
+    expect(notes(true)).toEqual([69, 70, 71]);
+  });
+  it("blanks only a letter beside a lone number or one before a gap, never a word", () => {
+    expect(blankThumbLetter("K   3   p4, http://x")).toBe("    3   p4, http://x");
+    expect(blankThumbLetter("I   2011 Mr Hunt announced the referral")).toBe("I   2011 Mr Hunt announced the referral");
+    expect(blankThumbLetter("A  further 12 cases")).toBe("A  further 12 cases");
+    expect(blankThumbLetter("M   70")).toBe("M   70");
+  });
+  it("resolves from the declared pass", () => {
+    expect(resolvePasses(pipeline({ id: "t", title: "T", repo: ".", volumes: [{ path: "a.pdf" }], passes: [thumbIndexNotes()] })).thumbIndexNotes).toBe(true);
+  });
+});
+
 describe("the expected note opening twice on a page (reportsthatmatter-kvxj)", () => {
   it("a body line opening on the number is passed over for the foot's note", () => {
     // PSI PDF p.482: "2006 and 2007 securitization…" above the foot's note 2006 (no 2007 on the page)
@@ -209,6 +251,20 @@ describe("raised fragments (reportsthatmatter-qsfc, kgpr, kvxj)", () => {
     const line = layout.lines(1, 1)[0];
     expect(line.raised.map((r) => r.text)).toEqual(["24", "25"]);
     expect(line.text.slice(line.raised[1].offset, line.raised[1].offset + 2)).toBe("25");
+  });
+  it("a raised '8 9 10' is markers 8, 9 and 10, and a raised '.113' is marker 113 (Leveson, reportsthatmatter-u00i)", () => {
+    const spaced = xmlPage([
+      `<text top="100" left="100" width="300" height="16" font="0">shape culture and change perceptions:</text>`,
+      `<text top="96" left="400" width="30" height="11" font="1">8 9 10</text>`,
+    ]).lines(1, 1)[0];
+    expect(spaced.raised.map((r) => r.text)).toEqual(["8", "9", "10"]);
+    expect(spaced.text.slice(spaced.raised[2].offset, spaced.raised[2].offset + 2)).toBe("10");
+    const stopped = xmlPage([
+      `<text top="100" left="100" width="300" height="16" font="0">the reputation of the force concerned</text>`,
+      `<text top="96" left="400" width="24" height="11" font="1">.113</text>`,
+    ]).lines(1, 1)[0];
+    expect(stopped.raised.map((r) => r.text)).toEqual(["113"]);
+    expect(stopped.text.slice(stopped.raised[0].offset, stopped.raised[0].offset + 3)).toBe("113");
   });
   it("a line of a short label and a longer raised marker is in the body's face", () => {
     const layout = xmlPage([

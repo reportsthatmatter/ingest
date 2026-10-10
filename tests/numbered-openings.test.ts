@@ -46,6 +46,18 @@ describe("numberedOpenings (reportsthatmatter-f951)", () => {
     expect(own.filter((b) => b.kind === "paragraph")).toHaveLength(2);
   });
 
+  it("keeps a chapter's opening paragraph apart from a banner that ends without a full stop (Leveson 1.1, reportsthatmatter-1iz4)", () => {
+    const page = (n: number): Block => ({ kind: "page", number: n });
+    const blocks = [
+      p("7.22 Sir Christopher Meyer also rejected the characterisation."),
+      p("Crossing legal boundaries: the criminal and civil law"),
+      page(445),
+      p("1.1 An Inquiry into the culture, practices and ethics of the press might not be thought to engage the law."),
+    ];
+    const merged = mergeAcrossPages(blocks, { numberedOpenings: true });
+    expect(merged.filter((b) => b.kind === "paragraph")).toHaveLength(3);
+  });
+
   it("is resolved only together with numberedParagraphs", () => {
     const base = { id: "x", title: "x", authors: "x", published_at: "x", source_url: "x", repo: ".", volumes: [{ path: "a.pdf", sha256: "0" }] };
     expect(resolvePasses(pipeline({ ...base, passes: [numberedOpenings()] })).numberedOpenings).toBe(false);

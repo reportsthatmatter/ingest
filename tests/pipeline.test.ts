@@ -281,6 +281,22 @@ describe("toBlocks", () => {
     expect(blocks.filter((b) => b.kind === "paragraph")).toHaveLength(1);
   });
 
+  it("reads 'N.N Second,' as a paragraph opener: an ordinal, not a duration (Leveson 2.8, reportsthatmatter-1iz4)", () => {
+    const blocks = toBlocks(
+      [
+        "two of the suspects were found guilty of his murder.",
+        "2.8 Second, two years after the 1998 Omagh bombing, the paper said so.",
+      ],
+      7,
+      DEFAULT_QUOTE_INSET,
+      true
+    );
+    expect(blocks.filter((b) => b.kind === "paragraph")).toHaveLength(2);
+    // a duration that wraps is still one paragraph
+    const wrapped = toBlocks(["     The engine burned for", "2.8 seconds before it cut out."], 7, DEFAULT_QUOTE_INSET, true);
+    expect(wrapped.filter((b) => b.kind === "paragraph")).toHaveLength(1);
+  });
+
   it("reads a roman-numeral all-caps line as a section heading", () => {
     const blocks = toBlocks(["I.      THE RESULTS OF THE INVESTIGATION"]);
     expect(blocks[0]).toEqual({

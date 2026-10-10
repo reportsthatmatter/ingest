@@ -58,6 +58,7 @@ export {
   photoCredits,
   footnoteGap,
   footnoteRestarts,
+  thumbIndexNotes,
   strandedMarkers,
   sequencedNoteOpenings,
   footnoteNumbers,
