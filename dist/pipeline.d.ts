@@ -65,6 +65,7 @@ export type Metadata = {
     published_at?: string;
     source_url?: string;
 };
+export declare function divisionLabelHeadings(blocks: Block[]): Block[];
 /**
  * PDF → Markdown, deterministically. The same input always produces the same
  * output, so fixes belong in this pipeline rather than in hand-edits of the

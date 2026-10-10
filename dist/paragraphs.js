@@ -568,8 +568,12 @@ export function isDivisionHeading(text) {
  * first word of prose. "...The Sun's article...suggested\n\n1.8 million
  * people on sickness benefit were fit for work..." reads "1.8" as opening
  * paragraph 1.8 (Leveson), when it is a statistic the line wrapped after.
+ * Lower case only: a unit word inside a sentence is lower case, and a
+ * paragraph opening "2.8 Second, two years after…" is an ordinal, not a
+ * duration (Leveson glued eight "N.N Second," paragraphs onto the one before,
+ * reportsthatmatter-1iz4).
  */
-const QUANTITY_WORD_FOLLOWS = /^(per\s?cent|percent|million|billion|thousand|hundred|degrees?|inches?|centimetres?|centimeters?|metres?|meters?|miles?|kilometres?|kilometers?|pounds?|kg|km|years?|months?|weeks?|days?|hours?|minutes?|seconds?|times)\b/i;
+const QUANTITY_WORD_FOLLOWS = /^(per\s?cent|percent|million|billion|thousand|hundred|degrees?|inches?|centimetres?|centimeters?|metres?|meters?|miles?|kilometres?|kilometers?|pounds?|kg|km|years?|months?|weeks?|days?|hours?|minutes?|seconds?|times)\b/;
 /**
  * "7.1", "10.14" — the chapter.paragraph numbering these reports run
  * throughout.
@@ -1149,7 +1153,7 @@ function opensUnclosedQuotation(text, lines, at) {
     }
     return true;
 }
-export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false, allCapsHeadings = true, paragraphContents = false, numberedHeadings = true, listed, numbered, findings, outline, divisions, wrappedHeadings = false, hangingIndents = false, unmarkedHeadings = false, numberedOutsideTables = false, recoverListedHeadings = false, letteredItems = false) {
+export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false, allCapsHeadings = true, paragraphContents = false, numberedHeadings = true, listed, numbered, findings, outline, divisions, wrappedHeadings = false, hangingIndents = false, unmarkedHeadings = false, numberedOutsideTables = false, recoverListedHeadings = false, letteredItems = false, speakerTurns = false) {
     if (paragraphContents)
         lines = joinParagraphContents(lines);
     // With `listedHeadings`, a would-be heading the contents does not name is
@@ -1276,8 +1280,8 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
     // short page — the last of a section, say — can have too few lines to infer
     // it from, and getting it wrong turns an ordinary paragraph into a quote.
     const margin = documentMargin ?? bodyIndent(lines);
-    const hanging = hangingIndents || letteredItems
-        ? hangingItems(lines, hangingIndents, letteredItems ? margin + quoteInset : 0)
+    const hanging = hangingIndents || letteredItems || speakerTurns
+        ? hangingItems(lines, hangingIndents, letteredItems ? margin + quoteInset : 0, speakerTurns)
         : null;
     const blocks = [];
     // A row of a table is not a division. The Jack Smith docket lists "Section 4
@@ -1660,10 +1664,24 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
  * or more spaces before its text; the item is the lines indented to that
  * text, within a character.
  */
-function hangingItems(lines, numbered = true, letteredBelow = 0) {
+function hangingItems(lines, numbered = true, letteredBelow = 0, speakers = false) {
     const opens = lines.map(() => false);
     const continues = lines.map(() => false);
     for (let i = 0; i < lines.length; i++) {
+        // `speakerTurns`: "Flight: “And there's no commonality between all these tire" over "        pressure
+        // instrumentations…", the wrapped line under the opening quote. Only the wrap is held to the turn (it is
+        // not a quotation); the turns of one exchange stay one paragraph, as they read on the page.
+        const turn = speakers ? lines[i].match(/^(\s*)[A-Z][A-Za-z.]*(?: [A-Za-z.]+){0,2}:(\s+)(?=[“"])/) : null;
+        if (turn) {
+            const column = turn[0].length;
+            let k = i + 1;
+            while (k < lines.length && lines[k].trim() && Math.abs(indentOf(lines[k]) - column) <= 1) {
+                continues[k] = true;
+                k++;
+            }
+            i = k - 1;
+            continue;
+        }
         let label = numbered ? lines[i].match(/^(\s*)(?=\S*\d)(\S{2,12})( {2,})\S/) : null;
         // `letteredItems`: a sub-item's own letter ("a.", "(b)", "iv.") over its
         // wrapped lines, wherever it sits short of a quotation's inset.
@@ -2128,7 +2146,11 @@ export function mergeAcrossPages(blocks, options = {}) {
             block.finding === undefined &&
             previous?.kind === "paragraph" &&
             !endsSentence(previous.text) &&
-            /^\d{1,3}[.)]\d{1,3}\s/.test(block.text)) {
+            /^\d{1,3}[.)]\d{1,3}\s/.test(block.text) &&
+            // A cross-reference carries on in lower case ("79.9 to 79.11 of…"); a number
+            // before a capital opens a chapter's paragraph after a heading or banner
+            // that ends without a full stop (Leveson "1.1 An Inquiry…", reportsthatmatter-1iz4).
+            !NUMBERED_OPENING.test(block.text)) {
             const chapter = block.text.match(/^(\d{1,3})/)[1];
             const current = lastNumberedChapter(merged);
             if (current !== undefined && current !== chapter) {

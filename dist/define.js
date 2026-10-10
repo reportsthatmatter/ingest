@@ -56,13 +56,13 @@ export function pipeline(def) {
 export const KNOWN_PAGE_PASSES = new Set([
     "asteriskBreaks", "chapterContents", "citationRunOver", "contentsEntries", "contentsOutline", "doubleSpaced",
     "endnotes", "escapeLeadingHash", "escapeNumberedParagraphs", "flushFootnoteMarkers",
-    "foiaRedactions", "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteResets", "footnoteRestarts", "hangingIndents", "holdNoteSequence",
+    "divisionLabels", "foiaRedactions", "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteResets", "footnoteRestarts", "hangingIndents", "holdNoteSequence", "hyphenFragments",
     "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "layoutRunOvers", "letteredItems", "listedDivisions", "listedHeadings",
     "noteFaceRunOver", "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
     "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
     "printedPageNumber", "quoteListRunOns", "quoteRunOn", "recoverListedHeadings", "romanFolios",
-    "sequencedNoteOpenings", "shiftedPages", "shortSubheads", "typographicHeadings", "unlistedHeadingsMinor",
-    "unmarkedHeadings", "wrappedHeadings",
+    "sequencedNoteOpenings", "shiftedPages", "shortSubheads", "speakerTurns", "thumbIndexNotes", "typographicHeadings",
+    "unlistedHeadingsMinor", "unmarkedHeadings", "wrappedHeadings",
 ]);
 /**
  * Reads a definition's passes into the shape the executor wants.
@@ -126,8 +126,12 @@ export function resolvePasses(def) {
         foliosInStep: passes.some((pass) => pass.name === "foliosInStep"),
         numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),
         photoCredits: passes.some((pass) => pass.name === "photoCredits"),
+        hyphenFragments: passes.some((pass) => pass.name === "hyphenFragments"),
+        divisionLabels: passes.some((pass) => pass.name === "divisionLabels"),
+        speakerTurns: passes.some((pass) => pass.name === "speakerTurns"),
         footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
         footnoteRestarts: passes.some((pass) => pass.name === "footnoteRestarts"),
+        thumbIndexNotes: passes.some((pass) => pass.name === "thumbIndexNotes"),
         sequencedNoteOpenings: passes.some((pass) => pass.name === "sequencedNoteOpenings"),
         footnoteNumbers: passes.find((pass) => pass.name === "footnoteNumbers")
             ?.numbers,

@@ -103,11 +103,16 @@ export type ResolvedPasses = {
   foliosInStep?: boolean;
   numberedOutsideTables?: boolean;
   photoCredits?: boolean;
+  hyphenFragments?: boolean;
+  divisionLabels?: boolean;
+  speakerTurns?: boolean;
   footnoteGap?: boolean;
   /** `sequencedNoteOpenings`: a note line opening on the next note's number starts it, whatever follows. */
   sequencedNoteOpenings?: boolean;
   /** `footnoteRestarts`: a page-foot numbering that starts over at 1 is read without corroboration. */
   footnoteRestarts?: boolean;
+  /** `thumbIndexNotes`: a thumb-index letter beside a note's number is blanked before the note block is found. */
+  thumbIndexNotes?: boolean;
   /** `footnoteNumbers`: how page-foot notes are numbered. */
   footnoteNumbers?: "bare" | "period" | "tabbed";
   /** `pdfPageNumbers`: each page is numbered by its place in its PDF. */
@@ -201,13 +206,13 @@ export function pipeline(def: PipelineDef): PipelineDef {
 export const KNOWN_PAGE_PASSES: ReadonlySet<string> = new Set([
   "asteriskBreaks", "chapterContents", "citationRunOver", "contentsEntries", "contentsOutline", "doubleSpaced",
   "endnotes", "escapeLeadingHash", "escapeNumberedParagraphs", "flushFootnoteMarkers",
-  "foiaRedactions", "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteResets", "footnoteRestarts", "hangingIndents", "holdNoteSequence",
+  "divisionLabels", "foiaRedactions", "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteResets", "footnoteRestarts", "hangingIndents", "holdNoteSequence", "hyphenFragments",
   "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "layoutRunOvers", "letteredItems", "listedDivisions", "listedHeadings",
   "noteFaceRunOver", "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
   "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
   "printedPageNumber", "quoteListRunOns", "quoteRunOn", "recoverListedHeadings", "romanFolios",
-  "sequencedNoteOpenings", "shiftedPages", "shortSubheads", "typographicHeadings", "unlistedHeadingsMinor",
-  "unmarkedHeadings", "wrappedHeadings",
+  "sequencedNoteOpenings", "shiftedPages", "shortSubheads", "speakerTurns", "thumbIndexNotes", "typographicHeadings",
+  "unlistedHeadingsMinor", "unmarkedHeadings", "wrappedHeadings",
 ]);
 
 /**
@@ -280,8 +285,12 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     foliosInStep: passes.some((pass) => pass.name === "foliosInStep"),
     numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),
     photoCredits: passes.some((pass) => pass.name === "photoCredits"),
+    hyphenFragments: passes.some((pass) => pass.name === "hyphenFragments"),
+    divisionLabels: passes.some((pass) => pass.name === "divisionLabels"),
+    speakerTurns: passes.some((pass) => pass.name === "speakerTurns"),
     footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
     footnoteRestarts: passes.some((pass) => pass.name === "footnoteRestarts"),
+    thumbIndexNotes: passes.some((pass) => pass.name === "thumbIndexNotes"),
     sequencedNoteOpenings: passes.some((pass) => pass.name === "sequencedNoteOpenings"),
     footnoteNumbers: (passes.find((pass) => pass.name === "footnoteNumbers") as { numbers?: "period" | "tabbed" } | undefined)
       ?.numbers,

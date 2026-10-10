@@ -625,6 +625,19 @@ export const footnoteGap = (): PagePass => ({ name: "footnoteGap", stage: "page"
 export const footnoteRestarts = (): PagePass => ({ name: "footnoteRestarts", stage: "page" });
 
 /**
+ * A thumb index: the Part's letter (A-L) printed at the page edge, which
+ * `pdftotext -layout` sets at column 0 of whatever line it sits beside. Beside
+ * a note's number ("I   70", "K   3   p4, http://…") the line is no note
+ * opening, so the note is read as the tail of the note above and its marker
+ * stays bare: 17 of Leveson's notes (reportsthatmatter-qai, -u00i). With this
+ * pass a capital A-L at the line's start, then a gap, then a number alone or
+ * before another gap, is blanked before the page's note block is found. Only
+ * that shape: a body line opening "I  think" or "A  further" in justified
+ * text keeps its word. Opt-in, for a report that prints a thumb index.
+ */
+export const thumbIndexNotes = (): PagePass => ({ name: "thumbIndexNotes", stage: "page" });
+
+/**
  * A page-foot note opens on the next note's number whatever its text opens on
  * (reportsthatmatter-qsfc, kgpr). A note's opening line is read by its shape,
  * a number then a letter or a quotation mark, so a note whose text opens on a
@@ -1288,3 +1301,37 @@ export const strandedMarkers = (): BodyPass => ({
     return out;
   },
 });
+
+/**
+ * Closes the line-end hyphens the document's vocabulary cannot decide (reportsthatmatter-pt6, g3h).
+ * `rejoinHyphenated` joins "re- cords" when the report writes "records" elsewhere and keeps "well-
+ * known" when it writes that; a word it writes only here ("indel- ible", "constitu- ents", "Hamp-
+ * ton") stayed broken, 161 of them in Columbia and 169 in Challenger. With this pass a break whose
+ * head is no word of the document's own ("indel" is not) is the typesetter's and is closed; a head
+ * that is a word ("mid- to", "million- pounds") or a short head before a word ("in- tends") keeps
+ * the hyphen, as does a tail of one or two letters.
+ *
+ * Opt-in: a report whose source breaks words at the line end declares it.
+ */
+export const hyphenFragments = (): PagePass => ({ name: "hyphenFragments", stage: "page" });
+
+/**
+ * A line that is only a division label, "Findings", "Recommendations:", "Issue 3", is a level-4 heading
+ * (reportsthatmatter-liv). The committees that wrote Challenger and Columbia set one over each run of
+ * findings and recommendations; left as paragraphs, each took a paragraph id of its own and counted as
+ * furniture (Challenger 29 after its vision pages, Columbia 50). A trailing colon is dropped from the heading.
+ *
+ * Opt-in: only where a lone "Issue" or "Findings" line is never anything else.
+ */
+export const divisionLabels = (): PagePass => ({ name: "divisionLabels", stage: "page" });
+
+/**
+ * A transcript's speaker turn that wraps ("Flight: “And there's no commonality between all these tire" /
+ * "        pressure instrumentations and the hydraulic return instrumentations.”") keeps its wrapped lines
+ * (reportsthatmatter-98u). Set under the opening quotation mark, they sat further in than the body and
+ * read as a block quotation cut from the turn's first line, 6 of them on one page of Columbia's
+ * Mission Control exchange. The wrap is held to the turn; consecutive turns stay one paragraph.
+ *
+ * Opt-in: a line that opens "Label: “" is also a heading's lead-in or a quotation's attribution elsewhere.
+ */
+export const speakerTurns = (): PagePass => ({ name: "speakerTurns", stage: "page" });
