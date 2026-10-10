@@ -43,11 +43,11 @@ export {
   numberedFindings,
   doubleSpaced,
   contentsOutline,
+  noteFaceRunOver,
   listedDivisions,
   wrappedHeadings,
   pageBreakContinuations,
   citationRunOver,
-  noteFaceRunOver,
   holdNoteSequence,
   footnoteResets,
   romanFolios,
@@ -86,7 +86,9 @@ export type {
   TypographicHeadingsPass,
   PageHeadFoliosPass,
   PageBreakContinuationsPass,
+  ContentsOutlinePass,
   BodyPass,
+  SourcePass,
   VolumePass,
   GeometryPass,
   QuoteInsetPass,
@@ -228,3 +230,4 @@ export type { PublishFile, Manifest } from "./publish";
 export { markPrintedNumbers } from "./printed-numbers";
 export { strayFolios, folioReport } from "./folios";
 export type { FolioRead, FolioRow, FolioPage, FolioRun, FolioReport, FolioSource } from "./folios";
+export { UNCODED_REDACTION, REDACTION_MARKER } from "./redactions";

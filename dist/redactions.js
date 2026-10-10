@@ -50,8 +50,14 @@ export function exemptionCodes(run) {
 }
 /** The marker a box label is replaced with. */
 export const redactionMarker = (codes) => `[Redacted: ${codes.join(", ")}]`;
-/** Matches a marker this pass wrote, for the fidelity check (the word "Redacted" is ours, the codes the PDF's). */
-export const REDACTION_MARKER = /\[Redacted: (?=\(b\))/g;
+/**
+ * The marker for a box that prints no exemption code (a declassified report's black boxes, the Senate
+ * Intelligence Committee study; reportsthatmatter-gqsy.6). A report writes it from its own source
+ * pass; this library only knows its shape. Distinct by case from a report's own printed "[REDACTED]".
+ */
+export const UNCODED_REDACTION = "[Redacted]";
+/** Matches a marker written for a box, for the fidelity check (the word "Redacted" is ours, any codes the PDF's). */
+export const REDACTION_MARKER = /\[Redacted(?:: (?=\(b\))|(?=\]))/g;
 /**
  * Rewrites one line of a page: margin labels out, box labels as `[Redacted: …]`. A box label is a
  * run of codes; a "box" holding only codes that a margin label also matched is gone with it, so a

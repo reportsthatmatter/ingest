@@ -3,6 +3,7 @@ import type {
   GeometryPass,
   VolumePass,
   BodyPass,
+  SourcePass,
   QuoteInsetPass,
   AllCapsHeadingsPass,
   NumberedHeadingsPass,
@@ -84,6 +85,8 @@ export type ResolvedPasses = {
   contentsOutlineScanned?: boolean;
   /** `contentsOutline({ centredMinor: true })`: a centred heading the outline does not number is a level-4 subhead. */
   contentsOutlineCentredMinor?: boolean;
+  /** `contentsOutline({ ocr: true })`: the contents and the body are an OCR layer; matched by edit distance, in order. */
+  contentsOutlineOcr?: boolean;
   listedDivisions?: boolean;
   wrappedHeadings?: boolean;
   pageBreakContinuations?: boolean;
@@ -128,6 +131,8 @@ export type ResolvedPasses = {
   numberedHeadings?: boolean;
   bodyPasses: BodyPass[];
   volumePasses: VolumePass[];
+  /** Passes over each page's raw lines, before the page is split (`SourcePass`). In declared order. */
+  sourcePasses?: SourcePass[];
   /**
    * `cleanEdition`: the report's text and structure come from a clean edition;
    * the PDF passes still run, as the shadow ingest that supplies printed pages.
@@ -321,6 +326,8 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     contentsOutline: passes.some((pass) => pass.name === "contentsOutline"),
     contentsOutlineScanned: passes.some((pass) => pass.name === "contentsOutline" && (pass as { scanned?: boolean }).scanned === true),
     contentsOutlineCentredMinor: passes.some((pass) => pass.name === "contentsOutline" && (pass as { centredMinor?: boolean }).centredMinor === true),
+    noteFaceRunOver: passes.some((pass) => pass.name === "noteFaceRunOver"),
+    contentsOutlineOcr: passes.some((pass) => pass.name === "contentsOutline" && (pass as { ocr?: boolean }).ocr === true),
     listedDivisions: passes.some((pass) => pass.name === "listedDivisions"),
     wrappedHeadings: passes.some((pass) => pass.name === "wrappedHeadings"),
     pageBreakContinuations: passes.some((pass) => pass.name === "pageBreakContinuations"),
@@ -328,7 +335,6 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
       (pass) => pass.name === "pageBreakContinuations" && "quoteTails" in pass && pass.quoteTails === true
     ),
     citationRunOver: passes.some((pass) => pass.name === "citationRunOver"),
-    noteFaceRunOver: passes.some((pass) => pass.name === "noteFaceRunOver"),
     holdNoteSequence: passes.some((pass) => pass.name === "holdNoteSequence"),
     footnoteResets: passes.find((pass): pass is FootnoteResetsPass => pass.name === "footnoteResets")?.at,
     romanFolios: passes.some((pass) => pass.name === "romanFolios"),
@@ -362,6 +368,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
         (pass): pass is NumberedHeadingsPass => pass.stage === "numberedHeadings"
       )?.enabled ?? true,
     bodyPasses: passes.filter((pass): pass is BodyPass => pass.stage === "body"),
+    sourcePasses: passes.filter((pass): pass is SourcePass => pass.stage === "source"),
     volumePasses: passes.filter((pass): pass is VolumePass => pass.stage === "volume"),
     edition: passes.find((pass): pass is EditionPass => pass.stage === "edition"),
     vision: passes.find((pass): pass is VisionStructurePass => pass.stage === "vision"),

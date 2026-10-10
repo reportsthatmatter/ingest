@@ -28,6 +28,23 @@ export type BodyPass = {
     readonly stage: "body";
     run(lines: string[], context?: PipelineContext, at?: Provenance): string[];
 };
+/**
+ * A pass that rewrites a page's lines as the text layer gives them, before anything else reads the
+ * page: before its folio, its notes and its furniture are taken off. For what only the report knows
+ * about its own pages and the text layer cannot show, read from a committed, checksummed file (the
+ * Senate Intelligence Committee study's redaction boxes, found on the page images). A report writes
+ * its own; the library only runs it. It sees the raw `pdftotext -layout` lines and where they are
+ * (volume, PDF page), and returns the page's lines. The fidelity checks still compare the output
+ * with the text layer as extracted, so a source pass that drops words shows in them.
+ */
+export type SourcePass = {
+    readonly name: string;
+    readonly stage: "source";
+    run(lines: string[], at: {
+        volume: number;
+        pdfIndex: number;
+    }, context?: PipelineContext): string[];
+};
 /** `pageBreakContinuations`, with the Leveson quotation-tail mode. */
 export type PageBreakContinuationsPass = {
     readonly name: "pageBreakContinuations";
@@ -104,7 +121,7 @@ export type PageHeadFoliosPass = {
     readonly stage: "page";
     readonly options: PageHeadFolio;
 };
-export type Pass = FootnoteResetsPass | PageHeadFoliosPass | EditionPass | VisionStructurePass | TypographicHeadingsPass | NumberedHeadingsPass | LayoutMarkersPass | PageBreakContinuationsPass | LayoutPageJoinsPass | PagePass | BodyPass | VolumePass | GeometryPass | QuoteInsetPass | AllCapsHeadingsPass;
+export type Pass = FootnoteResetsPass | PageHeadFoliosPass | EditionPass | VisionStructurePass | TypographicHeadingsPass | NumberedHeadingsPass | LayoutMarkersPass | PageBreakContinuationsPass | LayoutPageJoinsPass | PagePass | BodyPass | SourcePass | VolumePass | GeometryPass | QuoteInsetPass | AllCapsHeadingsPass;
 /**
  * Takes the printed page number off each page. These documents are cited by
  * page ("Report at 62"), so the printed number is the citation unit readers
@@ -780,13 +797,17 @@ export declare const wrappedHeadings: () => PagePass;
  * "Conclusion" stood as a section of its own beside the report's "IV. CONCLUSION"). Philip Morris's centred
  * "FINDINGS OF FACT" is a top-level heading, which is why it is an option.
  */
+/** `contentsOutline`, with its options. */
+export type ContentsOutlinePass = PagePass & {
+    readonly scanned?: true;
+    readonly centredMinor?: true;
+    readonly ocr?: true;
+};
 export declare const contentsOutline: (options?: {
     scanned?: boolean;
     centredMinor?: boolean;
-}) => PagePass & {
-    scanned?: boolean;
-    centredMinor?: boolean;
-};
+    ocr?: boolean;
+}) => ContentsOutlinePass;
 /**
  * Rejoins a sentence the page break left in pieces (reportsthatmatter-ca3,
  * reportsthatmatter-kb4; jack-smith-report#1).

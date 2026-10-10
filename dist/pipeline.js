@@ -93,6 +93,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     // order the volumes were given in — and that order is semantic: footnote
     // numbering and page indices run continuously across them.
     const allPages = pageGroups.flatMap((group, groupIndex) => group.map((page) => ({ ...page, volume: groupIndex + 1 }))).map((page, i) => ({ ...page, index: i + 1 }));
+    // The fidelity checks compare the output with the text layer as extracted, before any rewriting.
     const sourceText = allPages.map((page) => page.lines.join("\n")).join("\n");
     // `foiaRedactions`: every line of the page, notes included, before it is split (src/redactions.ts).
     const redactions = resolved.foiaRedactions ? { boxes: 0, margin: 0 } : undefined;
@@ -101,6 +102,9 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         // `asteriskBreaks`: a "* * *" section break is a block of its own.
         if (resolved.asteriskBreaks)
             lines = separateAsterisks(lines);
+        // `SourcePass`: the report's own passes over the page's lines, before the page is split.
+        for (const pass of resolved.sourcePasses ?? [])
+            lines = pass.run(lines, { volume: page.volume, pdfIndex: page.pdfIndex }, context);
         return lines === page.lines ? page : { ...page, lines };
     });
     const footnotes = [];
@@ -292,7 +296,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     // `numberedFindings`: the finding number expected next, across pages.
     const findings = resolved.numberedFindings ? { next: 1 } : undefined;
     // `contentsOutline`: the headings the contents lists, learnt as it goes by.
-    const outline = resolved.contentsOutline ? emptyOutline(resolved.contentsOutlineScanned, resolved.contentsOutlineCentredMinor) : undefined;
+    const outline = resolved.contentsOutline ? emptyOutline(resolved.contentsOutlineScanned, resolved.contentsOutlineCentredMinor, resolved.contentsOutlineOcr) : undefined;
     // `listedDivisions`: the parts, chapters and appendices the contents lists.
     const divisions = { entries: [], used: new Set() };
     // `visionStructure`: a vision model's verified block structure, page by page (vision/hybrid.ts).
@@ -334,7 +338,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
                 ? divisions
                 : undefined;
             const at = { volume: split.volume, pdfIndex: split.pdfIndex, printed: split.printed };
-            const outlineEntries = outline ? readContentsOutline(pageLines) : [];
+            const outlineEntries = outline ? readContentsOutline(pageLines, resolved.contentsOutlineOcr) : [];
             if (outline)
                 learnOutline(outline, outlineEntries);
             if (outline?.centredMinor && outlineEntries.length)
