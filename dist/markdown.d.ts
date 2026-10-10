@@ -32,6 +32,16 @@ export declare const PARAGRAPH_ID_CHARS = "[\\p{L}\\p{N}-]+";
  */
 export declare function paragraphId(text: string, taken: Set<string>): string;
 /**
+ * Whether linkified text (`two.ls`, `www.levesoninquiry`, `http://www`,
+ * `org.uk/wp-content/...`) reads as a URL rather than an OCR fragment
+ * (reportsthatmatter-y960). Explicit `http(s)://` and `www.` are trusted as
+ * intent, but the host must still be a domain: dotted, ending in a real-looking
+ * TLD, not a bare public suffix. A schemeless candidate must also end in a
+ * common TLD, because two-letter country codes are exactly what garbled words
+ * and dropped-space sentence boundaries produce (`broke in two.ls`).
+ */
+export declare function isPlausibleUrl(text: string): boolean;
+/**
  * Renders report markdown to HTML.
  *
  * Top-level paragraphs get a text-derived id and a permalink anchor. Page

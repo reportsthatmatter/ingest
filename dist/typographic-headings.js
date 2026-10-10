@@ -1,4 +1,6 @@
 import { foldForMatch } from "./markers.js";
+/** A block that ends a sentence (or opens a list: a colon). */
+const SENTENCE_STOP = /[.!?:;][”’'")\]]*\s*$|[”"]\s*$/;
 const SENTENCE_END = /[.,;:]$|[.,;:][”’'")\]]$/;
 /** A bare number or paragraph label ("2.4.20", "(b)"): never a heading. */
 const LABEL_ONLY = /^\s*(?:\(?\d{1,4}(?:\.\d{1,4})*[.)]?|\(?[a-z][.)]|[ivxlc]{1,5}[.)]|[•·▪–-])\s*$/i;
@@ -130,14 +132,14 @@ export function applyTypographicHeadings(blocks, layout, options = {}) {
             j++;
         const pageBlocks = blocks.slice(i, j);
         const todo = byPage.get(key);
-        out.push(...cutPage(pageBlocks, todo, stats, Boolean(options.relevel && options.faces), Boolean(options.skipRunIns)));
+        out.push(...cutPage(pageBlocks, todo, stats, Boolean(options.relevel && options.faces), Boolean(options.quotedRemainder)));
         i = j;
     }
     blocks.splice(0, blocks.length, ...out);
     return stats;
 }
 const alnum = (s) => squash(s).text.replace(/[^\p{L}\p{N}]/gu, "");
-function cutPage(pageBlocks, todo, stats, relevel = false, skipRunIns = false) {
+function cutPage(pageBlocks, todo, stats, relevel = false, quotedRemainder = false) {
     let units = pageBlocks;
     let from = 0; // blocks before this index are done: headings run in reading order
     for (const h of todo) {
@@ -181,10 +183,6 @@ function cutPage(pageBlocks, todo, stats, relevel = false, skipRunIns = false) {
                 const wordEnd = end >= block.text.length || /^\s/.test(block.text.slice(end));
                 if (boundary && wordEnd) {
                     const after = block.text.slice(end).trimStart();
-                    if (skipRunIns && /^\p{Ll}/u.test(after)) {
-                        at = hay.text.indexOf(want, at + 1);
-                        continue;
-                    }
                     const pieces = [];
                     const { text: _t, ...rest } = block;
                     if (before)
@@ -192,9 +190,12 @@ function cutPage(pageBlocks, todo, stats, relevel = false, skipRunIns = false) {
                     // (the heading's words as the text reading spelt them, quotation marks and all: not the layout's)
                     const title = block.text.slice(start, end).replace(/\s+/g, " ").trim();
                     pieces.push({ kind: "heading", level: h.level, text: title, layoutHeading: true, ...(block.at ? { at: block.at } : {}), ...(block.source ? { source: block.source } : {}) });
+                    // (a quotation the heading opened, stopping short of a sentence's end, is the first lines of the paragraph below)
+                    const next = units[k + 1];
+                    const runsOn = quotedRemainder && block.kind === "quote" && !before && after && !SENTENCE_STOP.test(after) && next?.kind === "paragraph";
                     if (after)
-                        pieces.push({ ...rest, kind: block.kind, text: after });
-                    units = [...units.slice(0, k), ...pieces, ...units.slice(k + 1)];
+                        pieces.push(runsOn ? { ...next, kind: "paragraph", text: `${after} ${next.text}` } : { ...rest, kind: block.kind, text: after });
+                    units = [...units.slice(0, k), ...pieces, ...units.slice(k + (runsOn ? 2 : 1))];
                     from = k + pieces.length - (after ? 1 : 0);
                     stats.split++;
                     stats.added.push({ volume: h.volume, pdfIndex: h.pdfIndex, level: h.level, text: title, before: before.slice(-40), after: after.slice(0, 40) });

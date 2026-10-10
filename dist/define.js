@@ -56,13 +56,13 @@ export function pipeline(def) {
 export const KNOWN_PAGE_PASSES = new Set([
     "chapterContents", "citationRunOver", "contentsEntries", "contentsOutline", "doubleSpaced",
     "endnotes", "escapeLeadingHash", "escapeNumberedParagraphs", "flushFootnoteMarkers",
-    "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteRestarts", "divisionLabels", "hangingIndents", "hyphenFragments",
+    "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteResets", "footnoteRestarts", "hangingIndents", "holdNoteSequence",
     "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "letteredItems", "listedDivisions", "listedHeadings",
-    "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
+    "noteFaceRunOver", "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
     "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
     "printedPageNumber", "quoteListRunOns", "quoteRunOn", "recoverListedHeadings", "romanFolios",
     "sequencedNoteOpenings", "shiftedPages", "shortSubheads", "typographicHeadings", "unlistedHeadingsMinor",
-    "speakerTurns", "unmarkedHeadings", "wrappedHeadings",
+    "unmarkedHeadings", "wrappedHeadings",
 ]);
 /**
  * Reads a definition's passes into the shape the executor wants.
@@ -115,15 +115,15 @@ export function resolvePasses(def) {
         pageBreakContinuations: passes.some((pass) => pass.name === "pageBreakContinuations"),
         pageBreakQuoteTails: passes.some((pass) => pass.name === "pageBreakContinuations" && "quoteTails" in pass && pass.quoteTails === true),
         citationRunOver: passes.some((pass) => pass.name === "citationRunOver"),
+        noteFaceRunOver: passes.some((pass) => pass.name === "noteFaceRunOver"),
+        holdNoteSequence: passes.some((pass) => pass.name === "holdNoteSequence"),
+        footnoteResets: passes.find((pass) => pass.name === "footnoteResets")?.at,
         romanFolios: passes.some((pass) => pass.name === "romanFolios"),
         parenFolios: passes.some((pass) => pass.name === "parenFolios"),
         pageHeadFolios: passes.find((pass) => pass.name === "pageHeadFolios")?.options ?? undefined,
         foliosInStep: passes.some((pass) => pass.name === "foliosInStep"),
         numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),
         photoCredits: passes.some((pass) => pass.name === "photoCredits"),
-        hyphenFragments: passes.some((pass) => pass.name === "hyphenFragments"),
-        divisionLabels: passes.some((pass) => pass.name === "divisionLabels"),
-        speakerTurns: passes.some((pass) => pass.name === "speakerTurns"),
         footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
         footnoteRestarts: passes.some((pass) => pass.name === "footnoteRestarts"),
         sequencedNoteOpenings: passes.some((pass) => pass.name === "sequencedNoteOpenings"),
@@ -145,6 +145,7 @@ function layoutPageJoinsOf(passes) {
         return undefined;
     return {
         ...(pass.scanned ? { scanned: true } : {}),
+        ...(pass.numberedBody ? { numberedBody: true } : {}),
         ...(pass.referee ? { referee: pass.referee } : {}),
         ...(pass.refer ? { refer: pass.refer } : {}),
     };

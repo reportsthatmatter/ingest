@@ -1,0 +1,39 @@
+# Pull-request checks (reportsthatmatter-jsk3). The one that matters most for a release: dist/ is committed and is what
+# the site installs, so a PR whose src/ changes without the rebuilt dist/ makes `pnpm release` refuse after the merge
+# (it happened at v0.14.1, v0.15.0 and v0.19.0). `pnpm check-dist` rebuilds and fails on any diff in dist/.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # tests/poppler.test.ts reads the version from a real pdftotext (and layout tests use pdftohtml when present).
+      - name: poppler
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils && pdftotext -v
+
+      - name: dist/ is current
+        run: |
+          pnpm check-dist || { echo "::error::dist/ is behind src/. Run 'pnpm build' and commit dist/ in this PR."; exit 1; }
+
+      - run: pnpm typecheck
+
+      - run: pnpm test

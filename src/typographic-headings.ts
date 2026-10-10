@@ -62,6 +62,16 @@ export type TypographicHeadingsOptions = {
    */
   relevel?: boolean;
   /**
+   * A heading set at the head of a block the text reading made a quotation (its bold, inset first line
+   * opens one) leaves the paragraph below it as a quotation of one or two lines and the rest of the
+   * paragraph as a block of its own, cut where the quotation's lines stop: PSI's "(3) Examination
+   * Process" (PDF p.174) and the ~30 subheads like it. With this the remainder joins the paragraph
+   * that follows it when it stops short of a sentence's end (reportsthatmatter-bi5), and is a paragraph.
+   * Opt-in: a quotation that really follows a heading would stop at a sentence's end, but the reading
+   * is the layout's, so the report that has checked it declares it. Default false.
+   */
+  quotedRemainder?: boolean;
+  /**
    * A face line that opens a block whose rest begins in lower case is a bold lead-in to a sentence, not a
    * heading ("The Launch Readiness Review is conducted within one" / "month of the launch…"): leave it
    * in the paragraph. Columbia sets some paragraphs' first line in its subheading face. Default false.
@@ -87,6 +97,8 @@ export type TypographicHeadingStats = {
   added: Array<{ volume: number; pdfIndex: number; level: number; text: string; before: string; after: string }>;
 };
 
+/** A block that ends a sentence (or opens a list: a colon). */
+const SENTENCE_STOP = /[.!?:;][”’'")\]]*\s*$|[”"]\s*$/;
 const SENTENCE_END = /[.,;:]$|[.,;:][”’'")\]]$/;
 /** A bare number or paragraph label ("2.4.20", "(b)"): never a heading. */
 const LABEL_ONLY = /^\s*(?:\(?\d{1,4}(?:\.\d{1,4})*[.)]?|\(?[a-z][.)]|[ivxlc]{1,5}[.)]|[•·▪–-])\s*$/i;
@@ -94,7 +106,7 @@ const LABEL_ONLY = /^\s*(?:\(?\d{1,4}(?:\.\d{1,4})*[.)]?|\(?[a-z][.)]|[ivxlc]{1,
 type Heading = { volume: number; pdfIndex: number; text: string; level: number };
 
 /** A heading line's candidacy, before the face's recurrence is known. */
-function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "skipRunIns">> & { sizes?: number[]; faces?: string[][] }): boolean {
+function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns">> & { sizes?: number[]; faces?: string[][] }): boolean {
   const text = line.text.trim();
   if (!text || text.length > o.maxChars) return false;
   if (o.faces) return o.faces.some((level) => level.includes(line.font)) && !LABEL_ONLY.test(text) && /\p{L}/u.test(text) && !SENTENCE_END.test(text);
@@ -114,7 +126,7 @@ const faceSize = (face: string) => Number(face.split("|")[1]) || 0;
  * Exported for the tests.
  */
 export function layoutHeadings(layout: Layout, options: TypographicHeadingsOptions = {}): { headings: Heading[]; faces: TypographicHeadingStats["faces"] } {
-  const o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "skipRunIns">> & { sizes?: number[]; faces?: string[][] } = {
+  const o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns">> & { sizes?: number[]; faces?: string[][] } = {
     firstLevel: options.firstLevel ?? 2,
     ...(options.sizes ? { sizes: options.sizes } : {}),
     ...(options.faces ? { faces: options.faces } : {}),
@@ -219,7 +231,7 @@ export function applyTypographicHeadings(blocks: Block[], layout: Layout, option
     while (j < blocks.length && pageOf(blocks[j]) === key) j++;
     const pageBlocks = blocks.slice(i, j);
     const todo = byPage.get(key)!;
-    out.push(...cutPage(pageBlocks, todo, stats, Boolean(options.relevel && options.faces), Boolean(options.skipRunIns)));
+    out.push(...cutPage(pageBlocks, todo, stats, Boolean(options.relevel && options.faces), Boolean(options.quotedRemainder), Boolean(options.skipRunIns)));
     i = j;
   }
   blocks.splice(0, blocks.length, ...out);
@@ -228,7 +240,7 @@ export function applyTypographicHeadings(blocks: Block[], layout: Layout, option
 
 const alnum = (s: string) => squash(s).text.replace(/[^\p{L}\p{N}]/gu, "");
 
-function cutPage(pageBlocks: Block[], todo: Heading[], stats: TypographicHeadingStats, relevel = false, skipRunIns = false): Block[] {
+function cutPage(pageBlocks: Block[], todo: Heading[], stats: TypographicHeadingStats, relevel = false, quotedRemainder = false, skipRunIns = false): Block[] {
   let units = pageBlocks;
   let from = 0; // blocks before this index are done: headings run in reading order
   for (const h of todo) {
@@ -281,8 +293,11 @@ function cutPage(pageBlocks: Block[], todo: Heading[], stats: TypographicHeading
           // (the heading's words as the text reading spelt them, quotation marks and all: not the layout's)
           const title = block.text.slice(start, end).replace(/\s+/g, " ").trim();
           pieces.push({ kind: "heading", level: h.level, text: title, layoutHeading: true, ...(block.at ? { at: block.at } : {}), ...(block.source ? { source: block.source } : {}) } as Block);
-          if (after) pieces.push({ ...rest, kind: block.kind, text: after } as Block);
-          units = [...units.slice(0, k), ...pieces, ...units.slice(k + 1)];
+          // (a quotation the heading opened, stopping short of a sentence's end, is the first lines of the paragraph below)
+          const next = units[k + 1];
+          const runsOn = quotedRemainder && block.kind === "quote" && !before && after && !SENTENCE_STOP.test(after) && next?.kind === "paragraph";
+          if (after) pieces.push(runsOn ? ({ ...(next as Block), kind: "paragraph", text: `${after} ${(next as { text: string }).text}` } as Block) : ({ ...rest, kind: block.kind, text: after } as Block));
+          units = [...units.slice(0, k), ...pieces, ...units.slice(k + (runsOn ? 2 : 1))];
           from = k + pieces.length - (after ? 1 : 0);
           stats.split++;
           stats.added.push({ volume: h.volume, pdfIndex: h.pdfIndex, level: h.level, text: title, before: before.slice(-40), after: after.slice(0, 40) });

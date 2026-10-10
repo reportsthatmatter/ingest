@@ -11,7 +11,7 @@
  */
 // — What a report declares —
 export { pipeline, resolvePasses } from "./define.js";
-export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, escapeNumberedParagraphs, escapeLeadingHash, paragraphNotes, chapterContents, listedHeadings, unlistedHeadingsMinor, hangingIndents, letteredItems, numberedOpenings, unmarkedHeadings, recoverListedHeadings, endnotes, layoutEndnotes, numberedSections, contentsEntries, shortSubheads, shiftedPages, quoteRunOn, quoteListRunOns, layoutPageJoins, layoutMarkers, typographicHeadings, numberedFindings, doubleSpaced, contentsOutline, listedDivisions, wrappedHeadings, pageBreakContinuations, citationRunOver, romanFolios, parenFolios, pageHeadFolios, foliosInStep, numberedOutsideTables, photoCredits, hyphenFragments, divisionLabels, speakerTurns, footnoteGap, footnoteRestarts, strandedMarkers, sequencedNoteOpenings, footnoteNumbers, pdfPageNumbers, runningFurniture, furnitureFaces, figureFaces, geometry, columns, quoteInset, allCapsHeadings, numberedHeadings, } from "./passes.js";
+export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, escapeNumberedParagraphs, escapeLeadingHash, paragraphNotes, chapterContents, listedHeadings, unlistedHeadingsMinor, hangingIndents, letteredItems, numberedOpenings, unmarkedHeadings, recoverListedHeadings, endnotes, layoutEndnotes, numberedSections, contentsEntries, shortSubheads, shiftedPages, quoteRunOn, quoteListRunOns, layoutPageJoins, layoutMarkers, typographicHeadings, numberedFindings, doubleSpaced, contentsOutline, listedDivisions, wrappedHeadings, pageBreakContinuations, citationRunOver, noteFaceRunOver, holdNoteSequence, footnoteResets, romanFolios, parenFolios, pageHeadFolios, foliosInStep, numberedOutsideTables, photoCredits, footnoteGap, footnoteRestarts, strandedMarkers, sequencedNoteOpenings, footnoteNumbers, pdfPageNumbers, runningFurniture, furnitureFaces, figureFaces, geometry, columns, quoteInset, allCapsHeadings, numberedHeadings, } from "./passes.js";
 export { detectGutter, splitColumns } from "./columns.js";
 // — A clean edition as the source (the hybrid mode, edition.ts) —
 export { cleanEdition, inlineMarkdown, inlineText, escapeInline, assembleEdition, fillGaps } from "./edition.js";
@@ -45,7 +45,7 @@ export { renderPage, draftGolden, pageFixture, pageBlocks, pageFootnotes } from 
 export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler.js";
 // — Human corrections —
 export { parseCorrections, parseDismissals, applyCorrections, correctionVocabulary, } from "./corrections.js";
-export { rejoinHyphenated, vocabulary, wholeWords } from "./hyphens.js";
+export { rejoinHyphenated, vocabulary } from "./hyphens.js";
 // — Building a bespoke pass —
 export { takePrintedNumber, splitFootnoteBlock, bodyIndent } from "./passes.js";
 export { linkFlushMarkers, linkInlineMarkers } from "./footnotes.js";

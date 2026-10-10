@@ -206,6 +206,27 @@ describe("the pass", () => {
     expect(resolvePasses(def).typographicHeadings).toEqual({ firstLevel: 3 });
     expect(resolvePasses(pipeline({ id: "t", title: "T", repo: ".", volumes: [{ path: "a.pdf" }], passes: [] })).typographicHeadings).toBeUndefined();
   });
+
+  it("quotedRemainder: a heading opening a quotation leaves the paragraph below it whole, not a quotation and a stump (PSI p.174)", () => {
+    const quoted = (): Block[] => [
+      { kind: "quote", text: "What happened after 3pm Lack of recognition of the seriousness of the crush, which the", at: at(1) },
+      para("police continued to treat as disorder after 3pm.", 1),
+      { kind: "quote", text: "What happened after 3pm \"A real quotation\".", at: at(1) },
+      para("Next paragraph.", 1),
+    ];
+    const plain = quoted();
+    applyTypographicHeadings(plain, layout, { firstLevel: 3, minLines: 3 });
+    expect(plain.map((x) => x.kind)).toEqual(["heading", "quote", "paragraph", "quote", "paragraph"].slice(0, plain.length));
+    const joined = quoted();
+    applyTypographicHeadings(joined, layout, { firstLevel: 3, minLines: 3, quotedRemainder: true });
+    expect(joined.map((x) => [x.kind, "text" in x ? x.text.slice(0, 30) : ""])).toEqual([
+      ["heading", "What happened after 3pm"],
+      ["paragraph", "Lack of recognition of the ser"],
+      ["quote", "What happened after 3pm \"A rea"],
+      ["paragraph", "Next paragraph."],
+    ]);
+    expect((joined[1] as { text: string }).text).toBe("Lack of recognition of the seriousness of the crush, which the police continued to treat as disorder after 3pm.");
+  });
 });
 
 describe("skipRunIns (wck)", () => {

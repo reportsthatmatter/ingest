@@ -11,7 +11,7 @@
  */
 export { pipeline, resolvePasses } from "./define.js";
 export type { PipelineDef, Volume, ResolvedPasses } from "./define.js";
-export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, escapeNumberedParagraphs, escapeLeadingHash, paragraphNotes, chapterContents, listedHeadings, unlistedHeadingsMinor, hangingIndents, letteredItems, numberedOpenings, unmarkedHeadings, recoverListedHeadings, endnotes, layoutEndnotes, numberedSections, contentsEntries, shortSubheads, shiftedPages, quoteRunOn, quoteListRunOns, layoutPageJoins, layoutMarkers, typographicHeadings, numberedFindings, doubleSpaced, contentsOutline, listedDivisions, wrappedHeadings, pageBreakContinuations, citationRunOver, romanFolios, parenFolios, pageHeadFolios, foliosInStep, numberedOutsideTables, photoCredits, hyphenFragments, divisionLabels, speakerTurns, footnoteGap, footnoteRestarts, strandedMarkers, sequencedNoteOpenings, footnoteNumbers, pdfPageNumbers, runningFurniture, furnitureFaces, figureFaces, geometry, columns, quoteInset, allCapsHeadings, numberedHeadings, } from "./passes.js";
+export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, escapeNumberedParagraphs, escapeLeadingHash, paragraphNotes, chapterContents, listedHeadings, unlistedHeadingsMinor, hangingIndents, letteredItems, numberedOpenings, unmarkedHeadings, recoverListedHeadings, endnotes, layoutEndnotes, numberedSections, contentsEntries, shortSubheads, shiftedPages, quoteRunOn, quoteListRunOns, layoutPageJoins, layoutMarkers, typographicHeadings, numberedFindings, doubleSpaced, contentsOutline, listedDivisions, wrappedHeadings, pageBreakContinuations, citationRunOver, noteFaceRunOver, holdNoteSequence, footnoteResets, romanFolios, parenFolios, pageHeadFolios, foliosInStep, numberedOutsideTables, photoCredits, footnoteGap, footnoteRestarts, strandedMarkers, sequencedNoteOpenings, footnoteNumbers, pdfPageNumbers, runningFurniture, furnitureFaces, figureFaces, geometry, columns, quoteInset, allCapsHeadings, numberedHeadings, } from "./passes.js";
 export type { Pass, PagePass, LayoutPageJoinsPass, LayoutMarkersPass, TypographicHeadingsPass, PageHeadFoliosPass, PageBreakContinuationsPass, BodyPass, VolumePass, GeometryPass, QuoteInsetPass, AllCapsHeadingsPass, NumberedHeadingsPass, } from "./passes.js";
 export { detectGutter, splitColumns } from "./columns.js";
 export { cleanEdition, inlineMarkdown, inlineText, escapeInline, assembleEdition, fillGaps } from "./edition.js";
@@ -62,7 +62,7 @@ export type { Golden, GoldenPage, GoldenBlock, GoldenResult, SignalScore, Assert
 export { renderPage, draftGolden, pageFixture, pageBlocks, pageFootnotes } from "./pageview.js";
 export { EXPECTED_POPPLER, popplerVersion, popplerWarning } from "./poppler.js";
 export { parseCorrections, parseDismissals, applyCorrections, correctionVocabulary, } from "./corrections.js";
-export { rejoinHyphenated, vocabulary, wholeWords } from "./hyphens.js";
+export { rejoinHyphenated, vocabulary } from "./hyphens.js";
 export type { Correction, Dismissal } from "./corrections.js";
 export { takePrintedNumber, splitFootnoteBlock, bodyIndent } from "./passes.js";
 export type { SplitPage } from "./clean.js";

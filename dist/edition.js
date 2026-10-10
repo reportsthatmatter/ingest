@@ -383,8 +383,14 @@ export function assembleEdition(edition, pages, printed, sources, options = {}) 
         if (isNote(c))
             continue;
         const b = fields[clean[c].field].block;
-        if (!blockPage.has(b) && map[c] >= 0)
-            blockPage.set(b, pdf[map[c]].page);
+        if (blockPage.has(b) || map[c] < 0)
+            continue;
+        // a float the PDF prints away from where the edition sets it (a caption at the head of the next page) is
+        // aligned, if at all, by stray common words ("on", "2020") in the text around it: its page is that of the
+        // first run of three words aligned in a row, or else its opening words' (below)
+        if (blocks[b].float && !(map[c + 1] === map[c] + 1 && map[c + 2] === map[c] + 2 && fields[clean[c + 2]?.field]?.block === b))
+            continue;
+        blockPage.set(b, pdf[map[c]].page);
     }
     // a table's rows are placed one by one: the PDF page each row's first aligned word is on, and the
     // first token of each row, so a page that begins inside a table is stamped at its row
@@ -435,7 +441,34 @@ export function assembleEdition(edition, pages, printed, sources, options = {}) 
         if (close.length === 1)
             blockPage.set(b, pdf[close[0]].page);
     }
+    // a paragraph that a float interrupted mid-sentence is served joined (below): head block -> tail block
+    const joins = new Map();
+    for (let b = 0; b < blocks.length; b++) {
+        const block = blocks[b];
+        if (block.kind !== "paragraph" || block.float || !unfinished(block.text))
+            continue;
+        let j = b + 1;
+        while (j < blocks.length && blocks[j].float)
+            j++;
+        const next = blocks[j];
+        if (j > b + 1 && next?.kind === "paragraph" && !next.float)
+            joins.set(b, j);
+    }
+    const inJoin = new Set();
+    for (const [b, j] of joins)
+        for (let k = b + 1; k < j; k++)
+            inJoin.add(k);
     const markersBefore = new Map();
+    /**
+     * Floats served after a page's marker rather than where the edition sets them (reportsthatmatter-bqu0). The rule
+     * for every float: a float is served under the marker of the page the PDF prints it on, and no block follows the
+     * marker of a page later than the one its first word is printed on. The edition sets a photograph's caption
+     * where the HTML put it, often ahead of a paragraph that began on the page before the one the PDF prints the
+     * photograph on (at its head); the page's marker then lands after that paragraph, so the caption read under the
+     * earlier page. Such a float now follows the marker. (Rejoined paragraphs keep their own placement, below.)
+     */
+    const deferred = new Map();
+    const deferredFloats = new Set();
     // markers that fall inside a table: block -> row the page opens at -> pages (the table is cut there)
     const markersInTable = new Map();
     // A page that prints only notes placed among the body (`EditionNote.after`: a chapter's endnotes) has no
@@ -496,6 +529,19 @@ export function assembleEdition(edition, pages, printed, sources, options = {}) 
                     before++;
         }
         before = Math.max(before, lastBefore);
+        // the floats served under the previous marker that the PDF prints on this page (or later) follow this one
+        const moved = [];
+        for (let k = lastBefore; k < before; k++) {
+            if (!blocks[k].float || inJoin.has(k) || deferredFloats.has(k))
+                continue;
+            if ((blockPage.get(k) ?? -1) >= marked[i].p)
+                moved.push(k);
+        }
+        if (moved.length) {
+            deferred.set(marked[i].entry, moved);
+            for (const k of moved)
+                deferredFloats.add(k);
+        }
         lastBefore = before;
         if (!markersBefore.has(before))
             markersBefore.set(before, []);
@@ -628,19 +674,6 @@ export function assembleEdition(edition, pages, printed, sources, options = {}) 
             });
         }
     }
-    // serialise, joining a paragraph that a float interrupted mid-sentence
-    const joins = new Map();
-    for (let b = 0; b < blocks.length; b++) {
-        const block = blocks[b];
-        if (block.kind !== "paragraph" || block.float || !unfinished(block.text))
-            continue;
-        let j = b + 1;
-        while (j < blocks.length && blocks[j].float)
-            j++;
-        const next = blocks[j];
-        if (j > b + 1 && next?.kind === "paragraph" && !next.float)
-            joins.set(b, j);
-    }
     // `floats: "by-notes"`: the joins whose floats read first, by where their notes are numbered
     const floatsFirst = new Set();
     if (options.floats === "by-notes") {
@@ -650,18 +683,37 @@ export function assembleEdition(edition, pages, printed, sources, options = {}) 
             const head = cited(b, b + 1);
             const floats = cited(b + 1, j);
             const tail = cited(j, j + 1);
+            // the same rule as for every float: a page that turns among the floats would put its marker ahead of
+            // the paragraph's head, printed on the page before (reportsthatmatter-smof), so the page order wins
+            let turns = false;
+            for (let k = b + 1; k < j; k++)
+                if (markersBefore.get(k)?.length || deferredFloats.has(k))
+                    turns = true;
+            if (turns)
+                continue;
             if (!head.length && floats.length && tail.length && Math.min(...tail) > Math.max(...floats))
                 floatsFirst.add(b);
         }
     }
     const out = [];
     const order = [];
-    const marker = (p) => (p.occurrence ? `%%page ${p.number}#${p.occurrence}%%` : `%%page ${p.number}%%`);
+    const markerText = (p) => (p.occurrence ? `%%page ${p.number}#${p.occurrence}%%` : `%%page ${p.number}%%`);
+    /** A page's marker, then any floats deferred to it. */
+    const marker = (p) => {
+        const moved = deferred.get(p);
+        if (!moved)
+            return markerText(p);
+        for (const k of moved)
+            order.push({ block: blocks[k], source: k });
+        return [markerText(p), ...moved.map((k) => blockMarkdown(blocks[k]))].join("\n\n");
+    };
     let carried = [];
     for (let b = 0; b < blocks.length; b++) {
         for (const p of [...carried, ...(markersBefore.get(b) ?? [])])
             out.push(marker(p));
         carried = [];
+        if (deferredFloats.has(b))
+            continue;
         const j = joins.get(b);
         const cuts = markersInTable.get(b);
         if (cuts && blocks[b].kind === "table") {
@@ -1115,7 +1167,9 @@ export function fillGaps(edition, pages, shadow) {
 /** Text that stops mid-sentence: no closing punctuation once its note markers and emphasis are off. */
 function unfinished(text) {
     const end = text.replace(/(\[\^[^\]]*\])+$/, "").replace(/[*_]+$/, "").trimEnd();
-    return !/[.?!:;"')\]]$/.test(end) || /[a-z]-$/.test(end);
+    // curly closing quotes and the ellipsis end a sentence too: "…at that time.”[^85-5]" before a caption glued the
+    // next paragraph onto it (January 6th, 41 paragraphs; the 9/11 HTML's quotes are straight)
+    return !/[.?!:;"')\]\u2019\u201d\u2026]$/.test(end) || /[a-z]-$/.test(end);
 }
 /** A paragraph opening that Markdown would read as syntax. */
 function escapeOpening(text) {
