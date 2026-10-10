@@ -105,3 +105,14 @@ export type MarkerNotes =
 export declare function linkLayoutMarkers(blocks: Block[], layout: Layout, notes: MarkerNotes): LayoutMarkerStats;
 export declare function inNoteFace(layout: Layout, volume: number, pdfIndex: number, line: string, otherFamily?: boolean): boolean;
 export declare function pageDefinesNotes(layout: Layout, volume: number, pdfIndex: number, otherFamily?: boolean): boolean;
+/**
+ * `layoutRunOvers` (reportsthatmatter-gqsy.5): the lines at the end of a page's body that are a note's run-over
+ * from the page before, read off the layout. A note too long for its page runs on at the head of the next
+ * page's note block, before that page's first note number; read as text it follows the body after a gap, and
+ * on a single-spaced page nothing tells it from the body's last paragraph (the Mueller report, Volume II p.49:
+ * note 276's tail "of James B. Comey, former Director of the FBI) …" was appended to "…given the applicable",
+ * and the paragraph that runs on at the head of p.50 was cut). The run is taken when it sits below a gap of
+ * two or more blank lines with body text above it, and every line of it is set at least two points smaller
+ * than the body. Returns how many trailing lines (blank lines after it included) are the run-over.
+ */
+export declare function runOverByFace(layout: Layout, volume: number, pdfIndex: number, body: string[]): number;

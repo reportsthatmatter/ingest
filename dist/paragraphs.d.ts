@@ -234,8 +234,14 @@ export type Outline = {
         level: number;
     }>;
     prefixes: Set<string>;
+    /** `contentsOutline({ scanned: true })`: an OCR-misspelt heading matches its entry approximately. */
+    scanned?: boolean;
+    /** `contentsOutline({ centredMinor: true })`: a centred heading the outline does not number is a level-4 subhead. */
+    centredMinor?: boolean;
+    /** The titles of the contents' unlabelled entries ("INTRODUCTION TO VOLUME I …… 1"), by their letters. */
+    unlabelled?: Set<string>;
 };
-export declare function emptyOutline(): Outline;
+export declare function emptyOutline(scanned?: boolean, centredMinor?: boolean): Outline;
 export type OutlineEntry = {
     label: string;
     title: string;
@@ -258,6 +264,12 @@ export declare function readContentsOutline(lines: string[]): OutlineEntry[];
  * ("TABLE OF CONTENTS") stays a heading.
  */
 export declare function outlineContentsBlocks(lines: string[], entries: OutlineEntry[]): Block[];
+/**
+ * `contentsOutline({ centredMinor: true })`: the contents' entries that carry no label, a title then leaders to
+ * a page ("INTRODUCTION TO VOLUME I ......... 1"), on a page read as an outline. Learnt as titles only: they are
+ * not outline entries (nothing in the body is read against them), they only keep their level.
+ */
+export declare function learnUnlabelled(outline: Outline, lines: string[]): void;
 /** Adds a contents page's entries to the outline the body is read against. */
 export declare function learnOutline(outline: Outline, entries: OutlineEntry[]): void;
 /** The next finding number a report numbered throughout expects (`numberedFindings`). */

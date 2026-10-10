@@ -258,3 +258,45 @@ export function pageDefinesNotes(layout, volume, pdfIndex, otherFamily = false) 
     return page.lines.some((l) => l.raised.some((r) => r.offset === 0 && /^\d/.test(r.text)) ||
         (bodySize > 0 && noteFace(l, bodySize, layout.bodyFont.family, otherFamily) && /^\s*\d{1,4}(?:\s|$)/.test(l.text)));
 }
+/**
+ * `layoutRunOvers` (reportsthatmatter-gqsy.5): the lines at the end of a page's body that are a note's run-over
+ * from the page before, read off the layout. A note too long for its page runs on at the head of the next
+ * page's note block, before that page's first note number; read as text it follows the body after a gap, and
+ * on a single-spaced page nothing tells it from the body's last paragraph (the Mueller report, Volume II p.49:
+ * note 276's tail "of James B. Comey, former Director of the FBI) …" was appended to "…given the applicable",
+ * and the paragraph that runs on at the head of p.50 was cut). The run is taken when it sits below a gap of
+ * two or more blank lines with body text above it, and every line of it is set at least two points smaller
+ * than the body. Returns how many trailing lines (blank lines after it included) are the run-over.
+ */
+export function runOverByFace(layout, volume, pdfIndex, body) {
+    const page = layout.page(volume, pdfIndex);
+    if (!page)
+        return 0;
+    const bodySize = Math.max(Number(page.bodyFont.split("|")[1]) || 0, layout.bodyFont.size);
+    if (bodySize <= 0)
+        return 0;
+    let end = body.length;
+    while (end > 0 && !body[end - 1].trim())
+        end--;
+    let top = end;
+    while (top > 0 && body[top - 1].trim())
+        top--;
+    if (top === end)
+        return 0;
+    let gap = 0;
+    while (top - gap - 1 >= 0 && !body[top - gap - 1].trim())
+        gap++;
+    if (gap < 2 || top - gap === 0)
+        return 0;
+    // a note's own opening is not a run-over
+    if (/^\s{0,10}\d{1,4}(?:\s|$)/.test(body[top]))
+        return 0;
+    const key = (text) => text.replace(/\s+/g, "");
+    for (const line of body.slice(top, end)) {
+        const want = key(line);
+        const hit = page.lines.find((l) => key(l.text) === want);
+        if (!hit || hit.size > bodySize - 2)
+            return 0;
+    }
+    return body.length - top;
+}

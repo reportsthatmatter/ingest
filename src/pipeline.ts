@@ -1,3 +1,4 @@
+import { redactPage, separateAsterisks, type RedactionCounts } from "./redactions";
 import { extractPages, normaliseWhitespace, type Page } from "./extract";
 import { splitPage, takePrintedNumber, collapseDoubleSpacing, type SplitPage, type PageHeadFolio } from "./clean";
 import { markPrintedNumbers } from "./printed-numbers";
@@ -25,6 +26,7 @@ import {
   emptyOutline,
   readContentsOutline,
   learnOutline,
+  learnUnlabelled,
   outlineContentsBlocks,
   divisionContents,
   type ListedDivisions,
@@ -45,7 +47,7 @@ import {
 } from "./footnotes";
 import { noteFaceRunOverCount } from "./note-run-over";
 import { applyTypographicHeadings, type TypographicHeadingStats } from "./typographic-headings";
-import { inNoteFace, linkLayoutMarkers, pageDefinesNotes, type LayoutMarkerStats } from "./markers";
+import { inNoteFace, linkLayoutMarkers, pageDefinesNotes, runOverByFace, type LayoutMarkerStats } from "./markers";
 import { LayoutEndnotesReader, chapterOfBlocks } from "./layout-endnotes";
 import { autoFix, findSuspects, rankSuspects, type Suspect } from "./ocr";
 import type { PipelineContext } from "./context";
@@ -92,6 +94,8 @@ export type IngestResult = {
   vision?: VisionReport;
   /** What `typographicHeadings` found and cut out, when the report declares it. */
   typographicHeadings?: TypographicHeadingStats;
+  /** `foiaRedactions`: box labels marked and margin labels taken out. */
+  redactions?: RedactionCounts;
 };
 
 export type Metadata = {
@@ -181,10 +185,18 @@ export function ingestPageGroups(
   // Volume is assigned here because this is the only place that knows the
   // order the volumes were given in — and that order is semantic: footnote
   // numbering and page indices run continuously across them.
-  const pages = pageGroups.flatMap((group, groupIndex) =>
+  const allPages = pageGroups.flatMap((group, groupIndex) =>
     group.map((page) => ({ ...page, volume: groupIndex + 1 }))
   ).map((page, i) => ({ ...page, index: i + 1 }));
-  const sourceText = pages.map((page) => page.lines.join("\n")).join("\n");
+  const sourceText = allPages.map((page) => page.lines.join("\n")).join("\n");
+  // `foiaRedactions`: every line of the page, notes included, before it is split (src/redactions.ts).
+  const redactions: RedactionCounts | undefined = resolved.foiaRedactions ? { boxes: 0, margin: 0 } : undefined;
+  const pages = allPages.map((page) => {
+    let lines = redactions ? redactPage(page.lines, redactions) : page.lines;
+    // `asteriskBreaks`: a "* * *" section break is a block of its own.
+    if (resolved.asteriskBreaks) lines = separateAsterisks(lines);
+    return lines === page.lines ? page : { ...page, lines };
+  });
 
   const footnotes: Footnote[] = [];
   const bodyChunks: Block[] = [];
@@ -251,6 +263,16 @@ export function ingestPageGroups(
       }
       // `pdfPageNumbers`: the report prints no folios; its pages are numbered by their place in the PDF.
       if (resolved.pdfPageNumbers) split.printed = split.pdfIndex;
+
+      // `layoutRunOvers`: a note's run-over the text reading left at the end of the body, by its smaller face.
+      if (resolved.layoutRunOvers && context.layout) {
+        const n = runOverByFace(context.layout, split.volume, split.pdfIndex, split.body);
+        if (n) {
+          const run = split.body.slice(split.body.length - n).filter((line) => line.trim());
+          split.body = split.body.slice(0, split.body.length - n);
+          split.runOver = [...run, ...(split.runOver ?? [])];
+        }
+      }
 
       // `layoutMarkers` (page scope): page-foot "notes" on a page whose layout
       // defines none (nothing raised, nothing in a smaller face) are the body's
@@ -374,7 +396,7 @@ export function ingestPageGroups(
   // `numberedFindings`: the finding number expected next, across pages.
   const findings: FindingCounter | undefined = resolved.numberedFindings ? { next: 1 } : undefined;
   // `contentsOutline`: the headings the contents lists, learnt as it goes by.
-  const outline: Outline | undefined = resolved.contentsOutline ? emptyOutline() : undefined;
+  const outline: Outline | undefined = resolved.contentsOutline ? emptyOutline(resolved.contentsOutlineScanned, resolved.contentsOutlineCentredMinor) : undefined;
   // `listedDivisions`: the parts, chapters and appendices the contents lists.
   const divisions: ListedDivisions = { entries: [], used: new Set() };
   // `visionStructure`: a vision model's verified block structure, page by page (vision/hybrid.ts).
@@ -423,6 +445,7 @@ export function ingestPageGroups(
       const at = { volume: split.volume, pdfIndex: split.pdfIndex, printed: split.printed };
       const outlineEntries = outline ? readContentsOutline(pageLines) : [];
       if (outline) learnOutline(outline, outlineEntries);
+      if (outline?.centredMinor && outlineEntries.length) learnUnlabelled(outline, pageLines);
       const readBody = (lines: string[]): Block[] =>
         toBlocks(
               lines,
@@ -713,6 +736,7 @@ export function ingestPageGroups(
     ...(markerStats ? { layoutMarkers: markerStats } : {}),
     ...(visionReport ? { vision: visionReport } : {}),
     ...(headingStats ? { typographicHeadings: headingStats } : {}),
+    ...(redactions ? { redactions } : {}),
   };
 }
 

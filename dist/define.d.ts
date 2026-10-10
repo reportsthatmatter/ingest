@@ -69,6 +69,10 @@ export type ResolvedPasses = {
     numberedFindings?: boolean;
     doubleSpaced?: boolean;
     contentsOutline?: boolean;
+    /** `contentsOutline({ scanned: true })`: a heading the OCR misspelt is matched to its entry by a few letters' difference. */
+    contentsOutlineScanned?: boolean;
+    /** `contentsOutline({ centredMinor: true })`: a centred heading the outline does not number is a level-4 subhead. */
+    contentsOutlineCentredMinor?: boolean;
     listedDivisions?: boolean;
     wrappedHeadings?: boolean;
     pageBreakContinuations?: boolean;
@@ -102,6 +106,12 @@ export type ResolvedPasses = {
     footnoteNumbers?: "bare" | "period" | "tabbed";
     /** `pdfPageNumbers`: each page is numbered by its place in its PDF. */
     pdfPageNumbers?: boolean;
+    /** `layoutRunOvers`: a note's run-over at the end of a page's body, read by its smaller face. */
+    layoutRunOvers?: boolean;
+    /** `asteriskBreaks`: a line of asterisks is a block of its own. */
+    asteriskBreaks?: boolean;
+    /** `foiaRedactions`: a FOIA release's box labels marked as redactions, its margin labels taken out. */
+    foiaRedactions?: boolean;
     quoteInset?: number;
     allCapsHeadings: boolean;
     numberedHeadings?: boolean;

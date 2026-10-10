@@ -440,6 +440,35 @@ export declare const pageHeadFolios: (options?: PageHeadFolio) => PageHeadFolios
  */
 export declare const foliosInStep: () => PagePass;
 /**
+ * Reads a FOIA release's redactions (reportsthatmatter-gqsy.5, `src/redactions.ts`). Each black box prints the
+ * exemption it was withheld under ("(b) (6), (b) (7)(C)"), and the margin beside it repeats the codes with a
+ * processing number ("(b)(6)/" over "(b)(7)(C)-2"). Read as text, both were words welded into the sentence
+ * ("Richard Gates, (b) (6), (b) (7)(C) Roger Stone, and …", "…in the 2016 (b)(6)/"). With this pass a box label
+ * becomes `[Redacted: (b)(6), (b)(7)(C)]` and a margin label is taken out, on every line of the page (notes
+ * included), before the page is split. A statute's subsection ("§ 1512(b)(3)") is never read as one.
+ * Opt-in: only a FOIA-processed release prints these labels.
+ */
+export declare const foiaRedactions: () => PagePass;
+/**
+ * A section break set as a line of asterisks ("* * *", "***") is a block of its own (reportsthatmatter-gqsy.5,
+ * `separateAsterisks` in src/redactions.ts). The Mueller report centres one before a new train of thought;
+ * read as text, it was taken with the next paragraph's indented first line for a quotation, and the rest of
+ * that paragraph was cut off below it (Volume I pp.2, 13, Volume II p.2). Opt-in: it moves the paragraphs
+ * round every such line.
+ */
+export declare const asteriskBreaks: () => PagePass;
+/**
+ * A note's run-over is read off the layout (reportsthatmatter-gqsy.5, `runOverByFace` in src/markers.ts). A
+ * note too long for its page runs on at the head of the next page's note block, above that page's first note
+ * number. On a single-spaced page the text reading cannot tell it from the body's last paragraph, so it was
+ * appended to the paragraph, which then never joined its continuation on the next page (the Mueller report,
+ * Volume II pp.49-50). With this pass a run of lines at the end of the page's body, below a gap of two or more
+ * blank lines, every line set at least two points smaller than the body, is the run-over and goes to the note
+ * before. Needs the layout. Opt-in: a report that sets quotations or captions smaller than its body, low on a
+ * page, would lose them to a note.
+ */
+export declare const layoutRunOvers: () => PagePass;
+/**
  * A photo credit set between a paragraph and its continuation does not take
  * the continuation (reportsthatmatter-xay).
  *
@@ -738,8 +767,26 @@ export declare const wrappedHeadings: () => PagePass;
  *
  * Opt-in: only a report whose contents lists every heading can say that
  * whatever it does not list is text.
+ *
+ * `contentsOutline({ scanned: true })`: a scan's OCR misspells a heading the contents spells right
+ * ("1. Trnmp Tower Moscow Project", "6. Caiier Page Contact with…", the Mueller report's Volume I): a
+ * labelled line on one or two body lines that differs from exactly one entry at its level by a few
+ * letters (at most one in eight, and never its first) is that heading, spelt as the contents
+ * spells it.
+ *
+ * `contentsOutline({ centredMinor: true })`: a centred line the outline does not number ("STATUTORY AND
+ * CONSTITUTIONAL DEFENSES" and "CONCLUSION" in the Mueller report's Volume II executive summary) is a level-4
+ * subhead inside its section, not a top-level section beside the numbered ones (where the executive summary's
+ * "Conclusion" stood as a section of its own beside the report's "IV. CONCLUSION"). Philip Morris's centred
+ * "FINDINGS OF FACT" is a top-level heading, which is why it is an option.
  */
-export declare const contentsOutline: () => PagePass;
+export declare const contentsOutline: (options?: {
+    scanned?: boolean;
+    centredMinor?: boolean;
+}) => PagePass & {
+    scanned?: boolean;
+    centredMinor?: boolean;
+};
 /**
  * Rejoins a sentence the page break left in pieces (reportsthatmatter-ca3,
  * reportsthatmatter-kb4; jack-smith-report#1).

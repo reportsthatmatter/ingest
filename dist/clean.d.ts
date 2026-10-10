@@ -30,6 +30,8 @@ export type SplitPage = {
  * The Jack Smith report uses the first, the PSI financial crisis report the
  * second, and supporting only one finds seven notes in a document with
  * thousands.
+ *
+ * A note whose whole text was withheld opens on the `foiaRedactions` marker ("124 [Redacted: (b) (7)(A)]").
  */
 export declare const FOOTNOTE_INLINE: RegExp;
 /** How a report numbers its page-foot notes: "104 Letter…" (bare), "104. Letter…" (period) or "104<tab>Letter…" (tabbed). */

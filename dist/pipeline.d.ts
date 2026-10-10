@@ -1,3 +1,4 @@
+import { type RedactionCounts } from "./redactions.js";
 import { type Page } from "./extract.js";
 import { type FolioRow } from "./folios.js";
 import type { ResolvedPasses } from "./define.js";
@@ -55,6 +56,8 @@ export type IngestResult = {
     vision?: VisionReport;
     /** What `typographicHeadings` found and cut out, when the report declares it. */
     typographicHeadings?: TypographicHeadingStats;
+    /** `foiaRedactions`: box labels marked and margin labels taken out. */
+    redactions?: RedactionCounts;
 };
 export type Metadata = {
     title: string;

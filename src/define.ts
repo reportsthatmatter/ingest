@@ -80,6 +80,10 @@ export type ResolvedPasses = {
   numberedFindings?: boolean;
   doubleSpaced?: boolean;
   contentsOutline?: boolean;
+  /** `contentsOutline({ scanned: true })`: a heading the OCR misspelt is matched to its entry by a few letters' difference. */
+  contentsOutlineScanned?: boolean;
+  /** `contentsOutline({ centredMinor: true })`: a centred heading the outline does not number is a level-4 subhead. */
+  contentsOutlineCentredMinor?: boolean;
   listedDivisions?: boolean;
   wrappedHeadings?: boolean;
   pageBreakContinuations?: boolean;
@@ -113,6 +117,12 @@ export type ResolvedPasses = {
   footnoteNumbers?: "bare" | "period" | "tabbed";
   /** `pdfPageNumbers`: each page is numbered by its place in its PDF. */
   pdfPageNumbers?: boolean;
+  /** `layoutRunOvers`: a note's run-over at the end of a page's body, read by its smaller face. */
+  layoutRunOvers?: boolean;
+  /** `asteriskBreaks`: a line of asterisks is a block of its own. */
+  asteriskBreaks?: boolean;
+  /** `foiaRedactions`: a FOIA release's box labels marked as redactions, its margin labels taken out. */
+  foiaRedactions?: boolean;
   quoteInset?: number;
   allCapsHeadings: boolean;
   numberedHeadings?: boolean;
@@ -194,10 +204,10 @@ export function pipeline(def: PipelineDef): PipelineDef {
  * throw once all are merged (review v0.23.0).
  */
 export const KNOWN_PAGE_PASSES: ReadonlySet<string> = new Set([
-  "chapterContents", "citationRunOver", "contentsEntries", "contentsOutline", "doubleSpaced",
+  "asteriskBreaks", "chapterContents", "citationRunOver", "contentsEntries", "contentsOutline", "doubleSpaced",
   "endnotes", "escapeLeadingHash", "escapeNumberedParagraphs", "flushFootnoteMarkers",
-  "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteResets", "footnoteRestarts", "divisionLabels", "hangingIndents", "holdNoteSequence", "hyphenFragments",
-  "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "letteredItems", "listedDivisions", "listedHeadings",
+  "divisionLabels", "foiaRedactions", "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteResets", "footnoteRestarts", "hangingIndents", "holdNoteSequence", "hyphenFragments",
+  "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "layoutRunOvers", "letteredItems", "listedDivisions", "listedHeadings",
   "noteFaceRunOver", "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
   "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
   "printedPageNumber", "quoteListRunOns", "quoteRunOn", "recoverListedHeadings", "romanFolios",
@@ -257,6 +267,8 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     numberedFindings: passes.some((pass) => pass.name === "numberedFindings"),
     doubleSpaced: passes.some((pass) => pass.name === "doubleSpaced"),
     contentsOutline: passes.some((pass) => pass.name === "contentsOutline"),
+    contentsOutlineScanned: passes.some((pass) => pass.name === "contentsOutline" && (pass as { scanned?: boolean }).scanned === true),
+    contentsOutlineCentredMinor: passes.some((pass) => pass.name === "contentsOutline" && (pass as { centredMinor?: boolean }).centredMinor === true),
     listedDivisions: passes.some((pass) => pass.name === "listedDivisions"),
     wrappedHeadings: passes.some((pass) => pass.name === "wrappedHeadings"),
     pageBreakContinuations: passes.some((pass) => pass.name === "pageBreakContinuations"),
@@ -283,6 +295,9 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     footnoteNumbers: (passes.find((pass) => pass.name === "footnoteNumbers") as { numbers?: "period" | "tabbed" } | undefined)
       ?.numbers,
     pdfPageNumbers: passes.some((pass) => pass.name === "pdfPageNumbers"),
+    foiaRedactions: passes.some((pass) => pass.name === "foiaRedactions"),
+    asteriskBreaks: passes.some((pass) => pass.name === "asteriskBreaks"),
+    layoutRunOvers: passes.some((pass) => pass.name === "layoutRunOvers"),
     quoteInset: passes.find(
       (pass): pass is QuoteInsetPass => pass.stage === "quoteInset"
     )?.columns,
