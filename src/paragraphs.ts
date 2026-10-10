@@ -1036,10 +1036,21 @@ export type Outline = {
   centredMinor?: boolean;
   /** The titles of the contents' unlabelled entries ("INTRODUCTION TO VOLUME I …… 1"), by their letters. */
   unlabelled?: Set<string>;
+  /**
+   * `contentsOutline({ ocr: true })`: an OCR'd contents and body, read by edit distance and in order.
+   * The entries as listed; which have been found in the body; where to look next.
+   */
+  ocr?: { ordered: OutlineEntry[]; used: Set<OutlineEntry>; next: number; insert: number };
 };
 
-export function emptyOutline(scanned = false, centredMinor = false): Outline {
-  return { entries: new Map(), prefixes: new Set(), ...(scanned ? { scanned: true } : {}), ...(centredMinor ? { centredMinor: true } : {}) };
+export function emptyOutline(scanned = false, centredMinor = false, ocr = false): Outline {
+  return {
+    entries: new Map(),
+    prefixes: new Set(),
+    ...(scanned ? { scanned: true } : {}),
+    ...(centredMinor ? { centredMinor: true } : {}),
+    ...(ocr ? { ocr: { ordered: [], used: new Set(), next: 0, insert: 0 } } : {}),
+  };
 }
 
 /** Levenshtein distance, capped: returns `cap + 1` as soon as it must exceed `cap`. */
@@ -1102,7 +1113,10 @@ const LEADER_TAIL = /\s*(?:(?:…\s?)+(?:\.\s?)*|(?:\.\s?){2,}|(?<=\S)\s\.\s)\s*
  * is the ninth lettered section. Capital letters and numbers are the
  * sections a reader pages through; anything below is a subheading within one.
  */
-function outlineLevel(label: string, title: string): number {
+function outlineLevel(label: string, title: string, ocr = false): number {
+  // An OCR'd outline (the Senate Intelligence Committee study): "II." over a title in title case is a
+  // part, "A." a section, "1." a subsection, whatever the case of the title.
+  if (ocr) return /^[IVXLC]+\.$/.test(label) && !/^[A-H]\.$/.test(label) ? 2 : /^[A-Z]\.$/.test(label) ? 3 : /^\d{1,2}\.$/.test(label) ? 4 : 5;
   if (/^[IVXLC]+\.$/.test(label) && title === title.toUpperCase()) return 2;
   if (/^(?:[A-Z]|\d{1,2})\.$/.test(label)) return 3;
   return 4;
@@ -1119,24 +1133,59 @@ export type OutlineEntry = { label: string; title: string; page: string; level: 
  *
  * Nothing from a page with fewer than three entries.
  */
-export function readContentsOutline(lines: string[]): OutlineEntry[] {
+export function readContentsOutline(lines: string[], ocr = false): OutlineEntry[] {
   const entries: OutlineEntry[] = [];
   let open: { label: string; parts: string[] } | null = null;
+  // `ocr`: the first line of an unlabelled entry that wraps ("Minority Views of Vice Chairman Chambliss,
+  // Senators Burr, Risch," over "Coats, Rubio, and Coburn ...... 520").
+  let pending = "";
   for (const line of lines) {
     if (!line.trim()) continue;
     const label: RegExpMatchArray | null = open ? null : line.match(OUTLINE_LABEL);
+    // `ocr`: an unlabelled entry with leaders to its page, roman or arabic ("Foreword of Chairman
+    // Feinstein ........ iii"), is one of the report's parts.
+    const part = ocr && !open && !label ? line.match(OCR_PART) : null;
+    if (part) {
+      const title = pending ? (pending.endsWith("-") ? pending.slice(0, -1) : `${pending} `) + part[1].trim() : part[1];
+      entries.push({ label: "", title: normaliseWhitespace(title), page: part[2], level: 2 });
+      pending = "";
+      continue;
+    }
+    if (ocr && !open && !label) {
+      pending = /^[A-Z][^.]*[a-z,-]$/.test(line.trim()) ? normaliseWhitespace(line) : "";
+      continue;
+    }
+    pending = "";
     if (label) open = { label: label[1], parts: [label[2]] };
     else if (open) open.parts.push(line.trim());
     else continue;
     const text = normaliseWhitespace(open.parts.join(" "));
-    const tail = text.match(LEADER_TAIL);
+    // `ocr`: no leaders, the page number set after a wide gap or on a line of its own ("• • •   11").
+    const spaced = ocr ? line.match(OCR_PAGE_TAIL) : null;
+    const tail = text.match(LEADER_TAIL) ?? (spaced ? [spaced[0], spaced[1]] : null);
     if (!tail) continue;
-    const title = text.replace(LEADER_TAIL, "").trim();
-    entries.push({ label: open.label, title, page: tail[1], level: outlineLevel(open.label, title) });
+    const title = (spaced ? normaliseWhitespace(open.parts.join(" ").replace(OCR_PAGE_TAIL, "")) : text.replace(LEADER_TAIL, "")).replace(/[\s•.]+$/, "").trim();
+    entries.push({ label: open.label, title, page: tail[1], level: outlineLevel(open.label, title, ocr) });
     open = null;
+  }
+  if (ocr) {
+    // "I." after "H." and "L." after "K." are letters, not roman numerals.
+    let letter = "";
+    for (const entry of entries) {
+      const single = entry.label.match(/^([A-Z])\.$/);
+      if (single && entry.level === 2 && letter && single[1].charCodeAt(0) === letter.charCodeAt(0) + 1) entry.level = 3;
+      if (single && entry.level === 3) letter = single[1];
+      else if (entry.level === 2) letter = "";
+    }
   }
   return entries.length >= 3 ? entries : [];
 }
+
+/** An unlabelled contents entry with leaders to a page number, arabic or roman. */
+const OCR_PART = /^\s*([A-Za-z][^.]*?[a-z][^.]*?)\s*(?:\.\s?){3,}\s*([0-9]{1,4}|[ivxlc]{1,7})\s*$/;
+
+/** A page number after a gap of three spaces or more, or alone on its line, ending an OCR'd contents entry. */
+const OCR_PAGE_TAIL = /(?:^|\s{3,}|^[\s•.]*)(\d{1,4})\s*$/;
 
 /**
  * A contents page read as an outline, laid out as its entries: each with its
@@ -1175,6 +1224,13 @@ export function learnUnlabelled(outline: Outline, lines: string[]): void {
 
 /** Adds a contents page's entries to the outline the body is read against. */
 export function learnOutline(outline: Outline, entries: OutlineEntry[]): void {
+  // A contents read later (an executive summary's own) nests where the reading has got to.
+  // A contents over several pages goes in in page order: each after the last, until a heading is found.
+  if (outline.ocr && entries.length) {
+    const at = Math.max(outline.ocr.next, outline.ocr.insert);
+    outline.ocr.ordered.splice(at, 0, ...entries);
+    outline.ocr.insert = at + entries.length;
+  }
   for (const entry of entries) {
     const letters = titleLetters(entry.title);
     const key = `${entry.level}:${letters}`;
@@ -1193,6 +1249,7 @@ function readOutline(
   lines: string[],
   outline: Outline
 ): Map<number, { text: string; level: number; end: number }> {
+  if (outline.ocr) return readOcrOutline(lines, outline.ocr);
   const found = new Map<number, { text: string; level: number; end: number }>();
   for (let i = 0; i < lines.length; i++) {
     const label = lines[i].match(OUTLINE_LABEL);
@@ -1223,6 +1280,82 @@ function readOutline(
     const marker = marked ? read.match(/\d+$/)![0] : "";
     found.set(i, { text: `${(entry ?? marked)!.title}${marker}`, level, end });
     i = end;
+  }
+  return found;
+}
+
+/** Levenshtein distance, uncapped, for an OCR'd heading against its OCR'd contents entry. */
+function levenshtein(a: string, b: string): number {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
+
+/** A line without redaction markers: "[Redacted]" is ours, and the contents may print the box differently. */
+const unmarked = (text: string) => text.replace(/\[Redacted(?::[^\]]*)?\]/g, " ");
+
+/** How far an OCR'd heading may read from its entry: an eighth of its letters, three at the least. */
+const ocrTolerance = (letters: string) => Math.max(3, Math.round(letters.length / 8));
+
+/** How many entries ahead of the last one found a heading is looked for (one may be missed, or misread). */
+const OCR_LOOKAHEAD = 6;
+
+/**
+ * `contentsOutline({ ocr: true })`: the body lines that open a heading the outline lists, where both
+ * the contents and the body are an OCR layer and neither spells the title exactly ("Indi viduals",
+ * a redacted word read as garble). A line opens one when its label is the label of one of the next
+ * few entries not yet found, and the letters of it and the lines under it (up to a blank line, six at
+ * most) are within an eighth of that entry's letters by edit distance; the closest such span wins.
+ * The heading keeps the body's own words: the body is the page the reader is on.
+ */
+function readOcrOutline(
+  lines: string[],
+  ocr: NonNullable<Outline["ocr"]>
+): Map<number, { text: string; level: number; end: number }> {
+  const found = new Map<number, { text: string; level: number; end: number }>();
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const label = lines[i].match(OUTLINE_LABEL) ?? ["", "", lines[i]];
+    let best: { entry: number; end: number; distance: number } | null = null;
+    for (let e = ocr.next, seen = 0; e < ocr.ordered.length && seen < OCR_LOOKAHEAD; e++) {
+      if (ocr.used.has(ocr.ordered[e])) continue;
+      seen++;
+      const entry = ocr.ordered[e];
+      if (entry.label !== label[1]) continue;
+      const want = titleLetters(entry.title);
+      let read = titleLetters(unmarked(label[2]));
+      // OCR slips are rare in a title's first three letters, and this keeps the search cheap.
+      if (read.slice(0, 3) !== want.slice(0, 3)) continue;
+      // A part's title may be printed short ("Foreword" for "Foreword of Chairman Feinstein"): the
+      // line alone, a whole word of the entry's opening, eight letters at least.
+      if (!entry.label && read.length >= 8 && want.length > read.length) {
+        const shown = normaliseWhitespace(lines[i]);
+        if (shown.split(" ").length <= 3 && entry.title.toLowerCase().startsWith(`${shown.toLowerCase()} `)) {
+          best = { entry: e, end: i, distance: 0 };
+          continue;
+        }
+      }
+      for (let end = i; end < Math.min(lines.length, i + 6); end++) {
+        if (end > i) {
+          if (!lines[end].trim()) break;
+          read += titleLetters(unmarked(lines[end]));
+        }
+        const distance = levenshtein(read, want);
+        if (distance <= ocrTolerance(want) && (!best || distance < best.distance)) best = { entry: e, end, distance };
+        if (read.length > want.length + ocrTolerance(want)) break;
+      }
+    }
+    if (!best) continue;
+    ocr.used.add(ocr.ordered[best.entry]);
+    ocr.next = best.entry + 1;
+    ocr.insert = ocr.next;
+    const text = normaliseWhitespace(`${label[1]} ${[label[2], ...lines.slice(i + 1, best.end + 1)].join(" ")}`);
+    found.set(i, { text, level: ocr.ordered[best.entry].level, end: best.end });
+    i = best.end;
   }
   return found;
 }

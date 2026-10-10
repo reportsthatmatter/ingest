@@ -1,4 +1,4 @@
-import type { Pass, VolumePass, BodyPass, FootnoteReset } from "./passes.js";
+import type { Pass, VolumePass, BodyPass, SourcePass, FootnoteReset } from "./passes.js";
 import type { PageHeadFolio } from "./clean.js";
 import type { PageBreakOptions } from "./pagebreaks.js";
 import type { EditionPass } from "./edition.js";
@@ -73,6 +73,8 @@ export type ResolvedPasses = {
     contentsOutlineScanned?: boolean;
     /** `contentsOutline({ centredMinor: true })`: a centred heading the outline does not number is a level-4 subhead. */
     contentsOutlineCentredMinor?: boolean;
+    /** `contentsOutline({ ocr: true })`: the contents and the body are an OCR layer; matched by edit distance, in order. */
+    contentsOutlineOcr?: boolean;
     listedDivisions?: boolean;
     wrappedHeadings?: boolean;
     pageBreakContinuations?: boolean;
@@ -112,6 +114,8 @@ export type ResolvedPasses = {
     numberedHeadings?: boolean;
     bodyPasses: BodyPass[];
     volumePasses: VolumePass[];
+    /** Passes over each page's raw lines, before the page is split (`SourcePass`). In declared order. */
+    sourcePasses?: SourcePass[];
     /**
      * `cleanEdition`: the report's text and structure come from a clean edition;
      * the PDF passes still run, as the shadow ingest that supplies printed pages.

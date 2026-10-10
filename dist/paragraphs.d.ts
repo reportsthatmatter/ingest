@@ -240,8 +240,18 @@ export type Outline = {
     centredMinor?: boolean;
     /** The titles of the contents' unlabelled entries ("INTRODUCTION TO VOLUME I …… 1"), by their letters. */
     unlabelled?: Set<string>;
+    /**
+     * `contentsOutline({ ocr: true })`: an OCR'd contents and body, read by edit distance and in order.
+     * The entries as listed; which have been found in the body; where to look next.
+     */
+    ocr?: {
+        ordered: OutlineEntry[];
+        used: Set<OutlineEntry>;
+        next: number;
+        insert: number;
+    };
 };
-export declare function emptyOutline(scanned?: boolean, centredMinor?: boolean): Outline;
+export declare function emptyOutline(scanned?: boolean, centredMinor?: boolean, ocr?: boolean): Outline;
 export type OutlineEntry = {
     label: string;
     title: string;
@@ -257,7 +267,7 @@ export type OutlineEntry = {
  *
  * Nothing from a page with fewer than three entries.
  */
-export declare function readContentsOutline(lines: string[]): OutlineEntry[];
+export declare function readContentsOutline(lines: string[], ocr?: boolean): OutlineEntry[];
 /**
  * A contents page read as an outline, laid out as its entries: each with its
  * label, as the contents numbers it, and its page. A title over the entries
