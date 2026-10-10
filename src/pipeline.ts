@@ -45,6 +45,7 @@ import {
   type NotesLine,
   type NotesChapter,
 } from "./footnotes";
+import { noteFaceRunOverCount } from "./note-run-over";
 import { applyTypographicHeadings, type TypographicHeadingStats } from "./typographic-headings";
 import { inNoteFace, linkLayoutMarkers, pageDefinesNotes, runOverByFace, type LayoutMarkerStats } from "./markers";
 import { LayoutEndnotesReader, chapterOfBlocks } from "./layout-endnotes";
@@ -207,6 +208,9 @@ export function ingestPageGroups(
   const splitGroups = pageGroups.map((group) =>
     group.map(() => {
       const page = pages[pageOffset++];
+      // `footnoteResets`: the page where the numbering starts over at a number the sequence cannot guess
+      const reset = resolved.footnoteResets?.find((r) => r.page === page.pdfIndex && (r.volume ?? 1) === page.volume);
+      if (reset) expectedNote = reset.note;
       // Notes under each paragraph are read across the volume below, not
       // as a block at the page foot; endnotes are not read as notes at all.
       const splitOptions = {
@@ -232,6 +236,16 @@ export function ingestPageGroups(
         !inNoteFace(context.layout, split.volume, split.pdfIndex, firstNote, resolved.footnoteNumbers === "tabbed")
       ) {
         split = splitPage(page, expectedNote, { ...splitOptions, footnoteNumbers: undefined });
+      }
+      // `noteFaceRunOver`: body lines at the foot of the page in the notes' own face are the tail of the note
+      // from the page before, which opens the footnote area above this page's first note.
+      if (resolved.noteFaceRunOver && context.layout && split.footnotes.length) {
+        const n = noteFaceRunOverCount(context.layout, split.volume, split.pdfIndex, split.body, split.footnotes);
+        if (n) {
+          const tail = split.body.slice(split.body.length - n);
+          split.body = split.body.slice(0, split.body.length - n);
+          split.runOver = [...tail, ...(split.runOver ?? [])];
+        }
       }
       // `pdfPageNumbers`: the report prints no folios; its pages are numbered by their place in the PDF.
       if (resolved.pdfPageNumbers) split.printed = split.pdfIndex;
@@ -287,8 +301,12 @@ export function ingestPageGroups(
         }));
         // `footnoteRestarts`: a block that opens below the expected number starts the numbering over
         if (resolved.footnoteRestarts && parsed.length && parsed[0].number < expectedNote) parsed[0].restart = true;
+        if (reset && parsed.length) parsed[0].restart = true;
         footnotes.push(...parsed);
-        if (parsed.length) expectedNote = Math.max(...parsed.map((n) => n.number)) + 1;
+        // `holdNoteSequence`: a table's own notes ("1 2 3" under a table in the running 650s) do not move the
+        // number the next page expects
+        const top = parsed.length ? Math.max(...parsed.map((n) => n.number)) : 0;
+        if (parsed.length && !(resolved.holdNoteSequence && top < expectedNote - 1)) expectedNote = top + 1;
       }
       // Body passes rewrite the page's own lines once its furniture is off:
       // reading two columns in order, for instance.

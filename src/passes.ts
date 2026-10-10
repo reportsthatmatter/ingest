@@ -47,6 +47,7 @@ export type LayoutPageJoinsPass = {
   readonly scanned?: boolean;
   readonly referee?: PageBreakReferee;
   readonly refer?: "low" | "medium";
+  readonly numberedBody?: boolean;
 };
 
 /** Runs over one volume's pages together. */
@@ -99,6 +100,16 @@ export type TypographicHeadingsPass = {
   readonly options: TypographicHeadingsOptions;
 };
 
+/** Where a report's note numbering starts over at a number the sequence cannot guess. */
+export type FootnoteReset = { page: number; note: number; volume?: number };
+
+/** `footnoteResets`, with where. */
+export type FootnoteResetsPass = {
+  readonly name: "footnoteResets";
+  readonly stage: "page";
+  readonly at: FootnoteReset[];
+};
+
 /** `pageHeadFolios`: the page number is a running head "Page N" (reportsthatmatter-ssfk). */
 export type PageHeadFoliosPass = {
   readonly name: "pageHeadFolios";
@@ -107,6 +118,7 @@ export type PageHeadFoliosPass = {
 };
 
 export type Pass =
+  | FootnoteResetsPass
   | PageHeadFoliosPass
   | EditionPass
   | VisionStructurePass
@@ -432,6 +444,37 @@ export const layoutEndnotes = (): PagePass => ({ name: "layoutEndnotes", stage: 
  * footnote separator does, with nothing in the whitespace to tell them apart.
  */
 export const citationRunOver = (): PagePass => ({ name: "citationRunOver", stage: "page" });
+
+/**
+ * The note numbering starts over on a given PDF page, at a given number (reportsthatmatter-7go). The
+ * Philip Morris opinion numbers its notes 1-43 through the Findings of Fact and 7-58 through the rest (PDF
+ * p.1507 prints "7", with no 1-6 anywhere): `footnoteRestarts` only knows a restart to 1, and the page
+ * looked for 44, found 7 and read its note in the body, and so did every note after it. The notes keep
+ * their numbers and are told apart by position (the first note of the new run is marked as a restart).
+ * Opt-in, and declared with the page, which is a property of the source.
+ */
+export const footnoteResets = (at: FootnoteReset[]): FootnoteResetsPass => ({ name: "footnoteResets", stage: "page", at });
+
+/**
+ * A page whose notes all fall below the number the sequence expects (a table's own notes, "1 2 3" among the
+ * 650s of the Valukas Report, Volume 1 PDF p.178) does not move the number the next page expects. Without it
+ * the next page looks for note 4, finds 655, and its notes (655-660) stay in the body with their markers
+ * bare (reportsthatmatter-0bf). Opt-in: a numbering that restarts (per chapter, per Part) also falls below
+ * the expected number, and must move it (`footnoteRestarts`).
+ */
+
+export const holdNoteSequence = (): PagePass => ({ name: "holdNoteSequence", stage: "page" });
+
+/**
+ * The lines at the foot of a page's body that are set in the face of the page's own notes belong to the
+ * note that ran over the page break from the page before (reportsthatmatter-07k): its tail opens the page's
+ * footnote area, above the first numbered note, and the text reading leaves it in the body (a quotation,
+ * paragraphs of an email exchange). Read off the layout: the first note's size and family against the
+ * body's, from the end of the body up while each line has that face. See `note-run-over.ts`.
+ *
+ * Opt-in: it reads `context.layout`, and a report whose notes are set in the body's face gains nothing.
+ */
+export const noteFaceRunOver = (): PagePass => ({ name: "noteFaceRunOver", stage: "page" });
 
 /**
  * Reads lowercase roman-numeral folios ("vii", set twice on one line as
@@ -1014,11 +1057,12 @@ export const typographicHeadings = (options: TypographicHeadingsOptions = {}): T
 });
 
 export const layoutPageJoins = (
-  options: { scanned?: boolean; referee?: PageBreakReferee; refer?: "low" | "medium" } = {}
+  options: { scanned?: boolean; referee?: PageBreakReferee; refer?: "low" | "medium"; numberedBody?: boolean } = {}
 ): LayoutPageJoinsPass => ({
   name: "layoutPageJoins",
   stage: "page",
   ...(options.scanned ? { scanned: true } : {}),
+  ...(options.numberedBody ? { numberedBody: true } : {}),
   ...(options.referee ? { referee: options.referee } : {}),
   ...(options.referee && options.refer === "medium" ? { refer: "medium" as const } : {}),
 });

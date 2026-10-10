@@ -1,4 +1,4 @@
-import type { Pass, VolumePass, BodyPass } from "./passes.js";
+import type { Pass, VolumePass, BodyPass, FootnoteReset } from "./passes.js";
 import type { PageHeadFolio } from "./clean.js";
 import type { PageBreakOptions } from "./pagebreaks.js";
 import type { EditionPass } from "./edition.js";
@@ -79,6 +79,12 @@ export type ResolvedPasses = {
     /** `pageBreakContinuations({ quoteTails: true })`. */
     pageBreakQuoteTails?: boolean;
     citationRunOver?: boolean;
+    /** `noteFaceRunOver`: a run-over set in the notes' face is read off the layout. */
+    noteFaceRunOver?: boolean;
+    /** `holdNoteSequence`: a page whose notes all fall below the expected number leaves it where it was. */
+    holdNoteSequence?: boolean;
+    /** `footnoteResets`: the pages where the note numbering starts over, and at which number. */
+    footnoteResets?: FootnoteReset[];
     romanFolios?: boolean;
     parenFolios?: boolean;
     /** `pageHeadFolios`: on, with the line that goes with the "Page N" head. */

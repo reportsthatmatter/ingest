@@ -68,12 +68,20 @@ export type PageBreakOptions = {
      * ambiguous ones) or `medium` (those and the medium-confidence ones).
      */
     refer?: "low" | "medium";
+    /**
+     * The body's paragraphs are all numbered ("3.71.", "7.44", "123."), so a page opening on an
+     * unnumbered block of body text continues the numbered paragraph above it, even past a finished
+     * sentence (rule N1), and a "(ii)" opening the page after a sentence that set "(i)" inline runs on
+     * (rule N2). Opt-in: a report with unnumbered paragraphs (a foreword, an executive summary set
+     * flush) would have them joined. See `numberedBodyJoin`.
+     */
+    numberedBody?: boolean;
 };
 export type PageBreakConfidence = "high" | "medium" | "low";
 export type PageBreakDecision = {
     join: boolean;
     /** Which rule joined, or why not. */
-    rule: "R1" | "R2" | "split";
+    rule: "R1" | "R2" | "N1" | "N2" | "split";
     reason: string;
     /** The first-line indent of `next` against `under`, in ems (undefined without `under`). */
     indentEm?: number;
@@ -121,6 +129,26 @@ export declare function isJustified(page: PageLayout): boolean;
  * (the sentence-end and label tests read those, not the layout's text).
  */
 export declare function decidePageBreak(lines: PageBreakLines, prevText: string, nextText: string, options?: PageBreakOptions): PageBreakDecision;
+/**
+ * Rule N1 (`numberedBody`, reportsthatmatter-sh1b/ni9o). In a report whose body paragraphs are all
+ * numbered, a block of body text opening a page without a number of its own is the numbered paragraph
+ * above it running on, whether or not the old page ended on a full stop: "…she was still a serving
+ * prisoner." / "Mrs McDonald had anticipated seeing her daughter…" (Post Office p.26, 3.71); "…from the
+ * department." / "The Select Committee heard evidence…" (Grenfell p.94, 7.44). Called once the label,
+ * face and flush tests have passed (`decidePageBreak`). It also needs: the paragraph above opens on its
+ * number; it does not end on a colon and the new block does not open on a quotation mark or bracket (a
+ * quotation the paragraph introduces); and the new block is body text, not a heading or a caption set in
+ * the body face: more than four words, and either a second line on the page or a sentence end.
+ */
+export declare function numberedBodyJoin(lines: PageBreakLines, prevText: string, nextText: string): boolean;
+/**
+ * Rule N2: `nextText` opens on "(ii)" or "(b)", `prevText` is a numbered paragraph, and the last
+ * bracketed label it set inline (not at its head) is the one before, "(i)" or "(a)": the sentence's own
+ * enumeration running over the page, not a list item. "(i)" itself never matches (nothing precedes it).
+ * Not after "…; and" or "…; or", which end a list's item: a list read as one block ("(a) …; (b) …; and"
+ * / "(c) into s52…", Leveson p.102) carries its labels inline too.
+ */
+export declare function inlineSequel(prevText: string, nextText: string): boolean;
 /**
  * Letters only, lower case, ligatures and diacritics folded: the two texts
  * compare equal. Digits are left out because a footnote marker is a digit run

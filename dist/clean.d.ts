@@ -72,6 +72,14 @@ export declare function takePrintedNumber(input: string[], options?: {
  */
 export type PageHeadFolio = {
     above?: RegExp;
+    /**
+     * A letterhead's footer that goes with the head (reportsthatmatter-5sf1): from the foot of the page up, lines
+     * matching it are taken off, with the blank lines and lone OCR'd rules ("I", "|", "\\") between them, as long as
+     * they run unbroken from the last line. Jack Smith's appended letter sets "Blanche Law PLLC / 99 Wall Street,
+     * Suite 4460 | New York … / (212) 716-1250 | www.BlancheLaw.com" under every page: once the head was read as
+     * the folio, it was left mid-paragraph (or glued to the page's last note).
+     */
+    foot?: RegExp;
 };
 /**
  * Separates the footnote block at the foot of a page from the running body.

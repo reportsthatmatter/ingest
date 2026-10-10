@@ -54,11 +54,11 @@ export function pipeline(def) {
  * throw once all are merged (review v0.23.0).
  */
 export const KNOWN_PAGE_PASSES = new Set([
-    "asteriskBreaks", "chapterContents", "citationRunOver", "contentsEntries", "contentsOutline", "doubleSpaced",
+    "chapterContents", "citationRunOver", "contentsEntries", "contentsOutline", "doubleSpaced",
     "endnotes", "escapeLeadingHash", "escapeNumberedParagraphs", "flushFootnoteMarkers",
-    "foiaRedactions", "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteRestarts", "hangingIndents",
-    "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "layoutRunOvers", "letteredItems", "listedDivisions", "listedHeadings",
-    "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
+    "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteResets", "footnoteRestarts", "hangingIndents", "holdNoteSequence",
+    "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "letteredItems", "listedDivisions", "listedHeadings",
+    "noteFaceRunOver", "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
     "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
     "printedPageNumber", "quoteListRunOns", "quoteRunOn", "recoverListedHeadings", "romanFolios",
     "sequencedNoteOpenings", "shiftedPages", "shortSubheads", "typographicHeadings", "unlistedHeadingsMinor",
@@ -110,13 +110,14 @@ export function resolvePasses(def) {
         numberedFindings: passes.some((pass) => pass.name === "numberedFindings"),
         doubleSpaced: passes.some((pass) => pass.name === "doubleSpaced"),
         contentsOutline: passes.some((pass) => pass.name === "contentsOutline"),
-        contentsOutlineScanned: passes.some((pass) => pass.name === "contentsOutline" && pass.scanned === true),
-        contentsOutlineCentredMinor: passes.some((pass) => pass.name === "contentsOutline" && pass.centredMinor === true),
         listedDivisions: passes.some((pass) => pass.name === "listedDivisions"),
         wrappedHeadings: passes.some((pass) => pass.name === "wrappedHeadings"),
         pageBreakContinuations: passes.some((pass) => pass.name === "pageBreakContinuations"),
         pageBreakQuoteTails: passes.some((pass) => pass.name === "pageBreakContinuations" && "quoteTails" in pass && pass.quoteTails === true),
         citationRunOver: passes.some((pass) => pass.name === "citationRunOver"),
+        noteFaceRunOver: passes.some((pass) => pass.name === "noteFaceRunOver"),
+        holdNoteSequence: passes.some((pass) => pass.name === "holdNoteSequence"),
+        footnoteResets: passes.find((pass) => pass.name === "footnoteResets")?.at,
         romanFolios: passes.some((pass) => pass.name === "romanFolios"),
         parenFolios: passes.some((pass) => pass.name === "parenFolios"),
         pageHeadFolios: passes.find((pass) => pass.name === "pageHeadFolios")?.options ?? undefined,
@@ -129,9 +130,6 @@ export function resolvePasses(def) {
         footnoteNumbers: passes.find((pass) => pass.name === "footnoteNumbers")
             ?.numbers,
         pdfPageNumbers: passes.some((pass) => pass.name === "pdfPageNumbers"),
-        foiaRedactions: passes.some((pass) => pass.name === "foiaRedactions"),
-        asteriskBreaks: passes.some((pass) => pass.name === "asteriskBreaks"),
-        layoutRunOvers: passes.some((pass) => pass.name === "layoutRunOvers"),
         quoteInset: passes.find((pass) => pass.stage === "quoteInset")?.columns,
         allCapsHeadings: passes.find((pass) => pass.stage === "allCapsHeadings")?.enabled ?? true,
         numberedHeadings: passes.find((pass) => pass.stage === "numberedHeadings")?.enabled ?? true,
@@ -147,6 +145,7 @@ function layoutPageJoinsOf(passes) {
         return undefined;
     return {
         ...(pass.scanned ? { scanned: true } : {}),
+        ...(pass.numberedBody ? { numberedBody: true } : {}),
         ...(pass.referee ? { referee: pass.referee } : {}),
         ...(pass.refer ? { refer: pass.refer } : {}),
     };

@@ -194,7 +194,28 @@ export function parseLayoutXml(xml: string): RawLine[] {
         const k = parts.findIndex(
           (p, n) => n < parts.length - 1 && f.left >= p.left + p.width - overlap && f.left + f.width <= parts[n + 1].left + overlap
         );
-        if (k < 0) continue;
+        if (k < 0) {
+          // poppler may also leave the marker inside one fragment, its width a run of spaces in the text
+          // ("scheme to defraud.   It is sufficient…", the "10" over the gap: Philip Morris p.1532)
+          const n = parts.findIndex((p) => p.height > f.height && f.left >= p.left && f.left + f.width <= p.left + p.width + overlap && p.text.length > 8);
+          if (n < 0) continue;
+          const p = parts[n];
+          const approx = Math.round(((f.left - p.left) / p.width) * p.text.length);
+          let at = -1;
+          for (const m of p.text.matchAll(/ {2,}/g)) if (Math.abs(m.index! - approx) <= 8 && (at < 0 || Math.abs(m.index! - approx) < Math.abs(at - approx))) at = m.index!;
+          if (at < 0) continue;
+          const gap = /^ +/.exec(p.text.slice(at))![0].length;
+          const before = p.text.slice(0, at);
+          const after = p.text.slice(at + gap);
+          const rightLeft = f.left + f.width;
+          if (!before.trim() || f.left - p.left <= 0) continue;
+          // (at the line's end the spaces trail the text, "privilege.   " with the marker over them)
+          if (!after.trim()) parts.splice(n, 1, { ...p, text: before, width: f.left - p.left }, f);
+          else if (p.left + p.width - rightLeft > 0) parts.splice(n, 1, { ...p, text: before, width: f.left - p.left }, f, { ...p, text: ` ${after}`, left: rightLeft, width: p.left + p.width - rightLeft });
+          else continue;
+          used.add(j);
+          continue;
+        }
         parts.splice(k + 1, 0, f);
         used.add(j);
       }
