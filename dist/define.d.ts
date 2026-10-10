@@ -139,7 +139,13 @@ export declare function pipeline(def: PipelineDef): PipelineDef;
  * It also names the page passes of ingest#62 (parenFolios, pageHeadFolios, foliosInStep), #63 (pdfPageNumbers) and
  * #64 (footnoteRestarts, sequencedNoteOpenings), opened alongside this one: without them a report declaring one would
  * throw once all are merged (review v0.23.0).
+ *
+ * One name per line, sorted: parallel PRs that each add a pass then touch different lines and merge without a
+ * hand edit (reportsthatmatter-wwmg); `tests/define.test.ts` fails on an unsorted or duplicated list. Insert yours
+ * in its alphabetical place.
  */
+export declare const KNOWN_PAGE_PASS_NAMES: readonly string[];
+/** The set `resolvePasses` looks names up in; built from {@link KNOWN_PAGE_PASS_NAMES}. */
 export declare const KNOWN_PAGE_PASSES: ReadonlySet<string>;
 /**
  * Reads a definition's passes into the shape the executor wants.

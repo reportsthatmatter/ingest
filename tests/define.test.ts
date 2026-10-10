@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { pipeline, resolvePasses } from "../src/define";
+import { KNOWN_PAGE_PASS_NAMES, KNOWN_PAGE_PASSES, pipeline, resolvePasses } from "../src/define";
+import * as lib from "../src/index";
+import * as passModule from "../src/passes";
 import { geometry, runningFurniture, printedPageNumber } from "../src/passes";
 
 const base = {
@@ -137,5 +139,43 @@ describe("paragraphNotes", () => {
     const { paragraphNotes } = await import("../src/passes");
     expect(resolvePasses(pipeline(base)).paragraphNotes).toBe(false);
     expect(resolvePasses(pipeline({ ...base, passes: [paragraphNotes()] })).paragraphNotes).toBe(true);
+  });
+});
+
+/** Every page pass a module's exported factories build (factories that need arguments are skipped). */
+const pagePassNames = (mod: Record<string, unknown>) =>
+  Object.values(mod).flatMap((make) => {
+    if (typeof make !== "function") return [];
+    try {
+      const p = (make as () => { name?: string; stage?: string })();
+      return p && typeof p === "object" && p.stage === "page" && p.name ? [p.name] : [];
+    } catch {
+      return [];
+    }
+  });
+
+/** The entries of a module's namespace that are the same function `src/passes.ts` exports (never calls an unrelated export). */
+const fromPasses = (mod: Record<string, unknown>) =>
+  Object.fromEntries(Object.entries(mod).filter(([k, v]) => (passModule as Record<string, unknown>)[k] === v));
+
+describe("KNOWN_PAGE_PASSES (one name per line, so parallel pass PRs merge: reportsthatmatter-wwmg)", () => {
+  it("is sorted", () => {
+    expect([...KNOWN_PAGE_PASS_NAMES]).toEqual([...KNOWN_PAGE_PASS_NAMES].sort());
+  });
+
+  it("has no duplicates", () => {
+    expect(KNOWN_PAGE_PASS_NAMES.filter((n, i) => KNOWN_PAGE_PASS_NAMES.indexOf(n) !== i)).toEqual([]);
+    expect(KNOWN_PAGE_PASSES.size).toBe(KNOWN_PAGE_PASS_NAMES.length);
+  });
+
+  it("names every page pass the public entry point exports", () => {
+    const exported = pagePassNames(fromPasses(lib as Record<string, unknown>));
+    expect(exported.length).toBeGreaterThan(20);
+    expect(exported.filter((n) => !KNOWN_PAGE_PASSES.has(n))).toEqual([]);
+  });
+
+  it("exports from src/index.ts every page pass src/passes.ts builds", () => {
+    const exported = new Set(pagePassNames(fromPasses(lib as Record<string, unknown>)));
+    expect(pagePassNames(passModule as Record<string, unknown>).filter((n) => !exported.has(n))).toEqual([]);
   });
 });
