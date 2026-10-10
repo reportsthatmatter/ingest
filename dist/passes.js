@@ -705,45 +705,12 @@ export const wrappedHeadings = () => ({
     name: "wrappedHeadings",
     stage: "page",
 });
-/**
- * Reads the report's headings from its contents, set out as a lettered and
- * numbered outline with spaced leaders to the page ("C.   TIRC/CTR --
- * Tobacco Industry Research Committee/Council / for Tobacco Research-USA
- * . . . 26"), as `numberedSections` does for a report numbered "8.1"
- * (reportsthatmatter-72f).
- *
- * The Philip Morris opinion wraps its long titles under a hanging label, and
- * its lower levels — "a.", "(1)" — are not shapes the heading reader knows. A
- * title was cut at the line end with its tail quoted along with the first
- * line of the finding below; two levels were fused into one heading; and a
- * finding's opening words, a record citation, advertising copy in capitals
- * and a footnote's text were all read as headings. With this, a body line
- * opening on a label whose title matches an entry letter for letter, across
- * the lines it wraps over, is that heading, spelt as the contents spells it;
- * once the contents has been read, nothing else is a heading unless it is
- * centred on the page ("FINDINGS OF FACT"). The contents pages are laid out
- * as their entries.
- *
- * Opt-in: only a report whose contents lists every heading can say that
- * whatever it does not list is text.
- *
- * `contentsOutline({ scanned: true })`: a scan's OCR misspells a heading the contents spells right
- * ("1. Trnmp Tower Moscow Project", "6. Caiier Page Contact with…", the Mueller report's Volume I): a
- * labelled line on one or two body lines that differs from exactly one entry at its level by a few
- * letters (at most one in eight, and never its first) is that heading, spelt as the contents
- * spells it.
- *
- * `contentsOutline({ centredMinor: true })`: a centred line the outline does not number ("STATUTORY AND
- * CONSTITUTIONAL DEFENSES" and "CONCLUSION" in the Mueller report's Volume II executive summary) is a level-4
- * subhead inside its section, not a top-level section beside the numbered ones (where the executive summary's
- * "Conclusion" stood as a section of its own beside the report's "IV. CONCLUSION"). Philip Morris's centred
- * "FINDINGS OF FACT" is a top-level heading, which is why it is an option.
- */
 export const contentsOutline = (options = {}) => ({
     name: "contentsOutline",
     stage: "page",
     ...(options.scanned ? { scanned: true } : {}),
     ...(options.centredMinor ? { centredMinor: true } : {}),
+    ...(options.ocr ? { ocr: true } : {}),
 });
 /**
  * Rejoins a sentence the page break left in pieces (reportsthatmatter-ca3,

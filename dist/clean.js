@@ -20,7 +20,7 @@ const PAREN_NUMBER = /^\s*\(\s*(\d{1,4})\s*\)\s*$/;
  *
  * A note whose whole text was withheld opens on the `foiaRedactions` marker ("124 [Redacted: (b) (7)(A)]").
  */
-export const FOOTNOTE_INLINE = /^\s{0,8}(\d{1,4})\s{0,3}(?=[A-Za-z"“(]|\[Redacted: )/;
+export const FOOTNOTE_INLINE = /^\s{0,8}(\d{1,4})\s{0,3}(?=[A-Za-z"“(]|\[Redacted[:\]])/;
 const FOOTNOTE_STACKED = /^\s{0,10}(\d{1,4})\s*$/;
 /** A note that is only a statute's section: "s1(1)", "s7(3)(a)", "s52A". */
 const STATUTE_SECTION = /^\s*s\d{1,3}[A-Z]{0,2}(?:\([0-9a-z]{1,4}\))*\s*$/;
