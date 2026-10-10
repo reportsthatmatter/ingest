@@ -99,6 +99,9 @@ export type ResolvedPasses = {
   foliosInStep?: boolean;
   numberedOutsideTables?: boolean;
   photoCredits?: boolean;
+  hyphenFragments?: boolean;
+  divisionLabels?: boolean;
+  speakerTurns?: boolean;
   footnoteGap?: boolean;
   /** `sequencedNoteOpenings`: a note line opening on the next note's number starts it, whatever follows. */
   sequencedNoteOpenings?: boolean;
@@ -193,13 +196,13 @@ export function pipeline(def: PipelineDef): PipelineDef {
 export const KNOWN_PAGE_PASSES: ReadonlySet<string> = new Set([
   "chapterContents", "citationRunOver", "contentsEntries", "contentsOutline", "doubleSpaced",
   "endnotes", "escapeLeadingHash", "escapeNumberedParagraphs", "flushFootnoteMarkers",
-  "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteResets", "footnoteRestarts", "hangingIndents", "holdNoteSequence",
+  "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteResets", "footnoteRestarts", "divisionLabels", "hangingIndents", "holdNoteSequence", "hyphenFragments",
   "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "letteredItems", "listedDivisions", "listedHeadings",
   "noteFaceRunOver", "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
   "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
   "printedPageNumber", "quoteListRunOns", "quoteRunOn", "recoverListedHeadings", "romanFolios",
-  "sequencedNoteOpenings", "shiftedPages", "shortSubheads", "thumbIndexNotes", "typographicHeadings", "unlistedHeadingsMinor",
-  "unmarkedHeadings", "wrappedHeadings",
+  "sequencedNoteOpenings", "shiftedPages", "shortSubheads", "speakerTurns", "thumbIndexNotes", "typographicHeadings",
+  "unlistedHeadingsMinor", "unmarkedHeadings", "wrappedHeadings",
 ]);
 
 /**
@@ -270,6 +273,9 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     foliosInStep: passes.some((pass) => pass.name === "foliosInStep"),
     numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),
     photoCredits: passes.some((pass) => pass.name === "photoCredits"),
+    hyphenFragments: passes.some((pass) => pass.name === "hyphenFragments"),
+    divisionLabels: passes.some((pass) => pass.name === "divisionLabels"),
+    speakerTurns: passes.some((pass) => pass.name === "speakerTurns"),
     footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
     footnoteRestarts: passes.some((pass) => pass.name === "footnoteRestarts"),
     thumbIndexNotes: passes.some((pass) => pass.name === "thumbIndexNotes"),

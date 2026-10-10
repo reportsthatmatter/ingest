@@ -88,6 +88,9 @@ export type ResolvedPasses = {
     foliosInStep?: boolean;
     numberedOutsideTables?: boolean;
     photoCredits?: boolean;
+    hyphenFragments?: boolean;
+    divisionLabels?: boolean;
+    speakerTurns?: boolean;
     footnoteGap?: boolean;
     /** `sequencedNoteOpenings`: a note line opening on the next note's number starts it, whatever follows. */
     sequencedNoteOpenings?: boolean;

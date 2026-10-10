@@ -1059,3 +1059,34 @@ export const strandedMarkers = () => ({
         return out;
     },
 });
+/**
+ * Closes the line-end hyphens the document's vocabulary cannot decide (reportsthatmatter-pt6, g3h).
+ * `rejoinHyphenated` joins "re- cords" when the report writes "records" elsewhere and keeps "well-
+ * known" when it writes that; a word it writes only here ("indel- ible", "constitu- ents", "Hamp-
+ * ton") stayed broken, 161 of them in Columbia and 169 in Challenger. With this pass a break whose
+ * head is no word of the document's own ("indel" is not) is the typesetter's and is closed; a head
+ * that is a word ("mid- to", "million- pounds") or a short head before a word ("in- tends") keeps
+ * the hyphen, as does a tail of one or two letters.
+ *
+ * Opt-in: a report whose source breaks words at the line end declares it.
+ */
+export const hyphenFragments = () => ({ name: "hyphenFragments", stage: "page" });
+/**
+ * A line that is only a division label, "Findings", "Recommendations:", "Issue 3", is a level-4 heading
+ * (reportsthatmatter-liv). The committees that wrote Challenger and Columbia set one over each run of
+ * findings and recommendations; left as paragraphs, each took a paragraph id of its own and counted as
+ * furniture (Challenger 29 after its vision pages, Columbia 50). A trailing colon is dropped from the heading.
+ *
+ * Opt-in: only where a lone "Issue" or "Findings" line is never anything else.
+ */
+export const divisionLabels = () => ({ name: "divisionLabels", stage: "page" });
+/**
+ * A transcript's speaker turn that wraps ("Flight: “And there's no commonality between all these tire" /
+ * "        pressure instrumentations and the hydraulic return instrumentations.”") keeps its wrapped lines
+ * (reportsthatmatter-98u). Set under the opening quotation mark, they sat further in than the body and
+ * read as a block quotation cut from the turn's first line, 6 of them on one page of Columbia's
+ * Mission Control exchange. The wrap is held to the turn; consecutive turns stay one paragraph.
+ *
+ * Opt-in: a line that opens "Label: “" is also a heading's lead-in or a quotation's attribution elsewhere.
+ */
+export const speakerTurns = () => ({ name: "speakerTurns", stage: "page" });

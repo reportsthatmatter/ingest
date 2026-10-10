@@ -132,14 +132,14 @@ export function applyTypographicHeadings(blocks, layout, options = {}) {
             j++;
         const pageBlocks = blocks.slice(i, j);
         const todo = byPage.get(key);
-        out.push(...cutPage(pageBlocks, todo, stats, Boolean(options.relevel && options.faces), Boolean(options.quotedRemainder)));
+        out.push(...cutPage(pageBlocks, todo, stats, Boolean(options.relevel && options.faces), Boolean(options.quotedRemainder), Boolean(options.skipRunIns)));
         i = j;
     }
     blocks.splice(0, blocks.length, ...out);
     return stats;
 }
 const alnum = (s) => squash(s).text.replace(/[^\p{L}\p{N}]/gu, "");
-function cutPage(pageBlocks, todo, stats, relevel = false, quotedRemainder = false) {
+function cutPage(pageBlocks, todo, stats, relevel = false, quotedRemainder = false, skipRunIns = false) {
     let units = pageBlocks;
     let from = 0; // blocks before this index are done: headings run in reading order
     for (const h of todo) {
@@ -183,6 +183,10 @@ function cutPage(pageBlocks, todo, stats, relevel = false, quotedRemainder = fal
                 const wordEnd = end >= block.text.length || /^\s/.test(block.text.slice(end));
                 if (boundary && wordEnd) {
                     const after = block.text.slice(end).trimStart();
+                    if (skipRunIns && /^\p{Ll}/u.test(after)) {
+                        at = hay.text.indexOf(want, at + 1);
+                        continue;
+                    }
                     const pieces = [];
                     const { text: _t, ...rest } = block;
                     if (before)

@@ -56,6 +56,9 @@ export {
   foliosInStep,
   numberedOutsideTables,
   photoCredits,
+  hyphenFragments,
+  divisionLabels,
+  speakerTurns,
   footnoteGap,
   footnoteRestarts,
   thumbIndexNotes,
@@ -187,7 +190,7 @@ export {
   applyCorrections,
   correctionVocabulary,
 } from "./corrections";
-export { rejoinHyphenated, vocabulary } from "./hyphens";
+export { rejoinHyphenated, vocabulary, wholeWords } from "./hyphens";
 export type { Correction, Dismissal } from "./corrections";
 
 // — Building a bespoke pass —

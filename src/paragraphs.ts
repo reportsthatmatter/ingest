@@ -1251,7 +1251,8 @@ export function toBlocks(
   unmarkedHeadings = false,
   numberedOutsideTables = false,
   recoverListedHeadings = false,
-  letteredItems = false
+  letteredItems = false,
+  speakerTurns = false
 ): Block[] {
   if (paragraphContents) lines = joinParagraphContents(lines);
   // With `listedHeadings`, a would-be heading the contents does not name is
@@ -1369,8 +1370,8 @@ export function toBlocks(
   // it from, and getting it wrong turns an ordinary paragraph into a quote.
   const margin = documentMargin ?? bodyIndent(lines);
   const hanging =
-    hangingIndents || letteredItems
-      ? hangingItems(lines, hangingIndents, letteredItems ? margin + quoteInset : 0)
+    hangingIndents || letteredItems || speakerTurns
+      ? hangingItems(lines, hangingIndents, letteredItems ? margin + quoteInset : 0, speakerTurns)
       : null;
   const blocks: Block[] = [];
 
@@ -1778,11 +1779,26 @@ export function toBlocks(
 function hangingItems(
   lines: string[],
   numbered = true,
-  letteredBelow = 0
+  letteredBelow = 0,
+  speakers = false
 ): { opens: boolean[]; continues: boolean[] } {
   const opens = lines.map(() => false);
   const continues = lines.map(() => false);
   for (let i = 0; i < lines.length; i++) {
+    // `speakerTurns`: "Flight: “And there's no commonality between all these tire" over "        pressure
+    // instrumentations…", the wrapped line under the opening quote. Only the wrap is held to the turn (it is
+    // not a quotation); the turns of one exchange stay one paragraph, as they read on the page.
+    const turn = speakers ? lines[i].match(/^(\s*)[A-Z][A-Za-z.]*(?: [A-Za-z.]+){0,2}:(\s+)(?=[“"])/) : null;
+    if (turn) {
+      const column = turn[0].length;
+      let k = i + 1;
+      while (k < lines.length && lines[k].trim() && Math.abs(indentOf(lines[k]) - column) <= 1) {
+        continues[k] = true;
+        k++;
+      }
+      i = k - 1;
+      continue;
+    }
     let label = numbered ? lines[i].match(/^(\s*)(?=\S*\d)(\S{2,12})( {2,})\S/) : null;
     // `letteredItems`: a sub-item's own letter ("a.", "(b)", "iv.") over its
     // wrapped lines, wherever it sits short of a quotation's inset.

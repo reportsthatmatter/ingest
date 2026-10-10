@@ -4,7 +4,7 @@ import { markPrintedNumbers } from "./printed-numbers.js";
 import { strayFolios } from "./folios.js";
 import { extractParagraphNotes } from "./paragraph-notes.js";
 import { applyCorrections } from "./corrections.js";
-import { rejoinHyphenated, vocabulary } from "./hyphens.js";
+import { rejoinHyphenated, vocabulary, wholeWords } from "./hyphens.js";
 import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, spacedContentsBlocks, shortSubheadAt, isIllustrationList, mergeAcrossPages, contentsHeadings, contentsTitles, headingKey, numberedContents, emptyOutline, readContentsOutline, learnOutline, outlineContentsBlocks, divisionContents, bodyIndent, } from "./paragraphs.js";
 import { parseFootnotes, linkInlineMarkers, linkFlushMarkers, renderEndnotes, isNotesChapterHead, parseNotesAppendix, linkFlushMarkersByChapter, } from "./footnotes.js";
 import { noteFaceRunOverCount } from "./note-run-over.js";
@@ -48,6 +48,19 @@ function readWithSubheads(lines, read) {
     }
     blocks.push(...read(lines.slice(from)));
     return blocks;
+}
+/** A paragraph that is only a division label (`divisionLabels`): "Findings", "Recommendation:", "Issue 3". */
+const DIVISION_LABEL = /^(Recommendations?|Findings?|Issue(?:\s+(?:[0-9]{1,2}|[IVXLC]{1,4}))?):?$/;
+export function divisionLabelHeadings(blocks) {
+    return blocks.map((block) => {
+        if (block.kind !== "paragraph")
+            return block;
+        const text = block.text.replace(/\s+/g, " ").trim();
+        if (!DIVISION_LABEL.test(text))
+            return block;
+        const { finding: _finding, printedNumber: _printed, ...rest } = block;
+        return { ...rest, kind: "heading", level: 4, text: text.replace(/:$/, "") };
+    });
 }
 /**
  * PDF → Markdown, deterministically. The same input always produces the same
@@ -309,7 +322,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
                 ? pageMargin(split.body, margins[0])
                 : resolved.shiftedPages
                     ? shiftedPageMargin(split.body, margins[resolved.geometry === "per-volume" ? groupIndex : 0])
-                    : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings, resolved.hangingIndents, resolved.unmarkedHeadings, resolved.numberedOutsideTables, resolved.recoverListedHeadings, resolved.letteredItems);
+                    : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings, resolved.hangingIndents, resolved.unmarkedHeadings, resolved.numberedOutsideTables, resolved.recoverListedHeadings, resolved.letteredItems, resolved.speakerTurns);
             const read = (resolved.contentsEntries && (entries?.sections.size || isIllustrationList(pageLines))
                 ? spacedContentsBlocks(pageLines)
                 : isContentsPage(pageLines)
@@ -319,17 +332,18 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
                         : resolved.shortSubheads
                             ? readWithSubheads(pageLines, readBody)
                             : readBody(pageLines)).map((block) => ({ ...block, at }));
+            const labelled = resolved.divisionLabels ? divisionLabelHeadings(read) : read;
             const blocks = hybrid
                 ? hybrid.page({
                     volume: split.volume,
                     pdfIndex: split.pdfIndex,
                     body: pageLines,
                     footLines: split.footnotes,
-                    blocks: read,
+                    blocks: labelled,
                     at,
                     pipelineNotes: footnotes.filter((note) => note.volume === split.volume && note.pdfIndex === split.pdfIndex).map((note) => note.text),
                 })
-                : read;
+                : labelled;
             // Record where each printed page begins. These documents are cited by page
             // ("Report at 62"), so the printed number is the citation unit readers
             // already use — and it can be checked against the original PDF.
@@ -476,7 +490,8 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     // Rejoin words the typesetter broke at a line end, decided from the
     // document's own vocabulary. Before autoFix, so a repaired word is judged
     // whole rather than as two fragments.
-    body = rejoinHyphenated(body, vocabulary(sourceText));
+    const hyphenOptions = resolved.hyphenFragments ? { fragments: wholeWords(sourceText) } : {};
+    body = rejoinHyphenated(body, vocabulary(sourceText), hyphenOptions);
     const fixed = autoFix(body);
     body = fixed.text;
     // Paragraph notes are linked where they were read, against the paragraph
@@ -508,7 +523,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         const words = vocabulary(sourceText);
         for (const note of notes)
             if (note.label)
-                note.text = rejoinHyphenated(note.text, words);
+                note.text = rejoinHyphenated(note.text, words, hyphenOptions);
     }
     for (const note of notes) {
         const result = autoFix(note.text);

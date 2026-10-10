@@ -71,6 +71,12 @@ export type TypographicHeadingsOptions = {
    * is the layout's, so the report that has checked it declares it. Default false.
    */
   quotedRemainder?: boolean;
+  /**
+   * A face line that opens a block whose rest begins in lower case is a bold lead-in to a sentence, not a
+   * heading ("The Launch Readiness Review is conducted within one" / "month of the launch…"): leave it
+   * in the paragraph. Columbia sets some paragraphs' first line in its subheading face. Default false.
+   */
+  skipRunIns?: boolean;
 };
 
 export type TypographicHeadingStats = {
@@ -100,7 +106,7 @@ const LABEL_ONLY = /^\s*(?:\(?\d{1,4}(?:\.\d{1,4})*[.)]?|\(?[a-z][.)]|[ivxlc]{1,
 type Heading = { volume: number; pdfIndex: number; text: string; level: number };
 
 /** A heading line's candidacy, before the face's recurrence is known. */
-function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder">> & { sizes?: number[]; faces?: string[][] }): boolean {
+function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns">> & { sizes?: number[]; faces?: string[][] }): boolean {
   const text = line.text.trim();
   if (!text || text.length > o.maxChars) return false;
   if (o.faces) return o.faces.some((level) => level.includes(line.font)) && !LABEL_ONLY.test(text) && /\p{L}/u.test(text) && !SENTENCE_END.test(text);
@@ -120,7 +126,7 @@ const faceSize = (face: string) => Number(face.split("|")[1]) || 0;
  * Exported for the tests.
  */
 export function layoutHeadings(layout: Layout, options: TypographicHeadingsOptions = {}): { headings: Heading[]; faces: TypographicHeadingStats["faces"] } {
-  const o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder">> & { sizes?: number[]; faces?: string[][] } = {
+  const o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns">> & { sizes?: number[]; faces?: string[][] } = {
     firstLevel: options.firstLevel ?? 2,
     ...(options.sizes ? { sizes: options.sizes } : {}),
     ...(options.faces ? { faces: options.faces } : {}),
@@ -225,7 +231,7 @@ export function applyTypographicHeadings(blocks: Block[], layout: Layout, option
     while (j < blocks.length && pageOf(blocks[j]) === key) j++;
     const pageBlocks = blocks.slice(i, j);
     const todo = byPage.get(key)!;
-    out.push(...cutPage(pageBlocks, todo, stats, Boolean(options.relevel && options.faces), Boolean(options.quotedRemainder)));
+    out.push(...cutPage(pageBlocks, todo, stats, Boolean(options.relevel && options.faces), Boolean(options.quotedRemainder), Boolean(options.skipRunIns)));
     i = j;
   }
   blocks.splice(0, blocks.length, ...out);
@@ -234,7 +240,7 @@ export function applyTypographicHeadings(blocks: Block[], layout: Layout, option
 
 const alnum = (s: string) => squash(s).text.replace(/[^\p{L}\p{N}]/gu, "");
 
-function cutPage(pageBlocks: Block[], todo: Heading[], stats: TypographicHeadingStats, relevel = false, quotedRemainder = false): Block[] {
+function cutPage(pageBlocks: Block[], todo: Heading[], stats: TypographicHeadingStats, relevel = false, quotedRemainder = false, skipRunIns = false): Block[] {
   let units = pageBlocks;
   let from = 0; // blocks before this index are done: headings run in reading order
   for (const h of todo) {
@@ -277,6 +283,10 @@ function cutPage(pageBlocks: Block[], todo: Heading[], stats: TypographicHeading
         const wordEnd = end >= block.text.length || /^\s/.test(block.text.slice(end));
         if (boundary && wordEnd) {
           const after = block.text.slice(end).trimStart();
+          if (skipRunIns && /^\p{Ll}/u.test(after)) {
+            at = hay.text.indexOf(want, at + 1);
+            continue;
+          }
           const pieces: Block[] = [];
           const { text: _t, ...rest } = block as Block & { text: string };
           if (before) pieces.push({ ...block, text: before } as Block);

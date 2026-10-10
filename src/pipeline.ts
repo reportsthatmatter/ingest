@@ -5,7 +5,7 @@ import { strayFolios, type FolioRow } from "./folios";
 import { extractParagraphNotes } from "./paragraph-notes";
 import type { ResolvedPasses } from "./define";
 import { applyCorrections, type Correction } from "./corrections";
-import { rejoinHyphenated, vocabulary } from "./hyphens";
+import { rejoinHyphenated, vocabulary, wholeWords } from "./hyphens";
 import {
   toBlocks,
   blocksToMarkdown,
@@ -130,6 +130,19 @@ function readWithSubheads(lines: string[], read: (lines: string[]) => Block[]): 
   }
   blocks.push(...read(lines.slice(from)));
   return blocks;
+}
+
+/** A paragraph that is only a division label (`divisionLabels`): "Findings", "Recommendation:", "Issue 3". */
+const DIVISION_LABEL = /^(Recommendations?|Findings?|Issue(?:\s+(?:[0-9]{1,2}|[IVXLC]{1,4}))?):?$/;
+
+export function divisionLabelHeadings(blocks: Block[]): Block[] {
+  return blocks.map((block) => {
+    if (block.kind !== "paragraph") return block;
+    const text = block.text.replace(/\s+/g, " ").trim();
+    if (!DIVISION_LABEL.test(text)) return block;
+    const { finding: _finding, printedNumber: _printed, ...rest } = block;
+    return { ...rest, kind: "heading", level: 4, text: text.replace(/:$/, "") } as Block;
+  });
 }
 
 /**
@@ -433,7 +446,8 @@ export function ingestPageGroups(
               resolved.unmarkedHeadings,
               resolved.numberedOutsideTables,
               resolved.recoverListedHeadings,
-              resolved.letteredItems
+              resolved.letteredItems,
+              resolved.speakerTurns
         );
       const read = (
         resolved.contentsEntries && (entries?.sections.size || isIllustrationList(pageLines))
@@ -446,17 +460,18 @@ export function ingestPageGroups(
             ? readWithSubheads(pageLines, readBody)
             : readBody(pageLines)
       ).map((block) => ({ ...block, at }));
+      const labelled = resolved.divisionLabels ? divisionLabelHeadings(read) : read;
       const blocks = hybrid
         ? hybrid.page({
             volume: split.volume,
             pdfIndex: split.pdfIndex,
             body: pageLines,
             footLines: split.footnotes,
-            blocks: read,
+            blocks: labelled,
             at,
             pipelineNotes: footnotes.filter((note) => note.volume === split.volume && note.pdfIndex === split.pdfIndex).map((note) => note.text),
           })
-        : read;
+        : labelled;
 
       // Record where each printed page begins. These documents are cited by page
       // ("Report at 62"), so the printed number is the citation unit readers
@@ -613,7 +628,8 @@ export function ingestPageGroups(
   // Rejoin words the typesetter broke at a line end, decided from the
   // document's own vocabulary. Before autoFix, so a repaired word is judged
   // whole rather than as two fragments.
-  body = rejoinHyphenated(body, vocabulary(sourceText));
+  const hyphenOptions = resolved.hyphenFragments ? { fragments: wholeWords(sourceText) } : {};
+  body = rejoinHyphenated(body, vocabulary(sourceText), hyphenOptions);
 
   const fixed = autoFix(body);
   body = fixed.text;
@@ -651,7 +667,7 @@ export function ingestPageGroups(
   // Notes read off the layout keep each printed line's end: rejoin the typesetter's hyphens as the body's are.
   if (endnotesReader) {
     const words = vocabulary(sourceText);
-    for (const note of notes) if (note.label) note.text = rejoinHyphenated(note.text, words);
+    for (const note of notes) if (note.label) note.text = rejoinHyphenated(note.text, words, hyphenOptions);
   }
   for (const note of notes) {
     const result = autoFix(note.text);
