@@ -41,6 +41,7 @@ export type LayoutPageJoinsPass = {
     readonly scanned?: boolean;
     readonly referee?: PageBreakReferee;
     readonly refer?: "low" | "medium";
+    readonly numberedBody?: boolean;
 };
 /** Runs over one volume's pages together. */
 export type VolumePass = {
@@ -820,6 +821,7 @@ export declare const layoutPageJoins: (options?: {
     scanned?: boolean;
     referee?: PageBreakReferee;
     refer?: "low" | "medium";
+    numberedBody?: boolean;
 }) => LayoutPageJoinsPass;
 /**
  * Whether a numbered or lettered line ("1. Withdrawing the Army", "C. The

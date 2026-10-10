@@ -47,6 +47,7 @@ export type LayoutPageJoinsPass = {
   readonly scanned?: boolean;
   readonly referee?: PageBreakReferee;
   readonly refer?: "low" | "medium";
+  readonly numberedBody?: boolean;
 };
 
 /** Runs over one volume's pages together. */
@@ -966,11 +967,12 @@ export const typographicHeadings = (options: TypographicHeadingsOptions = {}): T
 });
 
 export const layoutPageJoins = (
-  options: { scanned?: boolean; referee?: PageBreakReferee; refer?: "low" | "medium" } = {}
+  options: { scanned?: boolean; referee?: PageBreakReferee; refer?: "low" | "medium"; numberedBody?: boolean } = {}
 ): LayoutPageJoinsPass => ({
   name: "layoutPageJoins",
   stage: "page",
   ...(options.scanned ? { scanned: true } : {}),
+  ...(options.numberedBody ? { numberedBody: true } : {}),
   ...(options.referee ? { referee: options.referee } : {}),
   ...(options.referee && options.refer === "medium" ? { refer: "medium" as const } : {}),
 });
