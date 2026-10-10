@@ -61,8 +61,8 @@ export const KNOWN_PAGE_PASSES = new Set([
     "noteFaceRunOver", "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
     "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
     "printedPageNumber", "quoteListRunOns", "quoteRunOn", "recoverListedHeadings", "romanFolios",
-    "sequencedNoteOpenings", "shiftedPages", "shortSubheads", "typographicHeadings", "unlistedHeadingsMinor",
-    "speakerTurns", "unmarkedHeadings", "wrappedHeadings",
+    "sequencedNoteOpenings", "shiftedPages", "shortSubheads", "speakerTurns", "thumbIndexNotes", "typographicHeadings",
+    "unlistedHeadingsMinor", "unmarkedHeadings", "wrappedHeadings",
 ]);
 /**
  * Reads a definition's passes into the shape the executor wants.
@@ -129,6 +129,7 @@ export function resolvePasses(def) {
         speakerTurns: passes.some((pass) => pass.name === "speakerTurns"),
         footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
         footnoteRestarts: passes.some((pass) => pass.name === "footnoteRestarts"),
+        thumbIndexNotes: passes.some((pass) => pass.name === "thumbIndexNotes"),
         sequencedNoteOpenings: passes.some((pass) => pass.name === "sequencedNoteOpenings"),
         footnoteNumbers: passes.find((pass) => pass.name === "footnoteNumbers")
             ?.numbers,

@@ -207,6 +207,15 @@ describe("linkLayoutMarkers: what it leaves alone", () => {
   });
 });
 
+describe("linkLayoutMarkers: raised lists", () => {
+  it("'8 9 10' set as one raised fragment links all three (Leveson vol.1 p.91, reportsthatmatter-u00i)", () => {
+    const layout = doc([[{ text: "shape culture and change perceptions:8 9 10", raised: [{ after: "perceptions:", digits: "8 9 10" }] }]]);
+    const blocks = [para("shape culture and change perceptions:8 9 10")];
+    linkLayoutMarkers(blocks, layout, { scope: "page", onPage: () => new Set([8, 9, 10]) });
+    expect((blocks[0] as { text: string }).text).toBe("shape culture and change perceptions:[^8][^9][^10]");
+  });
+});
+
 describe("foldForMatch", () => {
   it("folds quotes, dashes and ligatures, keeping each character's source index", () => {
     const f = foldForMatch("“ﬁne”—x");

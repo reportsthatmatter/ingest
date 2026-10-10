@@ -593,6 +593,19 @@ export const footnoteGap = (): PagePass => ({ name: "footnoteGap", stage: "page"
 export const footnoteRestarts = (): PagePass => ({ name: "footnoteRestarts", stage: "page" });
 
 /**
+ * A thumb index: the Part's letter (A-L) printed at the page edge, which
+ * `pdftotext -layout` sets at column 0 of whatever line it sits beside. Beside
+ * a note's number ("I   70", "K   3   p4, http://…") the line is no note
+ * opening, so the note is read as the tail of the note above and its marker
+ * stays bare: 17 of Leveson's notes (reportsthatmatter-qai, -u00i). With this
+ * pass a capital A-L at the line's start, then a gap, then a number alone or
+ * before another gap, is blanked before the page's note block is found. Only
+ * that shape: a body line opening "I  think" or "A  further" in justified
+ * text keeps its word. Opt-in, for a report that prints a thumb index.
+ */
+export const thumbIndexNotes = (): PagePass => ({ name: "thumbIndexNotes", stage: "page" });
+
+/**
  * A page-foot note opens on the next note's number whatever its text opens on
  * (reportsthatmatter-qsfc, kgpr). A note's opening line is read by its shape,
  * a number then a letter or a quotation mark, so a note whose text opens on a

@@ -61,6 +61,7 @@ export {
   speakerTurns,
   footnoteGap,
   footnoteRestarts,
+  thumbIndexNotes,
   strandedMarkers,
   sequencedNoteOpenings,
   footnoteNumbers,

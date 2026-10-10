@@ -223,6 +223,7 @@ export function ingestPageGroups(
         footnoteRestarts: resolved.footnoteRestarts,
         sequencedNoteOpenings: resolved.sequencedNoteOpenings,
         footnoteNumbers: resolved.footnoteNumbers,
+        thumbIndexNotes: resolved.thumbIndexNotes,
       };
       let split = resolved.paragraphNotes || resolved.endnotes || resolved.layoutEndnotes
         ? splitPageNumberOnly(page, { romanFolios: resolved.romanFolios, parenFolios: resolved.parenFolios, pageHeadFolios: resolved.pageHeadFolios })

@@ -682,9 +682,13 @@ export function isDivisionHeading(text: string): boolean {
  * first word of prose. "...The Sun's article...suggested\n\n1.8 million
  * people on sickness benefit were fit for work..." reads "1.8" as opening
  * paragraph 1.8 (Leveson), when it is a statistic the line wrapped after.
+ * Lower case only: a unit word inside a sentence is lower case, and a
+ * paragraph opening "2.8 Second, two years after…" is an ordinal, not a
+ * duration (Leveson glued eight "N.N Second," paragraphs onto the one before,
+ * reportsthatmatter-1iz4).
  */
 const QUANTITY_WORD_FOLLOWS =
-  /^(per\s?cent|percent|million|billion|thousand|hundred|degrees?|inches?|centimetres?|centimeters?|metres?|meters?|miles?|kilometres?|kilometers?|pounds?|kg|km|years?|months?|weeks?|days?|hours?|minutes?|seconds?|times)\b/i;
+  /^(per\s?cent|percent|million|billion|thousand|hundred|degrees?|inches?|centimetres?|centimeters?|metres?|meters?|miles?|kilometres?|kilometers?|pounds?|kg|km|years?|months?|weeks?|days?|hours?|minutes?|seconds?|times)\b/;
 
 /**
  * "7.1", "10.14" — the chapter.paragraph numbering these reports run
@@ -2351,7 +2355,11 @@ export function mergeAcrossPages(blocks: Block[], options: MergeOptions = {}): B
       block.finding === undefined &&
       previous?.kind === "paragraph" &&
       !endsSentence(previous.text) &&
-      /^\d{1,3}[.)]\d{1,3}\s/.test(block.text)
+      /^\d{1,3}[.)]\d{1,3}\s/.test(block.text) &&
+      // A cross-reference carries on in lower case ("79.9 to 79.11 of…"); a number
+      // before a capital opens a chapter's paragraph after a heading or banner
+      // that ends without a full stop (Leveson "1.1 An Inquiry…", reportsthatmatter-1iz4).
+      !NUMBERED_OPENING.test(block.text)
     ) {
       const chapter = block.text.match(/^(\d{1,3})/)![1];
       const current = lastNumberedChapter(merged);

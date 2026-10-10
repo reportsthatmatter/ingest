@@ -107,6 +107,8 @@ export type ResolvedPasses = {
   sequencedNoteOpenings?: boolean;
   /** `footnoteRestarts`: a page-foot numbering that starts over at 1 is read without corroboration. */
   footnoteRestarts?: boolean;
+  /** `thumbIndexNotes`: a thumb-index letter beside a note's number is blanked before the note block is found. */
+  thumbIndexNotes?: boolean;
   /** `footnoteNumbers`: how page-foot notes are numbered. */
   footnoteNumbers?: "bare" | "period" | "tabbed";
   /** `pdfPageNumbers`: each page is numbered by its place in its PDF. */
@@ -199,8 +201,8 @@ export const KNOWN_PAGE_PASSES: ReadonlySet<string> = new Set([
   "noteFaceRunOver", "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
   "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
   "printedPageNumber", "quoteListRunOns", "quoteRunOn", "recoverListedHeadings", "romanFolios",
-  "sequencedNoteOpenings", "shiftedPages", "shortSubheads", "typographicHeadings", "unlistedHeadingsMinor",
-  "speakerTurns", "unmarkedHeadings", "wrappedHeadings",
+  "sequencedNoteOpenings", "shiftedPages", "shortSubheads", "speakerTurns", "thumbIndexNotes", "typographicHeadings",
+  "unlistedHeadingsMinor", "unmarkedHeadings", "wrappedHeadings",
 ]);
 
 /**
@@ -276,6 +278,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     speakerTurns: passes.some((pass) => pass.name === "speakerTurns"),
     footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
     footnoteRestarts: passes.some((pass) => pass.name === "footnoteRestarts"),
+    thumbIndexNotes: passes.some((pass) => pass.name === "thumbIndexNotes"),
     sequencedNoteOpenings: passes.some((pass) => pass.name === "sequencedNoteOpenings"),
     footnoteNumbers: (passes.find((pass) => pass.name === "footnoteNumbers") as { numbers?: "period" | "tabbed" } | undefined)
       ?.numbers,
