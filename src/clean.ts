@@ -160,6 +160,7 @@ export function takePrintedNumber(input: string[], options: { roman?: boolean; p
     break;
   }
 
+  if (options.head?.foot) takeLetterFoot(lines, options.head.foot);
   if (printed === null && options.head) printed = takePageHead(lines, options.head);
 
   if (printed === null) {
@@ -183,7 +184,28 @@ export function takePrintedNumber(input: string[], options: { roman?: boolean; p
  * the page, under a line of the head's other words ("January 6, 2025") that goes with it. A page without
  * the head (a letterhead's first page) is not touched.
  */
-export type PageHeadFolio = { above?: RegExp };
+export type PageHeadFolio = {
+  above?: RegExp;
+  /**
+   * A letterhead's footer that goes with the head (reportsthatmatter-5sf1): from the foot of the page up, lines
+   * matching it are taken off, with the blank lines and lone OCR'd rules ("I", "|", "\\") between them, as long as
+   * they run unbroken from the last line. Jack Smith's appended letter sets "Blanche Law PLLC / 99 Wall Street,
+   * Suite 4460 | New York … / (212) 716-1250 | www.BlancheLaw.com" under every page: once the head was read as
+   * the folio, it was left mid-paragraph (or glued to the page's last note).
+   */
+  foot?: RegExp;
+};
+const FOOT_RULE = /^\s*[I|\\l]\s*$/;
+function takeLetterFoot(lines: string[], foot: RegExp): void {
+  const end = lines.length;
+  let cut = lines.length;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (!lines[i].trim() || FOOT_RULE.test(lines[i])) continue;
+    if (!foot.test(lines[i])) break;
+    cut = i;
+  }
+  if (cut < end) lines.splice(cut, end - cut);
+}
 const PAGE_HEAD = /^\s*Page\s+(\d{1,4})\s*$/;
 function takePageHead(lines: string[], head: PageHeadFolio): number | null {
   const at: number[] = [];

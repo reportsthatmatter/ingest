@@ -70,6 +70,32 @@ describe("parseLayoutXml", () => {
   });
 });
 
+describe("parseLayoutXml: a marker over the spaces inside a fragment (Philip Morris)", () => {
+  const raw = parseLayoutXml(
+    xml([
+      `<page number="1" position="absolute" top="0" left="0" height="1000" width="800">\n${FONTS}\n` +
+        [
+          // "defraud.   It is sufficient…" is one fragment, the "10" over the three spaces after "defraud."
+          text(100, 100, 400, 16, 0, "scheme to defraud.   It is sufficient to prove"),
+          text(98, 196, 8, 9, 1, "10"),
+          // a marker at the line's end, the fragment trailing its spaces
+          text(200, 100, 83, 16, 0, "privilege.   "),
+          text(198, 170, 8, 9, 1, "2"),
+        ].join("\n") +
+        `\n</page>`,
+    ])
+  );
+  it("puts the marker back where the spaces are, mid-line and at the end", () => {
+    expect(raw).toHaveLength(2);
+    const mid = raw.find((l) => l.text.startsWith("scheme"))!;
+    expect(mid.text).toBe("scheme to defraud.10 It is sufficient to prove");
+    expect(mid.raised.map((r) => r.text)).toEqual(["10"]);
+    const end = raw.find((l) => l.text.startsWith("privilege"))!;
+    expect(end.text).toBe("privilege.2");
+    expect(end.raised.map((r) => r.text)).toEqual(["2"]);
+  });
+});
+
 describe("buildLayout", () => {
   const body = (top: number, left: number, right: number, t: string, font = 0) =>
     text(top, left, right - left, 16, font, t);

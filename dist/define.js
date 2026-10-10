@@ -56,9 +56,9 @@ export function pipeline(def) {
 export const KNOWN_PAGE_PASSES = new Set([
     "chapterContents", "citationRunOver", "contentsEntries", "contentsOutline", "doubleSpaced",
     "endnotes", "escapeLeadingHash", "escapeNumberedParagraphs", "flushFootnoteMarkers",
-    "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteRestarts", "hangingIndents",
+    "foliosInStep", "footnoteBlock", "footnoteGap", "footnoteNumbers", "footnoteResets", "footnoteRestarts", "hangingIndents", "holdNoteSequence",
     "layoutEndnotes", "layoutMarkers", "layoutPageJoins", "letteredItems", "listedDivisions", "listedHeadings",
-    "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
+    "noteFaceRunOver", "numberedFindings", "numberedOpenings", "numberedOutsideTables", "numberedParagraphs", "numberedSections",
     "pageBreakContinuations", "pageHeadFolios", "paragraphNotes", "parenFolios", "pdfPageNumbers", "photoCredits",
     "printedPageNumber", "quoteListRunOns", "quoteRunOn", "recoverListedHeadings", "romanFolios",
     "sequencedNoteOpenings", "shiftedPages", "shortSubheads", "thumbIndexNotes", "typographicHeadings", "unlistedHeadingsMinor",
@@ -115,6 +115,9 @@ export function resolvePasses(def) {
         pageBreakContinuations: passes.some((pass) => pass.name === "pageBreakContinuations"),
         pageBreakQuoteTails: passes.some((pass) => pass.name === "pageBreakContinuations" && "quoteTails" in pass && pass.quoteTails === true),
         citationRunOver: passes.some((pass) => pass.name === "citationRunOver"),
+        noteFaceRunOver: passes.some((pass) => pass.name === "noteFaceRunOver"),
+        holdNoteSequence: passes.some((pass) => pass.name === "holdNoteSequence"),
+        footnoteResets: passes.find((pass) => pass.name === "footnoteResets")?.at,
         romanFolios: passes.some((pass) => pass.name === "romanFolios"),
         parenFolios: passes.some((pass) => pass.name === "parenFolios"),
         pageHeadFolios: passes.find((pass) => pass.name === "pageHeadFolios")?.options ?? undefined,
@@ -143,6 +146,7 @@ function layoutPageJoinsOf(passes) {
         return undefined;
     return {
         ...(pass.scanned ? { scanned: true } : {}),
+        ...(pass.numberedBody ? { numberedBody: true } : {}),
         ...(pass.referee ? { referee: pass.referee } : {}),
         ...(pass.refer ? { refer: pass.refer } : {}),
     };

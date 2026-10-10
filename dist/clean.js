@@ -125,6 +125,8 @@ export function takePrintedNumber(input, options = {}) {
             takeNumber(i);
         break;
     }
+    if (options.head?.foot)
+        takeLetterFoot(lines, options.head.foot);
     if (printed === null && options.head)
         printed = takePageHead(lines, options.head);
     if (printed === null) {
@@ -142,6 +144,20 @@ export function takePrintedNumber(input, options = {}) {
             return { printed, roman, lines };
     }
     return { printed, lines };
+}
+const FOOT_RULE = /^\s*[I|\\l]\s*$/;
+function takeLetterFoot(lines, foot) {
+    const end = lines.length;
+    let cut = lines.length;
+    for (let i = lines.length - 1; i >= 0; i--) {
+        if (!lines[i].trim() || FOOT_RULE.test(lines[i]))
+            continue;
+        if (!foot.test(lines[i]))
+            break;
+        cut = i;
+    }
+    if (cut < end)
+        lines.splice(cut, end - cut);
 }
 const PAGE_HEAD = /^\s*Page\s+(\d{1,4})\s*$/;
 function takePageHead(lines, head) {

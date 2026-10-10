@@ -59,6 +59,16 @@ export type TypographicHeadingsOptions = {
      * with `faces`. Default false.
      */
     relevel?: boolean;
+    /**
+     * A heading set at the head of a block the text reading made a quotation (its bold, inset first line
+     * opens one) leaves the paragraph below it as a quotation of one or two lines and the rest of the
+     * paragraph as a block of its own, cut where the quotation's lines stop: PSI's "(3) Examination
+     * Process" (PDF p.174) and the ~30 subheads like it. With this the remainder joins the paragraph
+     * that follows it when it stops short of a sentence's end (reportsthatmatter-bi5), and is a paragraph.
+     * Opt-in: a quotation that really follows a heading would stop at a sentence's end, but the reading
+     * is the layout's, so the report that has checked it declares it. Default false.
+     */
+    quotedRemainder?: boolean;
 };
 export type TypographicHeadingStats = {
     /** Heading faces found, largest first, with the level each was given. */
