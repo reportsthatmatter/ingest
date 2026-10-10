@@ -1,4 +1,6 @@
 import MarkdownIt from "markdown-it";
+import type StateCore from "markdown-it/lib/rules_core/state_core.mjs";
+import type Token from "markdown-it/lib/token.mjs";
 import { parse } from "yaml";
 
 export type FrontMatter = Record<string, unknown>;
@@ -138,6 +140,173 @@ function configureLinkify(md: MarkdownIt): void {
     const tld = host.split(".").pop();
     return !tld || tld === tld.toLowerCase();
   };
+
+  // Before linkify: a URL the source wrapped across a line keeps a space where
+  // the break was (`Transcript-of- Afternoon-Hearing.pdf`, `file. pdf`), so
+  // linkify would stop at the space and link the first half. Join such a URL
+  // into one link whose visible text stays exactly as printed.
+  md.core.ruler.before("linkify", "rtm_join_wrapped_urls", (state) => {
+    for (const block of state.tokens) {
+      if (block.type !== "inline" || !block.children) continue;
+      const out: Token[] = [];
+      for (const child of block.children) {
+        if (child.type !== "text") out.push(child);
+        else out.push(...joinWrappedUrls(state, child));
+      }
+      extendInlineLinks(out, state);
+      block.children = out;
+    }
+  });
+
+  // After linkify: unlink the autolinks that are not plausible URLs.
+  md.core.ruler.after("linkify", "rtm_drop_junk_links", (state) => {
+    for (const block of state.tokens) {
+      if (block.type !== "inline" || !block.children) continue;
+      const kids = block.children;
+      for (let i = 0; i + 2 < kids.length; i++) {
+        const open = kids[i];
+        if (open.type !== "link_open" || open.markup !== "linkify") continue;
+        const close = kids[i + 2];
+        if (close.type !== "link_close") continue;
+        if (isPlausibleUrl(kids[i + 1].content)) {
+          // WordPress's `wp-content` loses its hyphen when the source wrapped
+          // the URL there (Leveson: 30 links to `/wpcontent/`, all 404).
+          const href = open.attrGet("href");
+          if (href?.includes("/wpcontent/")) open.attrSet("href", href.replace("/wpcontent/", "/wp-content/"));
+          continue;
+        }
+        for (const t of [open, close]) {
+          t.type = "text";
+          t.tag = "";
+          t.content = "";
+          t.nesting = 0;
+          t.attrs = null;
+        }
+      }
+    }
+  });
+}
+
+/** Top-level domains a schemeless citation (`FT.com`, `guardian.co.uk`) may end in. */
+const COMMON_TLDS = new Set([
+  "com", "org", "net", "gov", "edu", "mil", "int", "info", "biz", "io", "eu", "us", "uk",
+]);
+/** Second-level labels of a ccTLD (`co.uk`, `gov.au`): `org.uk` alone is a suffix, not a site. */
+const SECOND_LEVEL = new Set(["co", "org", "gov", "ac", "com", "net", "edu", "ltd", "plc", "nhs", "sch", "me"]);
+
+/**
+ * Whether linkified text (`two.ls`, `www.levesoninquiry`, `http://www`,
+ * `org.uk/wp-content/...`) reads as a URL rather than an OCR fragment
+ * (reportsthatmatter-y960). Explicit `http(s)://` and `www.` are trusted as
+ * intent, but the host must still be a domain: dotted, ending in a real-looking
+ * TLD, not a bare public suffix. A schemeless candidate must also end in a
+ * common TLD, because two-letter country codes are exactly what garbled words
+ * and dropped-space sentence boundaries produce (`broke in two.ls`).
+ */
+export function isPlausibleUrl(text: string): boolean {
+  const explicit = /^(https?:\/\/|www\.)/i.test(text);
+  const host = text
+    .replace(/^[a-z][a-z0-9+.-]*:\/\//i, "")
+    .split(/[/?#:]/)[0]
+    .toLowerCase();
+  // A URL that stops at a hyphen, or at a bare upload directory, was cut by a
+  // line or paragraph break: the target is a 404 or a directory listing.
+  if (/-$/.test(text) || /\/wp-content\/(uploads\/(\d{4}\/(\d{2}\/)?)?)?$/.test(text)) return false;
+  const labels = host.split(".");
+  if (labels.length < 2 || labels.some((l) => l === "")) return false;
+  const tld = labels[labels.length - 1];
+  if (labels.length === 2 && SECOND_LEVEL.has(labels[0]) && tld.length === 2) return false;
+  if (COMMON_TLDS.has(tld)) return true;
+  return explicit && /^[a-z]{2}$/.test(tld);
+}
+
+const WRAPPED_URL = /(?:https?:\/\/|www\.)\S*/gi;
+const CONTINUES_FILE = /^(?:pdf|html?|aspx?|docx?|xlsx?|txt)\b/i;
+
+function joinWrappedUrls(state: StateCore, token: Token): Token[] {
+  const text = token.content;
+  const pieces: Token[] = [];
+  let last = 0;
+  WRAPPED_URL.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = WRAPPED_URL.exec(text))) {
+    let end = m.index + m[0].length;
+    let joined = false;
+    for (;;) {
+      const gap = /^\s+(\S+)/.exec(text.slice(end));
+      if (!gap) break;
+      const soFar = text.slice(m.index, end);
+      const next = gap[1];
+      const wrapsAtHyphen = soFar.endsWith("-") && /^[A-Za-z0-9]/.test(next);
+      const wrapsAtDot = soFar.endsWith(".") && CONTINUES_FILE.test(next);
+      if (!wrapsAtHyphen && !wrapsAtDot) break;
+      end += gap[0].length;
+      joined = true;
+    }
+    if (!joined) continue;
+    const span = text.slice(m.index, end);
+    const shown = span.replace(/[.,;:)\]]+$/, "");
+    let href = shown.replace(/\s+/g, "").replace(/(\.[a-z]{2,4})-$/i, "$1");
+    if (/^www\./i.test(href)) href = `http://${href}`;
+    if (!isPlausibleUrl(href) || !state.md.validateLink(state.md.normalizeLink(href))) continue;
+    if (m.index > last) pieces.push(textToken(state, text.slice(last, m.index)));
+    const open = new state.Token("link_open", "a", 1);
+    open.attrs = [["href", state.md.normalizeLink(href)]];
+    open.markup = "linkify";
+    open.info = "auto";
+    const close = new state.Token("link_close", "a", -1);
+    close.markup = "linkify";
+    close.info = "auto";
+    pieces.push(open, textToken(state, shown), close);
+    last = m.index + shown.length;
+    WRAPPED_URL.lastIndex = last;
+  }
+  if (!pieces.length) return [token];
+  if (last < text.length) pieces.push(textToken(state, text.slice(last)));
+  return pieces;
+}
+
+/**
+ * markdown-it's inline rule already links `http(s)://` URLs, stopping at the
+ * wrap's space. Where such a link ends in a wrap cue, pull the continuation
+ * from the text after it into the link, rewriting href to the joined URL.
+ */
+function extendInlineLinks(kids: Token[], state: StateCore): void {
+  for (let i = 0; i + 3 < kids.length; i++) {
+    const [open, label, close, after] = [kids[i], kids[i + 1], kids[i + 2], kids[i + 3]];
+    if (open.type !== "link_open" || open.markup !== "linkify" || label.type !== "text") continue;
+    if (close.type !== "link_close" || after.type !== "text") continue;
+    let shown = label.content;
+    let rest = after.content;
+    // markdown-it leaves a trailing "." out of the link: take it back when an extension follows the wrap.
+    if (/^\.\s+\S/.test(rest) && CONTINUES_FILE.test(rest.slice(1).trimStart())) {
+      shown += ".";
+      rest = rest.slice(1);
+    }
+    for (;;) {
+      const gap = /^\s+(\S+)/.exec(rest);
+      if (!gap) break;
+      const wrapsAtHyphen = shown.endsWith("-") && /^[A-Za-z0-9]/.test(gap[1]);
+      const wrapsAtDot = shown.endsWith(".") && CONTINUES_FILE.test(gap[1]);
+      if (!wrapsAtHyphen && !wrapsAtDot) break;
+      shown += gap[0];
+      rest = rest.slice(gap[0].length);
+    }
+    if (shown === label.content) continue;
+    const trimmed = shown.replace(/[.,;:)\]]+$/, "");
+    rest = shown.slice(trimmed.length) + rest;
+    const href = state.md.normalizeLink(trimmed.replace(/\s+/g, "").replace(/(\.[a-z]{2,4})-$/i, "$1"));
+    if (!state.md.validateLink(href)) continue;
+    label.content = trimmed;
+    after.content = rest;
+    open.attrSet("href", href);
+  }
+}
+
+function textToken(state: StateCore, content: string): Token {
+  const t = new state.Token("text", "", 0);
+  t.content = content;
+  return t;
 }
 
 /**

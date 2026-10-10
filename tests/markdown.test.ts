@@ -95,13 +95,33 @@ describe("linkify", () => {
     expect(html).not.toContain("<a href");
   });
 
-  it("still links a short, all-lowercase-TLD OCR fragment (an accepted residual)", () => {
-    // Not every false positive is chased: telling a short garbled
-    // fragment ("a.cz") apart from a short real domain ("FT.com") by
-    // shape alone, once both have a lowercase TLD, risks losing the real
-    // ones. This documents the accepted gap rather than leaving it an
-    // undocumented surprise.
-    expect(renderMarkdown("Visit a.cz today.")).toContain("<a href");
+  it("does not link a short fragment under a country-code TLD (reportsthatmatter-y960)", () => {
+    // Challenger's "broke in two.ls", "a.cz", "q.cn": schemeless, so only the
+    // common TLDs (com, org, gov, uk...) count. `FT.com` above still links.
+    for (const text of ["It broke in two.ls and fell.", "Visit a.cz today.", "the q.cn code", "ITL.Okay.so then"]) {
+      expect(renderMarkdown(text)).not.toContain("<a href");
+    }
+  });
+
+  it("does not link a bare public suffix or a host with no TLD", () => {
+    for (const text of ["see http://www and more", "see www.levesoninquiry for", "at http://org.uk/wp-content/x.pdf"]) {
+      expect(renderMarkdown(text)).not.toContain("<a href");
+    }
+  });
+
+  it("joins a URL the source wrapped at a hyphen or before the extension, keeping the printed text", () => {
+    const html = renderMarkdown(
+      "Kenneth Clarke, http://www.levesoninquiry.org.uk/wp-content/uploads/2012/05/Transcript-of- Afternoon-Hearing-30-May-2012.pdf then. Also http://www.levesoninquiry.org.uk/wp-content/uploads/Submission. pdf end.",
+    );
+    expect(html).toContain(
+      '<a href="http://www.levesoninquiry.org.uk/wp-content/uploads/2012/05/Transcript-of-Afternoon-Hearing-30-May-2012.pdf">http://www.levesoninquiry.org.uk/wp-content/uploads/2012/05/Transcript-of- Afternoon-Hearing-30-May-2012.pdf</a> then.',
+    );
+    expect(html).toContain('<a href="http://www.levesoninquiry.org.uk/wp-content/uploads/Submission.pdf">');
+  });
+
+  it("restores the hyphen the source lost from wp-content", () => {
+    const html = renderMarkdown("See http://www.levesoninquiry.org.uk/wpcontent/uploads/2012/05/Exhibit-MG5.pdf here.");
+    expect(html).toContain('href="http://www.levesoninquiry.org.uk/wp-content/uploads/2012/05/Exhibit-MG5.pdf"');
   });
 });
 
