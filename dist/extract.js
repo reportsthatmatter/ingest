@@ -30,8 +30,7 @@ export function extractPages(pdfPath) {
     }))
         .filter((page) => page.lines.some((line) => line.trim().length > 0));
 }
-/** C0 control characters other than tab, line feed and form feed (which `extractPages` splits on). */
-/** C0 controls extraction turns into spaces (tab, LF and form feed are kept). */
+/** C0 controls extraction turns into spaces (tab, LF and form feed are kept; `extractPages` splits on form feed). */
 export const CONTROL_CHARACTERS = /[\u0000-\u0008\u000b\u000d-\u001f]/g;
 /** Normalises the characters pdftotext emits that would otherwise reach output. */
 export function normaliseWhitespace(text) {
