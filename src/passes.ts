@@ -132,9 +132,17 @@ export type PageHeadFoliosPass = {
   readonly options: PageHeadFolio;
 };
 
+/** `hangingLabels`: the labels that open an item whatever follows them on the line. */
+export type HangingLabelsPass = {
+  readonly name: "hangingLabels";
+  readonly stage: "page";
+  readonly labels: readonly string[];
+};
+
 export type Pass =
   | FootnoteResetsPass
   | PageHeadFoliosPass
+  | HangingLabelsPass
   | EditionPass
   | VisionStructurePass
   | TypographicHeadingsPass
@@ -401,8 +409,17 @@ export const letteredItems = (): PagePass => ({ name: "letteredItems", stage: "p
  * column, at least four characters in from the label. Opt-in, like
  * `hangingIndents`: a label line over indented lines is also a quotation
  * introduced by "Subject:" in another document.
+ *
+ * `labels` names the report's own labels ("Study Claim", "Fact"): a line opening
+ * on one of them and a colon opens an item with or without the gap, which a
+ * redaction mark or OCR junk after the label can close up ("Study Claim: f
+ * [box] ) "On at least two…", p.581).
  */
-export const hangingLabels = (): PagePass => ({ name: "hangingLabels", stage: "page" });
+export const hangingLabels = (options: { labels?: readonly string[] } = {}): HangingLabelsPass => ({
+  name: "hangingLabels",
+  stage: "page",
+  labels: options.labels ?? [],
+});
 
 /**
  * A short quotation that stops mid-sentence, followed on the same page by a

@@ -1457,7 +1457,7 @@ export function toBlocks(
   recoverListedHeadings = false,
   letteredItems = false,
   speakerTurns = false,
-  hangingLabels = false
+  hangingLabels?: { labels: readonly string[] }
 ): Block[] {
   if (paragraphContents) lines = joinParagraphContents(lines);
   // With `listedHeadings`, a would-be heading the contents does not name is
@@ -1999,8 +1999,11 @@ function hangingItems(
   numbered = true,
   letteredBelow = 0,
   speakers = false,
-  labels = false
+  labels?: { labels: readonly string[] }
 ): { opens: boolean[]; continues: boolean[] } {
+  const named = labels?.labels.length
+    ? new RegExp(`^(\\s*)(?:${labels.labels.map((l) => l.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")}):`)
+    : undefined;
   const opens = lines.map(() => false);
   const continues = lines.map(() => false);
   for (let i = 0; i < lines.length; i++) {
@@ -2023,7 +2026,8 @@ function hangingItems(
     // item is the label's line and the lines at the next line's column; a redaction mark or OCR junk in
     // the gap shifts the first line's text, so the column is read from the second line, not the first.
     if (labels) {
-      const opening = lines[i].match(/^(\s*)[A-Z][A-Za-z]*(?: [A-Z][A-Za-z]*){0,2}:(?=.*\S {2,}\S| {2,}\S)/);
+      const opening =
+        lines[i].match(/^(\s*)[A-Z][A-Za-z]*(?: [A-Z][A-Za-z]*){0,2}:(?=.*\S {2,}\S| {2,}\S)/) ?? (named ? lines[i].match(named) : null);
       const next = lines[i + 1];
       const column = next?.trim() ? indentOf(next) : -1;
       if (opening && column >= opening[1].length + 4) {

@@ -99,8 +99,10 @@ export type ResolvedPasses = {
     hyphenFragments?: boolean;
     divisionLabels?: boolean;
     speakerTurns?: boolean;
-    /** `hangingLabels`: an item under a short colon label ("Fact:") with its lines hanging in is one paragraph. */
-    hangingLabels?: boolean;
+    /** `hangingLabels`: an item under a short colon label ("Fact:") with its lines hanging in is one paragraph; the report's own labels. */
+    hangingLabels?: {
+        labels: readonly string[];
+    };
     footnoteGap?: boolean;
     /** `sequencedNoteOpenings`: a note line opening on the next note's number starts it, whatever follows. */
     sequencedNoteOpenings?: boolean;

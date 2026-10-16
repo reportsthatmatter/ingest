@@ -184,7 +184,7 @@ export function resolvePasses(def) {
         hyphenFragments: passes.some((pass) => pass.name === "hyphenFragments"),
         divisionLabels: passes.some((pass) => pass.name === "divisionLabels"),
         speakerTurns: passes.some((pass) => pass.name === "speakerTurns"),
-        hangingLabels: passes.some((pass) => pass.name === "hangingLabels"),
+        hangingLabels: passes.find((pass) => pass.name === "hangingLabels") ?? undefined,
         footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
         footnoteRestarts: passes.some((pass) => pass.name === "footnoteRestarts"),
         thumbIndexNotes: passes.some((pass) => pass.name === "thumbIndexNotes"),

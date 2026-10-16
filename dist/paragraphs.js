@@ -1285,7 +1285,7 @@ function opensUnclosedQuotation(text, lines, at) {
     }
     return true;
 }
-export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false, allCapsHeadings = true, paragraphContents = false, numberedHeadings = true, listed, numbered, findings, outline, divisions, wrappedHeadings = false, hangingIndents = false, unmarkedHeadings = false, numberedOutsideTables = false, recoverListedHeadings = false, letteredItems = false, speakerTurns = false, hangingLabels = false) {
+export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false, allCapsHeadings = true, paragraphContents = false, numberedHeadings = true, listed, numbered, findings, outline, divisions, wrappedHeadings = false, hangingIndents = false, unmarkedHeadings = false, numberedOutsideTables = false, recoverListedHeadings = false, letteredItems = false, speakerTurns = false, hangingLabels) {
     if (paragraphContents)
         lines = joinParagraphContents(lines);
     // With `listedHeadings`, a would-be heading the contents does not name is
@@ -1796,7 +1796,10 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
  * or more spaces before its text; the item is the lines indented to that
  * text, within a character.
  */
-function hangingItems(lines, numbered = true, letteredBelow = 0, speakers = false, labels = false) {
+function hangingItems(lines, numbered = true, letteredBelow = 0, speakers = false, labels) {
+    const named = labels?.labels.length
+        ? new RegExp(`^(\\s*)(?:${labels.labels.map((l) => l.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")}):`)
+        : undefined;
     const opens = lines.map(() => false);
     const continues = lines.map(() => false);
     for (let i = 0; i < lines.length; i++) {
@@ -1819,7 +1822,7 @@ function hangingItems(lines, numbered = true, letteredBelow = 0, speakers = fals
         // item is the label's line and the lines at the next line's column; a redaction mark or OCR junk in
         // the gap shifts the first line's text, so the column is read from the second line, not the first.
         if (labels) {
-            const opening = lines[i].match(/^(\s*)[A-Z][A-Za-z]*(?: [A-Z][A-Za-z]*){0,2}:(?=.*\S {2,}\S| {2,}\S)/);
+            const opening = lines[i].match(/^(\s*)[A-Z][A-Za-z]*(?: [A-Z][A-Za-z]*){0,2}:(?=.*\S {2,}\S| {2,}\S)/) ?? (named ? lines[i].match(named) : null);
             const next = lines[i + 1];
             const column = next?.trim() ? indentOf(next) : -1;
             if (opening && column >= opening[1].length + 4) {

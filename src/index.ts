@@ -87,6 +87,7 @@ export type {
   LayoutMarkersPass,
   TypographicHeadingsPass,
   PageHeadFoliosPass,
+  HangingLabelsPass,
   PageBreakContinuationsPass,
   ContentsOutlinePass,
   BodyPass,

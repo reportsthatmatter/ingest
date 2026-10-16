@@ -45,6 +45,17 @@ describe("hangingLabels", () => {
     expect(md).toMatch(/^Fact: f F \[Redacted\] 1 \^ CIA records demonstrate that Abu Zubaydah was subjected to enhanced/m);
   });
 
+  it("opens a report's own label with no gap after it (p.581)", () => {
+    const lines = [
+      ...p589.slice(0, 5),
+      "Study Claim: f [Redacted] ) \"On at least two prominent occasions, the CIA",
+      "                   represented, inaccurately, that Abu Zubaydah provided information",
+      "                   after the use of the CIA's enhanced interrogation techniques.\"99",
+    ];
+    expect(run(lines, [hangingLabels()])).toMatch(/^> represented/m);
+    expect(run(lines, [hangingLabels({ labels: ["Study Claim", "Fact"] })])).toMatch(/^Study Claim: f \[Redacted\] \) "On at least two prominent occasions, the CIA represented, inaccurately/m);
+  });
+
   it("leaves a label with no gap after it, over a quotation, alone", () => {
     const lines = [
       "The officer wrote to Headquarters as follows, in a cable of that day:",
@@ -57,7 +68,7 @@ describe("hangingLabels", () => {
 });
 
 const at = (pdfIndex: number) => ({ volume: 1, pdfIndex, printed: pdfIndex });
-const quote = (text: string, page = 1): Block => ({ kind: "quote", text, at: at(page) });
+const quote = (text: string, page = 1): Block & { kind: "quote" } => ({ kind: "quote", text, at: at(page) });
 const para = (text: string, page = 1): Block => ({ kind: "paragraph", text, at: at(page) });
 const marker = (page: number): Block => ({ kind: "page", number: page, at: at(page) });
 const on = { insetOpenings: true };

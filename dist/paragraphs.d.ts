@@ -286,7 +286,9 @@ export declare function learnOutline(outline: Outline, entries: OutlineEntry[]):
 export type FindingCounter = {
     next: number;
 };
-export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>, numbered?: NumberedContents, findings?: FindingCounter, outline?: Outline, divisions?: ListedDivisions, wrappedHeadings?: boolean, hangingIndents?: boolean, unmarkedHeadings?: boolean, numberedOutsideTables?: boolean, recoverListedHeadings?: boolean, letteredItems?: boolean, speakerTurns?: boolean, hangingLabels?: boolean): Block[];
+export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>, numbered?: NumberedContents, findings?: FindingCounter, outline?: Outline, divisions?: ListedDivisions, wrappedHeadings?: boolean, hangingIndents?: boolean, unmarkedHeadings?: boolean, numberedOutsideTables?: boolean, recoverListedHeadings?: boolean, letteredItems?: boolean, speakerTurns?: boolean, hangingLabels?: {
+    labels: readonly string[];
+}): Block[];
 export declare function endsSentence(text: string): boolean;
 export type MergeOptions = {
     /**

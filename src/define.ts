@@ -13,6 +13,7 @@ import type {
   FootnoteResetsPass,
   FootnoteReset,
   PageHeadFoliosPass,
+  HangingLabelsPass,
 } from "./passes";
 import type { PageHeadFolio } from "./clean";
 import type { PageBreakOptions } from "./pagebreaks";
@@ -111,8 +112,8 @@ export type ResolvedPasses = {
   hyphenFragments?: boolean;
   divisionLabels?: boolean;
   speakerTurns?: boolean;
-  /** `hangingLabels`: an item under a short colon label ("Fact:") with its lines hanging in is one paragraph. */
-  hangingLabels?: boolean;
+  /** `hangingLabels`: an item under a short colon label ("Fact:") with its lines hanging in is one paragraph; the report's own labels. */
+  hangingLabels?: { labels: readonly string[] };
   footnoteGap?: boolean;
   /** `sequencedNoteOpenings`: a note line opening on the next note's number starts it, whatever follows. */
   sequencedNoteOpenings?: boolean;
@@ -353,7 +354,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     hyphenFragments: passes.some((pass) => pass.name === "hyphenFragments"),
     divisionLabels: passes.some((pass) => pass.name === "divisionLabels"),
     speakerTurns: passes.some((pass) => pass.name === "speakerTurns"),
-    hangingLabels: passes.some((pass) => pass.name === "hangingLabels"),
+    hangingLabels: passes.find((pass): pass is HangingLabelsPass => pass.name === "hangingLabels") ?? undefined,
     footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
     footnoteRestarts: passes.some((pass) => pass.name === "footnoteRestarts"),
     thumbIndexNotes: passes.some((pass) => pass.name === "thumbIndexNotes"),

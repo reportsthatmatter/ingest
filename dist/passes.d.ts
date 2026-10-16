@@ -121,7 +121,13 @@ export type PageHeadFoliosPass = {
     readonly stage: "page";
     readonly options: PageHeadFolio;
 };
-export type Pass = FootnoteResetsPass | PageHeadFoliosPass | EditionPass | VisionStructurePass | TypographicHeadingsPass | NumberedHeadingsPass | LayoutMarkersPass | PageBreakContinuationsPass | LayoutPageJoinsPass | PagePass | BodyPass | SourcePass | VolumePass | GeometryPass | QuoteInsetPass | AllCapsHeadingsPass;
+/** `hangingLabels`: the labels that open an item whatever follows them on the line. */
+export type HangingLabelsPass = {
+    readonly name: "hangingLabels";
+    readonly stage: "page";
+    readonly labels: readonly string[];
+};
+export type Pass = FootnoteResetsPass | PageHeadFoliosPass | HangingLabelsPass | EditionPass | VisionStructurePass | TypographicHeadingsPass | NumberedHeadingsPass | LayoutMarkersPass | PageBreakContinuationsPass | LayoutPageJoinsPass | PagePass | BodyPass | SourcePass | VolumePass | GeometryPass | QuoteInsetPass | AllCapsHeadingsPass;
 /**
  * Takes the printed page number off each page. These documents are cited by
  * page ("Report at 62"), so the printed number is the citation unit readers
@@ -327,8 +333,15 @@ export declare const letteredItems: () => PagePass;
  * column, at least four characters in from the label. Opt-in, like
  * `hangingIndents`: a label line over indented lines is also a quotation
  * introduced by "Subject:" in another document.
+ *
+ * `labels` names the report's own labels ("Study Claim", "Fact"): a line opening
+ * on one of them and a colon opens an item with or without the gap, which a
+ * redaction mark or OCR junk after the label can close up ("Study Claim: f
+ * [box] ) "On at least two…", p.581).
  */
-export declare const hangingLabels: () => PagePass;
+export declare const hangingLabels: (options?: {
+    labels?: readonly string[];
+}) => HangingLabelsPass;
 /**
  * A short quotation that stops mid-sentence, followed on the same page by a
  * paragraph opening in lower case, is one paragraph whose first lines were
