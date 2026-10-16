@@ -17,5 +17,7 @@ export type Page = {
  * The indentation is load-bearing: it is what tells us where paragraphs begin.
  */
 export declare function extractPages(pdfPath: string): Page[];
+/** C0 controls extraction turns into spaces (tab, LF and form feed are kept; `extractPages` splits on form feed). */
+export declare const CONTROL_CHARACTERS: RegExp;
 /** Normalises the characters pdftotext emits that would otherwise reach output. */
 export declare function normaliseWhitespace(text: string): string;

@@ -9,6 +9,9 @@
 import { REDACTION_MARKER } from "./redactions.js";
 import { autoFix } from "./ocr.js";
 import { endsSentence } from "./paragraphs.js";
+import { CONTROL_CHARACTERS } from "./extract.js";
+/** What extraction strips, plus DEL. Form feed has its own check; CR counts (full.md is LF-only). */
+const OUTPUT_CONTROL_CHARACTERS = new RegExp(`${CONTROL_CHARACTERS.source}|\\u007f`, "g");
 const PAGE_MARKER = /^%%page [^%]+%%$/;
 /** Headings per 100 pages a report normally has; reported, not gated. */
 const HEADINGS_PER_100_PAGES = [3, 60];
@@ -46,6 +49,20 @@ export function structuralChecks(markdown) {
         ok: !markdown.includes("\f"),
         detail: markdown.includes("\f") ? "form feed present" : "none",
     });
+    const controls = [...markdown.matchAll(OUTPUT_CONTROL_CHARACTERS)];
+    if (controls.length) {
+        const first = controls[0];
+        const code = first[0].charCodeAt(0).toString(16).toUpperCase().padStart(4, "0");
+        const line = markdown.slice(0, first.index).split("\n").length;
+        checks.push({
+            name: "no control characters",
+            ok: false,
+            detail: `${controls.length} found; first U+${code} at line ${line}`,
+        });
+    }
+    else {
+        checks.push({ name: "no control characters", ok: true, detail: "none" });
+    }
     const label = (ref) => ref.replace(/^\[\^|\]:?$/g, "");
     const orphaned = markdown.match(/\[\^\d+(?:-\d+)?\](?!:)/g) ?? [];
     const defined = new Set((markdown.match(/^\[\^\d+(?:-\d+)?\]:/gm) ?? []).map(label));
