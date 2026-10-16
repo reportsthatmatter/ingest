@@ -286,7 +286,9 @@ export declare function learnOutline(outline: Outline, entries: OutlineEntry[]):
 export type FindingCounter = {
     next: number;
 };
-export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>, numbered?: NumberedContents, findings?: FindingCounter, outline?: Outline, divisions?: ListedDivisions, wrappedHeadings?: boolean, hangingIndents?: boolean, unmarkedHeadings?: boolean, numberedOutsideTables?: boolean, recoverListedHeadings?: boolean, letteredItems?: boolean, speakerTurns?: boolean): Block[];
+export declare function toBlocks(lines: string[], documentMargin?: number, quoteInset?: number, numberedParagraphs?: boolean, allCapsHeadings?: boolean, paragraphContents?: boolean, numberedHeadings?: boolean, listed?: Set<string>, numbered?: NumberedContents, findings?: FindingCounter, outline?: Outline, divisions?: ListedDivisions, wrappedHeadings?: boolean, hangingIndents?: boolean, unmarkedHeadings?: boolean, numberedOutsideTables?: boolean, recoverListedHeadings?: boolean, letteredItems?: boolean, speakerTurns?: boolean, hangingLabels?: {
+    labels: readonly string[];
+}): Block[];
 export declare function endsSentence(text: string): boolean;
 export type MergeOptions = {
     /**
@@ -336,6 +338,12 @@ export type MergeOptions = {
      * second opens in lower case, on no label of its own. Text only.
      */
     quoteListRunOns?: boolean;
+    /**
+     * The `insetOpenings` pass (reportsthatmatter-jc46): a short quotation that
+     * stops mid-sentence, then a paragraph on the same page opening in lower
+     * case, are one paragraph whose first lines were pushed in. Text only.
+     */
+    insetOpenings?: boolean;
     /**
      * The `layoutPageJoins` pass (reportsthatmatter-38s.10): a paragraph the
      * text rules leave split at a page break joins the one above when the

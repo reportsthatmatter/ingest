@@ -1456,7 +1456,8 @@ export function toBlocks(
   numberedOutsideTables = false,
   recoverListedHeadings = false,
   letteredItems = false,
-  speakerTurns = false
+  speakerTurns = false,
+  hangingLabels?: { labels: readonly string[] }
 ): Block[] {
   if (paragraphContents) lines = joinParagraphContents(lines);
   // With `listedHeadings`, a would-be heading the contents does not name is
@@ -1587,8 +1588,8 @@ export function toBlocks(
   // it from, and getting it wrong turns an ordinary paragraph into a quote.
   const margin = documentMargin ?? bodyIndent(lines);
   const hanging =
-    hangingIndents || letteredItems || speakerTurns
-      ? hangingItems(lines, hangingIndents, letteredItems ? margin + quoteInset : 0, speakerTurns)
+    hangingIndents || letteredItems || speakerTurns || hangingLabels
+      ? hangingItems(lines, hangingIndents, letteredItems ? margin + quoteInset : 0, speakerTurns, hangingLabels)
       : null;
   const blocks: Block[] = [];
 
@@ -1997,8 +1998,12 @@ function hangingItems(
   lines: string[],
   numbered = true,
   letteredBelow = 0,
-  speakers = false
+  speakers = false,
+  labels?: { labels: readonly string[] }
 ): { opens: boolean[]; continues: boolean[] } {
+  const named = labels?.labels.length
+    ? new RegExp(`^(\\s*)(?:${labels.labels.map((l) => l.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")}):`)
+    : undefined;
   const opens = lines.map(() => false);
   const continues = lines.map(() => false);
   for (let i = 0; i < lines.length; i++) {
@@ -2015,6 +2020,26 @@ function hangingItems(
       }
       i = k - 1;
       continue;
+    }
+    // `hangingLabels`: a short label of capitalised words and a colon ("Study Claim:", "Fact:"), a gap,
+    // and the item's lines hanging well in from the label (the Senate study's minority views, p.589). The
+    // item is the label's line and the lines at the next line's column; a redaction mark or OCR junk in
+    // the gap shifts the first line's text, so the column is read from the second line, not the first.
+    if (labels) {
+      const opening =
+        lines[i].match(/^(\s*)[A-Z][A-Za-z]*(?: [A-Z][A-Za-z]*){0,2}:(?=.*\S {2,}\S| {2,}\S)/) ?? (named ? lines[i].match(named) : null);
+      const next = lines[i + 1];
+      const column = next?.trim() ? indentOf(next) : -1;
+      if (opening && column >= opening[1].length + 4) {
+        let k = i + 1;
+        while (k < lines.length && lines[k].trim() && Math.abs(indentOf(lines[k]) - column) <= 1) {
+          continues[k] = true;
+          k++;
+        }
+        opens[i] = true;
+        i = k - 1;
+        continue;
+      }
     }
     let label = numbered ? lines[i].match(/^(\s*)(?=\S*\d)(\S{2,12})( {2,})\S/) : null;
     // `letteredItems`: a sub-item's own letter ("a.", "(b)", "iv.") over its
@@ -2195,6 +2220,12 @@ export type MergeOptions = {
    */
   quoteListRunOns?: boolean;
   /**
+   * The `insetOpenings` pass (reportsthatmatter-jc46): a short quotation that
+   * stops mid-sentence, then a paragraph on the same page opening in lower
+   * case, are one paragraph whose first lines were pushed in. Text only.
+   */
+  insetOpenings?: boolean;
+  /**
    * The `layoutPageJoins` pass (reportsthatmatter-38s.10): a paragraph the
    * text rules leave split at a page break joins the one above when the
    * layout says it runs on (rules R1 and R2; see the pass). Needs `layout`.
@@ -2226,6 +2257,16 @@ export function isPhotoCredit(text: string): boolean {
 
 /** Lower case, or punctuation no sentence opens on. */
 const CONTINUATION = /^[a-z,;]/;
+
+/** `insetOpenings`: the longest quotation read as a paragraph's pushed-in opening, about four lines. */
+const INSET_OPENING_MAX = 400;
+
+/** Most of its words capitalised, as a title is set: "The Capture of Ramzi bin al-Shibh". */
+function titleCased(text: string): boolean {
+  const lettered = text.split(/\s+/).filter((w) => /^[A-Za-z]/.test(w));
+  const capitals = lettered.filter((w) => /^[A-Z]/.test(w));
+  return lettered.length >= 2 && capitals.length / lettered.length >= 0.6;
+}
 
 /** A lone OCR glyph (a degree sign for a raised digit) before a lower-case word. */
 const STRAY_GLYPH = /^[°º˚]\s+(?=[a-z])/;
@@ -2545,6 +2586,34 @@ export function mergeAcrossPages(blocks: Block[], options: MergeOptions = {}): B
         }
       }
       previous.text = `${previous.text} ${block.text}`;
+      continue;
+    }
+
+    // `insetOpenings`: a paragraph's first lines pushed in from the margin read
+    // as a quotation of their own, and the rest of the paragraph, back at the
+    // margin, as a paragraph opening in lower case. On a scan the push is a
+    // redaction box at the margin ("[box] [combatant command] to alert…" /
+    // "[box] being involved in…", the Senate study p.54), a struck portion
+    // marking whose residue sits on a row of its own (p.61), or a first line
+    // the skew split in two (p.128). Same page only, and only a quotation of a
+    // few lines: a long one is a quotation.
+    if (
+      options.insetOpenings &&
+      block.kind === "paragraph" &&
+      block.finding === undefined &&
+      previous?.kind === "quote" &&
+      !acrossPages &&
+      markerIndex === -1 &&
+      previous.text.length <= INSET_OPENING_MAX &&
+      !endsSentence(previous.text) &&
+      // A quotation that opens on its quotation mark is one; a title in capitals
+      // ("The Thwarting of the Second Wave Plots…", the minority views' subheads,
+      // read as quotations) is not the opening of the paragraph under it.
+      !OPENS_QUOTATION.test(previous.text) &&
+      !titleCased(previous.text) &&
+      /^[a-z,;]/.test(block.text)
+    ) {
+      merged[merged.length - 1] = { kind: "paragraph", text: `${previous.text} ${block.text}`, at: previous.at };
       continue;
     }
 

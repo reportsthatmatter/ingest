@@ -473,7 +473,8 @@ export function ingestPageGroups(
               resolved.numberedOutsideTables,
               resolved.recoverListedHeadings,
               resolved.letteredItems,
-              resolved.speakerTurns
+              resolved.speakerTurns,
+              resolved.hangingLabels
         );
       const read = (
         resolved.contentsEntries && (entries?.sections.size || isIllustrationList(pageLines))
@@ -629,6 +630,7 @@ export function ingestPageGroups(
     quoteTails: resolved.pageBreakQuoteTails,
     quoteRunOn: resolved.quoteRunOn,
     quoteListRunOns: resolved.quoteListRunOns,
+    insetOpenings: resolved.insetOpenings,
     layoutJoins: resolved.layoutPageJoins,
     photoCredits: resolved.photoCredits,
     letteredItems: resolved.letteredItems,

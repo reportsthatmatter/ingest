@@ -121,7 +121,13 @@ export type PageHeadFoliosPass = {
     readonly stage: "page";
     readonly options: PageHeadFolio;
 };
-export type Pass = FootnoteResetsPass | PageHeadFoliosPass | EditionPass | VisionStructurePass | TypographicHeadingsPass | NumberedHeadingsPass | LayoutMarkersPass | PageBreakContinuationsPass | LayoutPageJoinsPass | PagePass | BodyPass | SourcePass | VolumePass | GeometryPass | QuoteInsetPass | AllCapsHeadingsPass;
+/** `hangingLabels`: the labels that open an item whatever follows them on the line. */
+export type HangingLabelsPass = {
+    readonly name: "hangingLabels";
+    readonly stage: "page";
+    readonly labels: readonly string[];
+};
+export type Pass = FootnoteResetsPass | PageHeadFoliosPass | HangingLabelsPass | EditionPass | VisionStructurePass | TypographicHeadingsPass | NumberedHeadingsPass | LayoutMarkersPass | PageBreakContinuationsPass | LayoutPageJoinsPass | PagePass | BodyPass | SourcePass | VolumePass | GeometryPass | QuoteInsetPass | AllCapsHeadingsPass;
 /**
  * Takes the printed page number off each page. These documents are cited by
  * page ("Report at 62"), so the printed number is the citation unit readers
@@ -311,6 +317,46 @@ export declare const hangingIndents: () => PagePass;
  * quotation's heading in another document.
  */
 export declare const letteredItems: () => PagePass;
+/**
+ * Reads an item set under a short label of capitalised words and a colon, with
+ * its wrapped lines hanging well in from the label, as one paragraph, label
+ * and all (reportsthatmatter-jc46):
+ *
+ *     Fact:              CIA records demonstrate that Abu Zubaydah
+ *                        was subjected to enhanced interrogation techniques…
+ *
+ * The Senate study's minority views set every "Study Claim:" and "Fact:" this
+ * way, and the wrapped lines, inset past the quotation inset, read as a
+ * quotation cut from the label's line ("…found no connection" / "> between Abu
+ * Zubaydah's reporting…"), 45 times. The label's line needs a gap of two or
+ * more spaces after the label; the item is the lines at the second line's
+ * column, at least four characters in from the label. Opt-in, like
+ * `hangingIndents`: a label line over indented lines is also a quotation
+ * introduced by "Subject:" in another document.
+ *
+ * `labels` names the report's own labels ("Study Claim", "Fact"): a line opening
+ * on one of them and a colon opens an item with or without the gap, which a
+ * redaction mark or OCR junk after the label can close up ("Study Claim: f
+ * [box] ) "On at least two…", p.581).
+ */
+export declare const hangingLabels: (options?: {
+    labels?: readonly string[];
+}) => HangingLabelsPass;
+/**
+ * A short quotation that stops mid-sentence, followed on the same page by a
+ * paragraph opening in lower case, is one paragraph whose first lines were
+ * pushed in from the margin (reportsthatmatter-jc46). On a scan the push is a
+ * redaction box at the margin, which moves the line's first word right
+ * ("[box] being involved in any aspect…", the Senate study p.54), a struck
+ * portion marking's residue on a row of its own (p.61), or a first line the
+ * skew split into two rows (p.128); two such lines are a "sustained" inset and
+ * read as a quotation. Only a quotation of about four lines or fewer
+ * (400 characters), only on the same page, and only before a lower-case
+ * opening: a quotation that runs on as prose across a page is `quoteRunOn`.
+ * The joined block is a paragraph. Text only. Opt-in: a born-digital report's
+ * short quotation does not stop mid-sentence over a lower-case paragraph.
+ */
+export declare const insetOpenings: () => PagePass;
 /**
  * A block that opens on a printed paragraph number ("2.86 RBKC's building
  * control department…") is a paragraph of its own: it is never joined onto
