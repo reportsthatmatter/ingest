@@ -51,6 +51,8 @@ export type ResolvedPasses = {
     shiftedPages?: boolean;
     quoteRunOn?: boolean;
     quoteListRunOns?: boolean;
+    /** `insetOpenings`: a short quotation stopping mid-sentence and a lower-case paragraph after it on the page are one paragraph. */
+    insetOpenings?: boolean;
     /** `layoutPageJoins`: on, with its options. */
     layoutPageJoins?: PageBreakOptions;
     /** `layoutMarkers`: on, with where its notes are. */
@@ -97,6 +99,8 @@ export type ResolvedPasses = {
     hyphenFragments?: boolean;
     divisionLabels?: boolean;
     speakerTurns?: boolean;
+    /** `hangingLabels`: an item under a short colon label ("Fact:") with its lines hanging in is one paragraph. */
+    hangingLabels?: boolean;
     footnoteGap?: boolean;
     /** `sequencedNoteOpenings`: a note line opening on the next note's number starts it, whatever follows. */
     sequencedNoteOpenings?: boolean;

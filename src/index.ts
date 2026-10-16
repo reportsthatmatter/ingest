@@ -26,6 +26,8 @@ export {
   unlistedHeadingsMinor,
   hangingIndents,
   letteredItems,
+  hangingLabels,
+  insetOpenings,
   numberedOpenings,
   unmarkedHeadings,
   recoverListedHeadings,

@@ -1285,7 +1285,7 @@ function opensUnclosedQuotation(text, lines, at) {
     }
     return true;
 }
-export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false, allCapsHeadings = true, paragraphContents = false, numberedHeadings = true, listed, numbered, findings, outline, divisions, wrappedHeadings = false, hangingIndents = false, unmarkedHeadings = false, numberedOutsideTables = false, recoverListedHeadings = false, letteredItems = false, speakerTurns = false) {
+export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false, allCapsHeadings = true, paragraphContents = false, numberedHeadings = true, listed, numbered, findings, outline, divisions, wrappedHeadings = false, hangingIndents = false, unmarkedHeadings = false, numberedOutsideTables = false, recoverListedHeadings = false, letteredItems = false, speakerTurns = false, hangingLabels = false) {
     if (paragraphContents)
         lines = joinParagraphContents(lines);
     // With `listedHeadings`, a would-be heading the contents does not name is
@@ -1412,8 +1412,8 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
     // short page — the last of a section, say — can have too few lines to infer
     // it from, and getting it wrong turns an ordinary paragraph into a quote.
     const margin = documentMargin ?? bodyIndent(lines);
-    const hanging = hangingIndents || letteredItems || speakerTurns
-        ? hangingItems(lines, hangingIndents, letteredItems ? margin + quoteInset : 0, speakerTurns)
+    const hanging = hangingIndents || letteredItems || speakerTurns || hangingLabels
+        ? hangingItems(lines, hangingIndents, letteredItems ? margin + quoteInset : 0, speakerTurns, hangingLabels)
         : null;
     const blocks = [];
     // A row of a table is not a division. The Jack Smith docket lists "Section 4
@@ -1796,7 +1796,7 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
  * or more spaces before its text; the item is the lines indented to that
  * text, within a character.
  */
-function hangingItems(lines, numbered = true, letteredBelow = 0, speakers = false) {
+function hangingItems(lines, numbered = true, letteredBelow = 0, speakers = false, labels = false) {
     const opens = lines.map(() => false);
     const continues = lines.map(() => false);
     for (let i = 0; i < lines.length; i++) {
@@ -1813,6 +1813,25 @@ function hangingItems(lines, numbered = true, letteredBelow = 0, speakers = fals
             }
             i = k - 1;
             continue;
+        }
+        // `hangingLabels`: a short label of capitalised words and a colon ("Study Claim:", "Fact:"), a gap,
+        // and the item's lines hanging well in from the label (the Senate study's minority views, p.589). The
+        // item is the label's line and the lines at the next line's column; a redaction mark or OCR junk in
+        // the gap shifts the first line's text, so the column is read from the second line, not the first.
+        if (labels) {
+            const opening = lines[i].match(/^(\s*)[A-Z][A-Za-z]*(?: [A-Z][A-Za-z]*){0,2}:(?=.*\S {2,}\S| {2,}\S)/);
+            const next = lines[i + 1];
+            const column = next?.trim() ? indentOf(next) : -1;
+            if (opening && column >= opening[1].length + 4) {
+                let k = i + 1;
+                while (k < lines.length && lines[k].trim() && Math.abs(indentOf(lines[k]) - column) <= 1) {
+                    continues[k] = true;
+                    k++;
+                }
+                opens[i] = true;
+                i = k - 1;
+                continue;
+            }
         }
         let label = numbered ? lines[i].match(/^(\s*)(?=\S*\d)(\S{2,12})( {2,})\S/) : null;
         // `letteredItems`: a sub-item's own letter ("a.", "(b)", "iv.") over its
@@ -1967,6 +1986,14 @@ export function isPhotoCredit(text) {
 }
 /** Lower case, or punctuation no sentence opens on. */
 const CONTINUATION = /^[a-z,;]/;
+/** `insetOpenings`: the longest quotation read as a paragraph's pushed-in opening, about four lines. */
+const INSET_OPENING_MAX = 400;
+/** Most of its words capitalised, as a title is set: "The Capture of Ramzi bin al-Shibh". */
+function titleCased(text) {
+    const lettered = text.split(/\s+/).filter((w) => /^[A-Za-z]/.test(w));
+    const capitals = lettered.filter((w) => /^[A-Z]/.test(w));
+    return lettered.length >= 2 && capitals.length / lettered.length >= 0.6;
+}
 /** A lone OCR glyph (a degree sign for a raised digit) before a lower-case word. */
 const STRAY_GLYPH = /^[°º˚]\s+(?=[a-z])/;
 /**
@@ -2254,6 +2281,31 @@ export function mergeAcrossPages(blocks, options = {}) {
                 }
             }
             previous.text = `${previous.text} ${block.text}`;
+            continue;
+        }
+        // `insetOpenings`: a paragraph's first lines pushed in from the margin read
+        // as a quotation of their own, and the rest of the paragraph, back at the
+        // margin, as a paragraph opening in lower case. On a scan the push is a
+        // redaction box at the margin ("[box] [combatant command] to alert…" /
+        // "[box] being involved in…", the Senate study p.54), a struck portion
+        // marking whose residue sits on a row of its own (p.61), or a first line
+        // the skew split in two (p.128). Same page only, and only a quotation of a
+        // few lines: a long one is a quotation.
+        if (options.insetOpenings &&
+            block.kind === "paragraph" &&
+            block.finding === undefined &&
+            previous?.kind === "quote" &&
+            !acrossPages &&
+            markerIndex === -1 &&
+            previous.text.length <= INSET_OPENING_MAX &&
+            !endsSentence(previous.text) &&
+            // A quotation that opens on its quotation mark is one; a title in capitals
+            // ("The Thwarting of the Second Wave Plots…", the minority views' subheads,
+            // read as quotations) is not the opening of the paragraph under it.
+            !OPENS_QUOTATION.test(previous.text) &&
+            !titleCased(previous.text) &&
+            /^[a-z,;]/.test(block.text)) {
+            merged[merged.length - 1] = { kind: "paragraph", text: `${previous.text} ${block.text}`, at: previous.at };
             continue;
         }
         // A quotation that stops mid-sentence at the foot of a page and carries on
