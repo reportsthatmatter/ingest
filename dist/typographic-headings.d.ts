@@ -75,6 +75,17 @@ export type TypographicHeadingsOptions = {
      * in the paragraph. Columbia sets some paragraphs' first line in its subheading face. Default false.
      */
     skipRunIns?: boolean;
+    /**
+     * A declared face's line that ends on a colon opens a heading when the next line, in the same face and
+     * one line-height below, carries it on: the UK Covid-19 Inquiry sets each chapter's title page as
+     * "Chapter 1:" / "The context for pandemic decision-making – key" / "structures and concepts" (Module 2
+     * Volume I, PDF p.36). The colon reads as a sentence's stop, so "Chapter 1:" was no candidate, the
+     * rest of the title did not match the chapter heading the text reading had made from the contents,
+     * and `relevel` never reached it: every chapter stayed a level below its face, a sibling of its own
+     * "Introduction". A colon line with no such continuation is still no heading. Only with `faces`.
+     * Default false.
+     */
+    labelWraps?: boolean;
 };
 export type TypographicHeadingStats = {
     /** Heading faces found, largest first, with the level each was given. */

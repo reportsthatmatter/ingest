@@ -10,7 +10,10 @@ function candidate(line, bodySize, o) {
     if (!text || text.length > o.maxChars)
         return false;
     if (o.faces)
-        return o.faces.some((level) => level.includes(line.font)) && !LABEL_ONLY.test(text) && /\p{L}/u.test(text) && !SENTENCE_END.test(text);
+        return (o.faces.some((level) => level.includes(line.font)) &&
+            !LABEL_ONLY.test(text) &&
+            /\p{L}/u.test(text) &&
+            (!SENTENCE_END.test(text) || (o.labelWraps === true && /:$/.test(text))));
     if (line.body || line.italic)
         return false;
     if (bodySize <= 0 || line.size < o.minRatio * bodySize)
@@ -34,6 +37,7 @@ export function layoutHeadings(layout, options = {}) {
         firstLevel: options.firstLevel ?? 2,
         ...(options.sizes ? { sizes: options.sizes } : {}),
         ...(options.faces ? { faces: options.faces } : {}),
+        ...(options.faces && options.labelWraps ? { labelWraps: true } : {}),
         minRatio: options.minRatio ?? 1.15,
         maxChars: options.maxChars ?? 160,
         minPages: options.minPages ?? 3,
@@ -85,6 +89,9 @@ export function layoutHeadings(layout, options = {}) {
                 last = next;
                 i++;
             }
+            // `labelWraps`: a colon line that nothing carried on is not a heading after all
+            if (o.labelWraps && /:$/.test(text))
+                continue;
             headings.push({ volume, pdfIndex: page, text, level: levels.get(first.font) });
         }
     }
