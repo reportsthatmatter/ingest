@@ -13,7 +13,7 @@ import { applyTypographicHeadings } from "./typographic-headings.js";
 import { inNoteFace, linkLayoutMarkers, pageDefinesNotes, runOverByFace } from "./markers.js";
 import { LayoutEndnotesReader, chapterOfBlocks } from "./layout-endnotes.js";
 import { autoFix, findSuspects, rankSuspects } from "./ocr.js";
-import { assembleEdition, fillGaps, fillPrintedGaps } from "./edition.js";
+import { assembleEdition, correctPageText, fillGaps, fillPrintedGaps } from "./edition.js";
 import { VisionHybrid } from "./vision/hybrid.js";
 /**
  * Whether a heading stays a section under `unlistedHeadingsMinor`: the
@@ -780,6 +780,10 @@ function ingestEdition(pageGroups, meta, resolved, corrections, context) {
     const printed = fillPrintedGaps((shadow.blocks ?? []).flatMap((block) => block.kind === "page" && block.at
         ? [{ volume: block.at.volume, pdfIndex: block.at.pdfIndex, number: block.number, occurrence: block.occurrence }]
         : []));
+    // Corrections are judgements about the PDF's text: the shadow applied them to its blocks, and
+    // the page text the edition is aligned to takes them too, so a page whose text layer lacks
+    // words (an annex printed as a picture) anchors the edition's words on it like any other.
+    correctPageText(pages, corrections, printed);
     // What the edition says it lacks (its `gap` blocks) is filled from the shadow's own blocks.
     const { edition, filled } = fillGaps(pass.read(), pages, {
         blocks: shadow.blocks ?? [],
@@ -829,7 +833,7 @@ function ingestEdition(pageGroups, meta, resolved, corrections, context) {
         .concat("\n");
     return {
         markdown,
-        corrections: 0,
+        corrections: shadow.corrections,
         sourceText: shadow.sourceText,
         footnotes,
         suspects: assembled.suspects,
