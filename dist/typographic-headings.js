@@ -10,7 +10,10 @@ function candidate(line, bodySize, o) {
     if (!text || text.length > o.maxChars)
         return false;
     if (o.faces)
-        return o.faces.some((level) => level.includes(line.font)) && !LABEL_ONLY.test(text) && /\p{L}/u.test(text) && !SENTENCE_END.test(text);
+        return (o.faces.some((level) => level.includes(line.font)) &&
+            !LABEL_ONLY.test(text) &&
+            /\p{L}/u.test(text) &&
+            (!SENTENCE_END.test(text) || (o.labelWraps === true && /:$/.test(text))));
     if (line.body || line.italic)
         return false;
     if (bodySize <= 0 || line.size < o.minRatio * bodySize)
@@ -34,6 +37,7 @@ export function layoutHeadings(layout, options = {}) {
         firstLevel: options.firstLevel ?? 2,
         ...(options.sizes ? { sizes: options.sizes } : {}),
         ...(options.faces ? { faces: options.faces } : {}),
+        ...(options.faces && options.labelWraps ? { labelWraps: true } : {}),
         minRatio: options.minRatio ?? 1.15,
         maxChars: options.maxChars ?? 160,
         minPages: options.minPages ?? 3,
@@ -85,6 +89,9 @@ export function layoutHeadings(layout, options = {}) {
                 last = next;
                 i++;
             }
+            // `labelWraps`: a colon line that nothing carried on is not a heading after all
+            if (o.labelWraps && /:$/.test(text))
+                continue;
             headings.push({ volume, pdfIndex: page, text, level: levels.get(first.font) });
         }
     }
@@ -178,7 +185,9 @@ function cutPage(pageBlocks, todo, stats, relevel = false, quotedRemainder = fal
                 const start = hay.from[at];
                 const end = hay.from[at + want.length - 1] + 1;
                 const before = block.text.slice(0, start).trimEnd();
-                const boundary = at === 0 || /[.!?”’'")\]]$/.test(before);
+                // (not after a bare paragraph label: "3.82. The Coronavirus: Action Plan stated:" holds the title of the
+                // UK Covid-19 Inquiry's sub-heading below it, PDF p.136, and the label's full stop is no sentence's end)
+                const boundary = at === 0 || (/[.!?”’'")\]]$/.test(before) && !LABEL_ONLY.test(before));
                 // the words must end where a word ends
                 const wordEnd = end >= block.text.length || /^\s/.test(block.text.slice(end));
                 if (boundary && wordEnd) {

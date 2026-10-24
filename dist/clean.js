@@ -232,6 +232,22 @@ export function splitFootnoteBlock(lines, expectedNote, options = {}) {
             candidates.push({ line: i, note: want });
             want += 1;
         }
+        if (options.footnoteRestarts && expectedNote > 1 && !candidates.some((c) => c.note === expectedNote)) {
+            // with `footnoteRestarts` too: the numbering starting over, its 1 low on the page and the run after
+            // it opening the same way. The UK Covid-19 Inquiry restarts its notes each chapter and sets the
+            // number flush and the text at a tab, so a one-digit note is "1" then some 27 spaces then
+            // "INQ000223394_0001" (Module 2 Volume I, PDF p.113): too wide a gap for the bare reading, and
+            // not the note the page expected, so every chapter's first notes were printed in the body.
+            let next = 1;
+            for (let i = Math.ceil(lines.length * 0.55); i < lines.length; i++) {
+                const m = lines[i].match(opening);
+                if (!m || Number(m[1]) !== next || !/[A-Za-z]{2}/.test(lines[i].slice(m[0].length - 1)))
+                    continue;
+                if (!candidates.some((c) => c.line === i))
+                    candidates.push({ line: i, note: next });
+                next += 1;
+            }
+        }
         candidates.sort((a, b) => a.line - b.line);
     }
     if (!candidates.length)

@@ -77,6 +77,17 @@ export type TypographicHeadingsOptions = {
    * in the paragraph. Columbia sets some paragraphs' first line in its subheading face. Default false.
    */
   skipRunIns?: boolean;
+  /**
+   * A declared face's line that ends on a colon opens a heading when the next line, in the same face and
+   * one line-height below, carries it on: the UK Covid-19 Inquiry sets each chapter's title page as
+   * "Chapter 1:" / "The context for pandemic decision-making – key" / "structures and concepts" (Module 2
+   * Volume I, PDF p.36). The colon reads as a sentence's stop, so "Chapter 1:" was no candidate, the
+   * rest of the title did not match the chapter heading the text reading had made from the contents,
+   * and `relevel` never reached it: every chapter stayed a level below its face, a sibling of its own
+   * "Introduction". A colon line with no such continuation is still no heading. Only with `faces`.
+   * Default false.
+   */
+  labelWraps?: boolean;
 };
 
 export type TypographicHeadingStats = {
@@ -106,10 +117,16 @@ const LABEL_ONLY = /^\s*(?:\(?\d{1,4}(?:\.\d{1,4})*[.)]?|\(?[a-z][.)]|[ivxlc]{1,
 type Heading = { volume: number; pdfIndex: number; text: string; level: number };
 
 /** A heading line's candidacy, before the face's recurrence is known. */
-function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns">> & { sizes?: number[]; faces?: string[][] }): boolean {
+function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns" | "labelWraps">> & { sizes?: number[]; faces?: string[][]; labelWraps?: boolean }): boolean {
   const text = line.text.trim();
   if (!text || text.length > o.maxChars) return false;
-  if (o.faces) return o.faces.some((level) => level.includes(line.font)) && !LABEL_ONLY.test(text) && /\p{L}/u.test(text) && !SENTENCE_END.test(text);
+  if (o.faces)
+    return (
+      o.faces.some((level) => level.includes(line.font)) &&
+      !LABEL_ONLY.test(text) &&
+      /\p{L}/u.test(text) &&
+      (!SENTENCE_END.test(text) || (o.labelWraps === true && /:$/.test(text)))
+    );
   if (line.body || line.italic) return false;
   if (bodySize <= 0 || line.size < o.minRatio * bodySize) return false;
   if (LABEL_ONLY.test(text) || !/\p{L}/u.test(text)) return false;
@@ -126,10 +143,11 @@ const faceSize = (face: string) => Number(face.split("|")[1]) || 0;
  * Exported for the tests.
  */
 export function layoutHeadings(layout: Layout, options: TypographicHeadingsOptions = {}): { headings: Heading[]; faces: TypographicHeadingStats["faces"] } {
-  const o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns">> & { sizes?: number[]; faces?: string[][] } = {
+  const o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns" | "labelWraps">> & { sizes?: number[]; faces?: string[][]; labelWraps?: boolean } = {
     firstLevel: options.firstLevel ?? 2,
     ...(options.sizes ? { sizes: options.sizes } : {}),
     ...(options.faces ? { faces: options.faces } : {}),
+    ...(options.faces && options.labelWraps ? { labelWraps: true } : {}),
     minRatio: options.minRatio ?? 1.15,
     maxChars: options.maxChars ?? 160,
     minPages: options.minPages ?? 3,
@@ -182,6 +200,8 @@ export function layoutHeadings(layout: Layout, options: TypographicHeadingsOptio
         last = next;
         i++;
       }
+      // `labelWraps`: a colon line that nothing carried on is not a heading after all
+      if (o.labelWraps && /:$/.test(text)) continue;
       headings.push({ volume, pdfIndex: page, text, level: levels.get(first.font)! });
     }
   }
@@ -278,7 +298,9 @@ function cutPage(pageBlocks: Block[], todo: Heading[], stats: TypographicHeading
         const start = hay.from[at];
         const end = hay.from[at + want.length - 1] + 1;
         const before = block.text.slice(0, start).trimEnd();
-        const boundary = at === 0 || /[.!?”’'")\]]$/.test(before);
+        // (not after a bare paragraph label: "3.82. The Coronavirus: Action Plan stated:" holds the title of the
+        // UK Covid-19 Inquiry's sub-heading below it, PDF p.136, and the label's full stop is no sentence's end)
+        const boundary = at === 0 || (/[.!?”’'")\]]$/.test(before) && !LABEL_ONLY.test(before));
         // the words must end where a word ends
         const wordEnd = end >= block.text.length || /^\s/.test(block.text.slice(end));
         if (boundary && wordEnd) {
