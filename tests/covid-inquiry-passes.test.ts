@@ -75,3 +75,35 @@ describe("footnoteRestarts with sequencedNoteOpenings: a chapter's notes start a
     expect(split.body.join("\n")).toContain("Source: UK Health Security Agency");
   });
 });
+
+describe("typographicHeadings: a heading's words just after a paragraph label are not that heading", () => {
+  const fonts = `<fontspec id="0" size="18" family="ABCDEF+ProximaNova" color="#000000"/>
+<fontspec id="1" size="24" family="ABCDEF+ProximaNova-SemiboldIt" color="#15365a"/>`;
+  const t = (top: number, font: number, body: string) => `<text top="${top}" left="85" width="600" height="20" font="${font}">${body}</text>`;
+  const lay = buildLayout([
+    parseLayoutXml(
+      xml([
+        `<page number="1" position="absolute" top="0" left="0" height="1262" width="892">\n${fonts}\n${[
+          t(100, 0, "3.82. The Coronavirus: Action Plan stated:"),
+          t(900, 1, "<b><i>The Coronavirus: Action Plan</i></b>"),
+          t(950, 0, "3.84. As outlined in Chapter 2, the plan was commissioned on 10 February 2020."),
+        ].join("\n")}\n</page>`,
+      ]),
+      1
+    ),
+  ]);
+  it("is cut above 3.84 (PDF p.136), and 3.82 keeps its words", async () => {
+    const { applyTypographicHeadings } = await import("../src/typographic-headings");
+    const at = { volume: 1, pdfIndex: 1 };
+    const blocks = [
+      { kind: "paragraph", text: "3.82. The Coronavirus: Action Plan stated:", at },
+      { kind: "paragraph", text: "The Coronavirus: Action Plan 3.84. As outlined in Chapter 2, the plan was commissioned on 10 February 2020.", at },
+    ] as never[];
+    applyTypographicHeadings(blocks, lay, { faces: [["ProximaNova-SemiboldIt|24|#15365a|b|i"]] });
+    expect((blocks as Array<{ kind: string; text: string }>).map((b) => [b.kind, b.text])).toEqual([
+      ["paragraph", "3.82. The Coronavirus: Action Plan stated:"],
+      ["heading", "The Coronavirus: Action Plan"],
+      ["paragraph", "3.84. As outlined in Chapter 2, the plan was commissioned on 10 February 2020."],
+    ]);
+  });
+});

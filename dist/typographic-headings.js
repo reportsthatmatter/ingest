@@ -185,7 +185,9 @@ function cutPage(pageBlocks, todo, stats, relevel = false, quotedRemainder = fal
                 const start = hay.from[at];
                 const end = hay.from[at + want.length - 1] + 1;
                 const before = block.text.slice(0, start).trimEnd();
-                const boundary = at === 0 || /[.!?”’'")\]]$/.test(before);
+                // (not after a bare paragraph label: "3.82. The Coronavirus: Action Plan stated:" holds the title of the
+                // UK Covid-19 Inquiry's sub-heading below it, PDF p.136, and the label's full stop is no sentence's end)
+                const boundary = at === 0 || (/[.!?”’'")\]]$/.test(before) && !LABEL_ONLY.test(before));
                 // the words must end where a word ends
                 const wordEnd = end >= block.text.length || /^\s/.test(block.text.slice(end));
                 if (boundary && wordEnd) {
