@@ -51,7 +51,7 @@ import { inNoteFace, linkLayoutMarkers, pageDefinesNotes, runOverByFace, type La
 import { LayoutEndnotesReader, chapterOfBlocks } from "./layout-endnotes";
 import { autoFix, findSuspects, rankSuspects, type Suspect } from "./ocr";
 import type { PipelineContext } from "./context";
-import { assembleEdition, fillGaps, fillPrintedGaps, type EditionReport, type PrintedPage } from "./edition";
+import { assembleEdition, correctPageText, fillGaps, fillPrintedGaps, type EditionReport, type PrintedPage } from "./edition";
 import { VisionHybrid, type VisionReport } from "./vision/hybrid";
 
 export type IngestResult = {
@@ -939,6 +939,10 @@ function ingestEdition(
       ? [{ volume: block.at.volume, pdfIndex: block.at.pdfIndex, number: block.number, occurrence: block.occurrence }]
       : []
   ));
+  // Corrections are judgements about the PDF's text: the shadow applied them to its blocks, and
+  // the page text the edition is aligned to takes them too, so a page whose text layer lacks
+  // words (an annex printed as a picture) anchors the edition's words on it like any other.
+  correctPageText(pages, corrections, printed);
   // What the edition says it lacks (its `gap` blocks) is filled from the shadow's own blocks.
   const { edition, filled } = fillGaps(pass.read(), pages, {
     blocks: shadow.blocks ?? [],
@@ -988,7 +992,7 @@ function ingestEdition(
     .concat("\n");
   return {
     markdown,
-    corrections: 0,
+    corrections: shadow.corrections,
     sourceText: shadow.sourceText,
     footnotes,
     suspects: assembled.suspects,

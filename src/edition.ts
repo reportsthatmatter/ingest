@@ -296,6 +296,55 @@ export function fillPrintedGaps(printed: PrintedPage[]): PrintedPage[] {
   return out.sort((x, y) => x.volume - y.volume || x.pdfIndex - y.pdfIndex);
 }
 
+/**
+ * Applies a report's corrections to the PDF page text a clean edition is aligned to
+ * (`IngestResult.pageText`, taken before the shadow's blocks are corrected). A correction
+ * scoped with `where` looks only at the pages it names (`printed` read off `printed`); it
+ * is applied where its `find` occurs exactly once in those pages, within a line or across
+ * the break between two lines of one page, and otherwise left to the shadow, which already
+ * holds every correction to matching exactly once in its blocks. Returns how many applied.
+ */
+export function correctPageText(
+  pages: Array<{ volume: number; pdfIndex: number; lines: string[] }>,
+  corrections: Array<{ find: string; replace: string; where?: { volume?: number; printed?: number } }>,
+  printed: PrintedPage[]
+): number {
+  const numberOf = new Map(printed.map((p) => [`${p.volume}:${p.pdfIndex}`, p.number]));
+  let applied = 0;
+  for (const c of corrections) {
+    const scoped = pages.filter(
+      (page) =>
+        (c.where?.volume === undefined || page.volume === c.where.volume) &&
+        (c.where?.printed === undefined || numberOf.get(`${page.volume}:${page.pdfIndex}`) === c.where.printed)
+    );
+    const hits: Array<{ page: (typeof pages)[number]; line: number; joined: boolean }> = [];
+    for (const page of scoped) {
+      page.lines.forEach((line, i) => {
+        hits.push(...Array.from({ length: occurrences(line, c.find) }, () => ({ page, line: i, joined: false })));
+        const next = page.lines[i + 1];
+        if (next === undefined) return;
+        const across = occurrences(`${line} ${next}`, c.find) - occurrences(line, c.find) - occurrences(next, c.find);
+        for (let k = 0; k < across; k++) hits.push({ page, line: i, joined: true });
+      });
+    }
+    if (hits.length !== 1) continue;
+    const { page, line, joined } = hits[0];
+    if (joined) {
+      page.lines[line] = `${page.lines[line]} ${page.lines[line + 1]}`.replace(c.find, c.replace);
+      page.lines[line + 1] = "";
+    } else page.lines[line] = page.lines[line].replace(c.find, c.replace);
+    applied++;
+  }
+  return applied;
+}
+
+function occurrences(text: string, find: string): number {
+  if (!find) return 0;
+  let n = 0;
+  for (let at = text.indexOf(find); at !== -1; at = text.indexOf(find, at + find.length)) n++;
+  return n;
+}
+
 export type PrintedPage = { volume: number; pdfIndex: number; number: number | string; occurrence?: number };
 
 /** One piece of text the edition holds; a table cell also says which row it is in, so a page can start at a row. */
