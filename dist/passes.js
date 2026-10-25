@@ -871,9 +871,11 @@ export const quoteListRunOns = () => ({ name: "quoteListRunOns", stage: "page" }
  *
  * Opt-in: it reads `context.layout`, and a report whose markers are not
  * raised (a scan's OCR layer) gains nothing from it. `scanned: true` for an
- * OCR layer that does raise them but sets a number's digits as separate runs
- * ("1", "2", "6", "2" for note 1262, Mueller Vol I p.172): touching runs are
- * read as one number (`joinTouchingDigits`).
+ * OCR layer that does raise them (Mueller Vol I's Paper Capture pages): a
+ * number whose digits are raised as separate runs ("1", "2", "6", "2" for
+ * note 1262, Vol I p.172) is read as one (`joinTouchingDigits`), and the words
+ * before a marker are found whatever the spacing, since the text layer and the
+ * layout space OCR'd words differently ("2017 .945" against "2017.945", p.142).
  */
 export const layoutMarkers = (options = {}) => ({
     name: "layoutMarkers",
