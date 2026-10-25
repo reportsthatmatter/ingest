@@ -65,6 +65,8 @@ export type ResolvedPasses = {
   contentsEntries?: boolean;
   shortSubheads?: boolean;
   shiftedPages?: boolean;
+  /** `facingPageMargins`: each page takes the margin of its side of the spread (reportsthatmatter-fkx). */
+  facingPageMargins?: boolean;
   quoteRunOn?: boolean;
   quoteListRunOns?: boolean;
   /** `insetOpenings`: a short quotation stopping mid-sentence and a lower-case paragraph after it on the page are one paragraph. */
@@ -228,6 +230,7 @@ export const KNOWN_PAGE_PASS_NAMES: readonly string[] = [
   "endnotes",
   "escapeLeadingHash",
   "escapeNumberedParagraphs",
+  "facingPageMargins",
   "flushFootnoteMarkers",
   "foiaRedactions",
   "foliosInStep",
@@ -318,6 +321,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     contentsEntries: passes.some((pass) => pass.name === "contentsEntries"),
     shortSubheads: passes.some((pass) => pass.name === "shortSubheads"),
     shiftedPages: passes.some((pass) => pass.name === "shiftedPages"),
+    facingPageMargins: passes.some((pass) => pass.name === "facingPageMargins"),
     quoteRunOn: passes.some((pass) => pass.name === "quoteRunOn"),
     quoteListRunOns: passes.some((pass) => pass.name === "quoteListRunOns"),
     insetOpenings: passes.some((pass) => pass.name === "insetOpenings"),

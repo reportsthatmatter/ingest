@@ -719,6 +719,27 @@ export declare const shortSubheads: () => PagePass;
  */
 export declare const shiftedPages: () => PagePass;
 /**
+ * Measures each page's left margin from its side of the spread
+ * (reportsthatmatter-fkx).
+ *
+ * Leveson's volumes are typeset for binding: a right-hand page's text sits
+ * four or five columns further in than a left-hand page's (vol i: numbered
+ * paragraphs' text at 12 on odd PDF pages, 8 on even). Against one margin
+ * per volume, every line of the other side either opens a paragraph (and
+ * only lower-case lines rejoin: "…I selected" / "Robert Jay QC to be
+ * Counsel…") or reads as a quotation. A page's own margin is the column its
+ * numbered paragraphs' text starts at ("1.6     I also…"), where that is one
+ * of its volume's two sides; any other page takes the commonest such margin
+ * among the volume's pages of the same parity. Not `geometry("per-page")`:
+ * that measures a page with no numbered paragraph by its commonest indent,
+ * which a page of long quotations hands to the quotation. A volume with no
+ * numbered paragraphs keeps its geometry's margin.
+ *
+ * Opt-in, for a report set this way; it needs `numberedParagraphs`' "7.1"
+ * openers to learn from.
+ */
+export declare const facingPageMargins: () => PagePass;
+/**
  * A quotation that stops mid-sentence at the foot of a page and carries on, in
  * lower case, as the first paragraph of the next is one quotation
  * (reportsthatmatter-m2y).

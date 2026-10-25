@@ -287,6 +287,10 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     const margins = resolved.geometry === "per-volume"
         ? cleanedGroups.map((group) => bodyIndent(group.flatMap((page) => page.body)))
         : [bodyIndent(cleanedGroups.flat().flatMap((page) => page.body))];
+    // `facingPageMargins`: each page's margin from its side of the spread, per volume.
+    const facing = resolved.facingPageMargins
+        ? cleanedGroups.map((group, groupIndex) => facingMargins(group, margins[resolved.geometry === "per-volume" ? groupIndex : 0]))
+        : undefined;
     // `listedHeadings`: the titles the report's contents names, learnt as its
     // contents pages go by. The contents pages themselves are not gated, nor is
     // anything before them — the contents lists what follows it.
@@ -343,11 +347,13 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
                 learnOutline(outline, outlineEntries);
             if (outline?.centredMinor && outlineEntries.length)
                 learnUnlabelled(outline, pageLines);
-            const readBody = (lines) => toBlocks(lines, resolved.geometry === "per-page"
-                ? pageMargin(split.body, margins[0])
-                : resolved.shiftedPages
-                    ? shiftedPageMargin(split.body, margins[resolved.geometry === "per-volume" ? groupIndex : 0])
-                    : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings, resolved.hangingIndents, resolved.unmarkedHeadings, resolved.numberedOutsideTables, resolved.recoverListedHeadings, resolved.letteredItems, resolved.speakerTurns, resolved.hangingLabels);
+            const readBody = (lines) => toBlocks(lines, facing
+                ? facing[groupIndex](split)
+                : resolved.geometry === "per-page"
+                    ? pageMargin(split.body, margins[0])
+                    : resolved.shiftedPages
+                        ? shiftedPageMargin(split.body, margins[resolved.geometry === "per-volume" ? groupIndex : 0])
+                        : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings, resolved.hangingIndents, resolved.unmarkedHeadings, resolved.numberedOutsideTables, resolved.recoverListedHeadings, resolved.letteredItems, resolved.speakerTurns, resolved.hangingLabels);
             const read = (resolved.contentsEntries && (entries?.sections.size || isIllustrationList(pageLines))
                 ? spacedContentsBlocks(pageLines)
                 : isContentsPage(pageLines)
@@ -694,6 +700,40 @@ function shiftedPageMargin(body, fallback) {
     return commonest === least && shift >= 2 && shift <= 6 ? least : fallback;
 }
 const SHIFTED_PAGE_MIN_LINES = 15;
+/** The commonest column a page's numbered paragraphs' text starts at, if it has any. */
+function openerMargin(body) {
+    const counts = new Map();
+    for (const line of body) {
+        const opener = line.match(NUMBERED_OPENER);
+        if (opener)
+            counts.set(opener[0].length, (counts.get(opener[0].length) ?? 0) + 1);
+    }
+    return counts.size ? [...counts].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0] : undefined;
+}
+/**
+ * `facingPageMargins` (reportsthatmatter-fkx): a page's margin from its side of
+ * the spread. Each side's margin is the commonest numbered-opener margin among
+ * the volume's pages of that PDF-page parity. A page's own opener margin wins
+ * (vol i p.25 sets its text at 15, a column stop further in than the side's
+ * 12); a page with none takes its parity's.
+ */
+function facingMargins(group, fallback) {
+    const own = new Map(group.map((page) => [page, openerMargin(page.body)]));
+    const sides = [0, 1].map((parity) => {
+        const counts = new Map();
+        for (const page of group) {
+            const m = own.get(page);
+            if (m !== undefined && page.pdfIndex % 2 === parity)
+                counts.set(m, (counts.get(m) ?? 0) + 1);
+        }
+        return counts.size ? [...counts].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0] : undefined;
+    });
+    return (page) => {
+        const side = sides[page.pdfIndex % 2] ?? sides[1 - (page.pdfIndex % 2)] ?? fallback;
+        const m = own.has(page) ? own.get(page) : openerMargin(page.body);
+        return m ?? side;
+    };
+}
 /** "9.165   " up to where its text starts; the glyph after it may be unmapped. */
 const NUMBERED_OPENER = /^\s{0,8}\d{1,2}\.\d{1,3}[ \uFFFD]{2,}(?=\S)/;
 const PAGE_MARGIN_MIN_LINES = 8;
