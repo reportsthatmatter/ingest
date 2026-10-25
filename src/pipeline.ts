@@ -605,7 +605,8 @@ export function ingestPageGroups(
         ? { scope: "chapter", chapterOf: (block) => chapters.get(block) }
         : resolved.layoutMarkers.scope === "document"
         ? { scope: "document", known }
-        : { scope: "page", onPage: (volume, pdfIndex) => notesByPage.get(pageKey(volume, pdfIndex)) ?? new Set() }
+        : { scope: "page", onPage: (volume, pdfIndex) => notesByPage.get(pageKey(volume, pdfIndex)) ?? new Set() },
+      resolved.layoutMarkers.scanned ? { scanned: true } : {}
     );
   }
   // With the layout deciding, the text-only linkers stay out unless asked for.

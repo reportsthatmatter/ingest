@@ -1,4 +1,5 @@
 import type { Layout, LayoutLine, PageLayout } from "./layout";
+import { joinTouchingDigits } from "./layout";
 import type { Block } from "./paragraphs";
 import type { Footnote } from "./footnotes";
 import { linkInlineMarkers } from "./footnotes";
@@ -426,7 +427,33 @@ export function measureLayout(
       // A quotation's face is the body's for this (Hillsborough p.113's 'Police Officer.29' in a quoted statement:
       // reportsthatmatter-n891).
       const inBody = (l: LayoutLine) => l.body || inRun.has(l) || (Math.abs(l.size - bodyFont.size) < 0.5 && l.color === bodyFont.color);
-      for (const l of lines) if (inBody(l)) for (const r of l.raised) if (/^\d{1,4}$/.test(r.text) && !definesNote(l, r)) labels.push(r.text);
+      // An OCR layer may set the notes in the body's face and raise their dates and page numbers
+      // ("940 Kalashnikova 5/17/18 302", Mueller Vol I p.150: "5", "17", "18", "302"), which are not
+      // markers. The notes are the page's last run of note-defining lines in the body's face, each
+      // numbered just before the next (a note or two may be redacted or misread) and set at the same
+      // left: below its first line nothing is a marker. A body line the OCR cut so that it opens on its
+      // marker ("916 Manafort replied", Vol I p.147, set mid-measure) is not in the run; nor is one
+      // paragraph opening on a raised marker (Grenfell p.162's "1148 Attached"), nor are notes in a face
+      // of their own (Saville's, set under each paragraph).
+      const defining = lines
+        .filter((l) => inBody(l) && l.raised.length && definesNote(l, l.raised[0]))
+        .map((l) => ({ top: l.top, left: l.left, n: Number(joinTouchingDigits(l.raised)[0].text) }))
+        .filter((d) => Number.isInteger(d.n))
+        .sort((a, b) => a.top - b.top);
+      let notesTop = Infinity;
+      for (let k = defining.length - 1, run = 1; k > 0; k--) {
+        const d = defining[k];
+        const up = defining[k - 1];
+        if (d.n - up.n >= 1 && d.n - up.n <= 3 && Math.abs(d.left - up.left) < 5) {
+          run++;
+          notesTop = up.top;
+        } else if (run > 1) break;
+        else run = 1;
+      }
+      for (const l of lines) {
+        if (!inBody(l) || l.top >= notesTop) continue;
+        for (const r of joinTouchingDigits(l.raised)) if (/^\d{1,4}$/.test(r.text) && !definesNote(l, r)) labels.push(r.text);
+      }
       expected.markers += labels.length;
       pool.set(pageKey(v, p), labels);
       for (const b of mine) {

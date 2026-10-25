@@ -99,6 +99,14 @@ export type Layout = {
     /** SHA-256 of each volume's PDF, which keys its cache file. */
     readonly checksums: string[];
 };
+/**
+ * Raised digit runs that touch in the line's text, read as one number. An OCR layer may set a marker's
+ * digits as runs of their own: "1262" as "1", "2", "6", "2" (Mueller Vol I p.172), "1024" as "1", "024"
+ * (Vol II p.151). Touching runs whose numbers count up by one are kept apart, two markers set close
+ * ("261262"); so is a group whose digits would run past four. Anything between them (a comma, a space)
+ * keeps them apart as well.
+ */
+export declare function joinTouchingDigits(runs: RaisedRun[]): RaisedRun[];
 type RawLine = Omit<LayoutLine, "volume" | "body" | "indentEm" | "rightGapEm" | "reachesRight" | "label" | "index">;
 /** Parses one `pdftohtml -xml` document into raw lines (no per-page statistics yet). */
 export declare function parseLayoutXml(xml: string): RawLine[];

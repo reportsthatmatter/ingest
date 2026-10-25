@@ -137,6 +137,39 @@ function isMarkerList(text: string): boolean {
   return numbers.every((n, i) => i === 0 || n === numbers[i - 1] + 1);
 }
 
+/**
+ * Raised digit runs that touch in the line's text, read as one number. An OCR layer may set a marker's
+ * digits as runs of their own: "1262" as "1", "2", "6", "2" (Mueller Vol I p.172), "1024" as "1", "024"
+ * (Vol II p.151). Touching runs whose numbers count up by one are kept apart, two markers set close
+ * ("261262"); so is a group whose digits would run past four. Anything between them (a comma, a space)
+ * keeps them apart as well.
+ */
+export function joinTouchingDigits(runs: RaisedRun[]): RaisedRun[] {
+  const out: RaisedRun[] = [];
+  let group: RaisedRun[] = [];
+  const flush = () => {
+    if (!group.length) return;
+    const text = group.map((r) => r.text).join("");
+    const counting = group.length > 1 && group.every((r, i) => i === 0 || Number(r.text) === Number(group[i - 1].text) + 1);
+    if (group.length > 1 && !counting && text.length <= 4) out.push({ ...group[0], text });
+    else out.push(...group);
+    group = [];
+  };
+  for (const r of runs) {
+    const last = group[group.length - 1];
+    if (!/^\d+$/.test(r.text)) {
+      flush();
+      out.push(r);
+    } else if (last && r.offset === last.offset + last.text.length) group.push(r);
+    else {
+      flush();
+      group = [r];
+    }
+  }
+  flush();
+  return out;
+}
+
 type RawLine = Omit<LayoutLine, "volume" | "body" | "indentEm" | "rightGapEm" | "reachesRight" | "label" | "index">;
 
 /**

@@ -102,7 +102,11 @@ export type MarkerNotes =
         numbers: ReadonlySet<number>;
     } | undefined;
 };
-export declare function linkLayoutMarkers(blocks: Block[], layout: Layout, notes: MarkerNotes): LayoutMarkerStats;
+export declare function linkLayoutMarkers(blocks: Block[], layout: Layout, notes: MarkerNotes, 
+/** `scanned`: an OCR layer's touching raised digits are one number (`joinTouchingDigits`). */
+options?: {
+    scanned?: boolean;
+}): LayoutMarkerStats;
 export declare function inNoteFace(layout: Layout, volume: number, pdfIndex: number, line: string, otherFamily?: boolean): boolean;
 export declare function pageDefinesNotes(layout: Layout, volume: number, pdfIndex: number, otherFamily?: boolean): boolean;
 /**
