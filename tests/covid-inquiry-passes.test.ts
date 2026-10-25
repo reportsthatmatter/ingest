@@ -27,7 +27,6 @@ const layout = buildLayout([
       // a colon line in the face that nothing carries on
       page(2, [text(541, 54, 1, "<b>Note:</b>"), text(700, 18, 0, "1.1. The body of the report, in the ordinary face, says something.")]),
     ]),
-    1
   ),
 ]);
 const faces = [["ProximaNova|54|#ffffff|b"]];
@@ -89,7 +88,6 @@ describe("typographicHeadings: a heading's words just after a paragraph label ar
           t(950, 0, "3.84. As outlined in Chapter 2, the plan was commissioned on 10 February 2020."),
         ].join("\n")}\n</page>`,
       ]),
-      1
     ),
   ]);
   it("is cut above 3.84 (PDF p.136), and 3.82 keeps its words", async () => {
