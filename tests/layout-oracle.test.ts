@@ -229,7 +229,9 @@ describe("the layout oracle on an OCR layer's markers (Mueller Vol I, Paper Capt
 
   it("PDF p.150 (printed 142): the notes' raised dates are not markers", () => {
     // the OCR sets the notes in the body's 17pt and raises their digits ("5/17/18 302"): only the
-    // body's eleven markers, 940 to 950, are expected
+    // body's markers are expected, 941 to 950 (the page has 940 too, after "Deripaska.", but the
+    // layout sets its run 3pt high as a line of its own, so it is not raised on its line: a layout
+    // miss the oracle and the linker share, not this check's)
     const { layout, blocks, footnotes } = fixture("mueller-v1-p150");
     const r = measureLayout(layout, blocks, footnotes);
     const labels = r.findings.filter((f) => f.signal === "markers-unlinked").map((f) => f.text);
