@@ -971,6 +971,12 @@ export const footnoteBlock = () => ({ name: "footnoteBlock", stage: "page" });
  * gluing finding 648 onto the citation before it (reportsthatmatter-9ek).
  * `minShare` asks that a line recur on at least that share of the volume's
  * pages, as a running header or folio does.
+ *
+ * `{ keep }`: a pattern for lines that are never furniture, however often they
+ * repeat at a page edge: a heading the document sets identically at the head of
+ * several pages (the Litvinenko Inquiry's five "Chapter 1:  Introduction",
+ * reportsthatmatter-8rv). Matched against the line with its whitespace
+ * collapsed and trimmed.
  */
 export const runningFurniture = (options = {}) => ({
     name: "runningFurniture",

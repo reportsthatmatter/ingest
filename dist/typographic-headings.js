@@ -13,7 +13,8 @@ function candidate(line, bodySize, o) {
         return (o.faces.some((level) => level.includes(line.font)) &&
             !LABEL_ONLY.test(text) &&
             /\p{L}/u.test(text) &&
-            (!SENTENCE_END.test(text) || (o.labelWraps === true && /:$/.test(text))));
+            (!SENTENCE_END.test(text) || (o.labelWraps === true && /:$/.test(text)) || (o.commaWraps === true && /,$/.test(text))) &&
+            !(o.skipMarked === true && line.raised.length > 0));
     if (line.body || line.italic)
         return false;
     if (bodySize <= 0 || line.size < o.minRatio * bodySize)
@@ -38,6 +39,8 @@ export function layoutHeadings(layout, options = {}) {
         ...(options.sizes ? { sizes: options.sizes } : {}),
         ...(options.faces ? { faces: options.faces } : {}),
         ...(options.faces && options.labelWraps ? { labelWraps: true } : {}),
+        ...(options.faces && options.commaWraps ? { commaWraps: true } : {}),
+        ...(options.faces && options.skipMarked ? { skipMarked: true } : {}),
         minRatio: options.minRatio ?? 1.15,
         maxChars: options.maxChars ?? 160,
         minPages: options.minPages ?? 3,
@@ -92,6 +95,9 @@ export function layoutHeadings(layout, options = {}) {
             // `labelWraps`: a colon line that nothing carried on is not a heading after all
             if (o.labelWraps && /:$/.test(text))
                 continue;
+            // `commaWraps`: likewise a comma line
+            if (o.commaWraps && /,$/.test(text))
+                continue;
             headings.push({ volume, pdfIndex: page, text, level: levels.get(first.font) });
         }
     }
@@ -139,14 +145,14 @@ export function applyTypographicHeadings(blocks, layout, options = {}) {
             j++;
         const pageBlocks = blocks.slice(i, j);
         const todo = byPage.get(key);
-        out.push(...cutPage(pageBlocks, todo, stats, Boolean(options.relevel && options.faces), Boolean(options.quotedRemainder), Boolean(options.skipRunIns)));
+        out.push(...cutPage(pageBlocks, todo, stats, Boolean(options.relevel && options.faces), Boolean(options.quotedRemainder), Boolean(options.skipRunIns), Boolean(options.commaWraps && options.faces)));
         i = j;
     }
     blocks.splice(0, blocks.length, ...out);
     return stats;
 }
 const alnum = (s) => squash(s).text.replace(/[^\p{L}\p{N}]/gu, "");
-function cutPage(pageBlocks, todo, stats, relevel = false, quotedRemainder = false, skipRunIns = false) {
+function cutPage(pageBlocks, todo, stats, relevel = false, quotedRemainder = false, skipRunIns = false, joinBlocks = false) {
     let units = pageBlocks;
     let from = 0; // blocks before this index are done: headings run in reading order
     for (const h of todo) {
@@ -160,6 +166,40 @@ function cutPage(pageBlocks, todo, stats, relevel = false, quotedRemainder = fal
             continue;
         }
         let placed = false;
+        // (`commaWraps`: a wrapped heading the text reading cut into consecutive blocks, each a line of it)
+        if (joinBlocks) {
+            for (let k = from; k < units.length - 1 && !placed; k++) {
+                const first = units[k];
+                if (!SPLITTABLE(first) && first.kind !== "heading")
+                    continue;
+                let have = squash(first.text).text;
+                if (have.length < 3 || have.length >= want.length || !want.startsWith(have))
+                    continue;
+                let m = k + 1;
+                while (m < units.length && have.length < want.length) {
+                    const next = units[m];
+                    if (!SPLITTABLE(next) && next.kind !== "heading")
+                        break;
+                    const more = have + squash(next.text).text;
+                    if (!want.startsWith(more))
+                        break;
+                    have = more;
+                    m++;
+                }
+                if (have !== want)
+                    continue;
+                const parts = units.slice(k, m);
+                const title = parts.map((b) => b.text.replace(/\s+/g, " ").trim()).join(" ");
+                const heading = { kind: "heading", level: h.level, text: title, layoutHeading: true, ...(first.at ? { at: first.at } : {}), ...(first.source ? { source: first.source } : {}) };
+                units = [...units.slice(0, k), heading, ...units.slice(m)];
+                from = k + 1;
+                stats.split++;
+                stats.added.push({ volume: h.volume, pdfIndex: h.pdfIndex, level: h.level, text: title, before: "", after: "" });
+                placed = true;
+            }
+            if (placed)
+                continue;
+        }
         for (let k = from; k < units.length && !placed; k++) {
             const block = units[k];
             if (block.kind === "heading") {

@@ -86,6 +86,22 @@ export type TypographicHeadingsOptions = {
      * Default false.
      */
     labelWraps?: boolean;
+    /**
+     * The same for a declared face's line that ends on a comma: it opens a heading when the next line, in
+     * the same face and one line-height below, carries it on. The Litvinenko Inquiry breaks the title of
+     * Part 9's Chapter 5 as "Chapter 5:  Mario Scaramella, Chechen groups," / "Alexander Talik" (PDF
+     * p.214): the comma read as a sentence's stop, so only "Alexander Talik" was a heading
+     * (reportsthatmatter-8rv). A comma line with no such continuation is still no heading. A wrapped
+     * heading the text reading cut into consecutive blocks, one per line, is joined back into one. Only
+     * with `faces`. Default false.
+     */
+    commaWraps?: boolean;
+    /**
+     * A declared face's line that carries a raised note marker is a caption, not a heading: the Litvinenko
+     * Inquiry sets its figure captions ("Plan of the Pine Bar" with note 283, PDF p.172) in the face of its
+     * lowest subheadings, and a heading there never cites a note. Only with `faces`. Default false.
+     */
+    skipMarked?: boolean;
 };
 export type TypographicHeadingStats = {
     /** Heading faces found, largest first, with the level each was given. */

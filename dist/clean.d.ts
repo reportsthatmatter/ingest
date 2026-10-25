@@ -131,6 +131,14 @@ export type FurnitureOptions = {
      * `runningFurniture`.
      */
     minShare?: number;
+    /**
+     * Lines matching this are never furniture, however often they repeat. The
+     * Litvinenko Inquiry opens Parts 4, 5, 6, 8 and 9 on the same heading,
+     * "Chapter 1:  Introduction", at the head of the page: five identical lines
+     * at a page edge, so all five went as a running head (reportsthatmatter-8rv).
+     * See `runningFurniture`.
+     */
+    keep?: RegExp;
 };
 export declare function stripRepeatedPageFurniture(pages: SplitPage[], options?: FurnitureOptions): SplitPage[];
 /**
