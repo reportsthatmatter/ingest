@@ -88,6 +88,22 @@ export type TypographicHeadingsOptions = {
    * Default false.
    */
   labelWraps?: boolean;
+  /**
+   * The same for a declared face's line that ends on a comma: it opens a heading when the next line, in
+   * the same face and one line-height below, carries it on. The Litvinenko Inquiry breaks the title of
+   * Part 9's Chapter 5 as "Chapter 5:  Mario Scaramella, Chechen groups," / "Alexander Talik" (PDF
+   * p.214): the comma read as a sentence's stop, so only "Alexander Talik" was a heading
+   * (reportsthatmatter-8rv). A comma line with no such continuation is still no heading. A wrapped
+   * heading the text reading cut into consecutive blocks, one per line, is joined back into one. Only
+   * with `faces`. Default false.
+   */
+  commaWraps?: boolean;
+  /**
+   * A declared face's line that carries a raised note marker is a caption, not a heading: the Litvinenko
+   * Inquiry sets its figure captions ("Plan of the Pine Bar" with note 283, PDF p.172) in the face of its
+   * lowest subheadings, and a heading there never cites a note. Only with `faces`. Default false.
+   */
+  skipMarked?: boolean;
 };
 
 export type TypographicHeadingStats = {
@@ -117,7 +133,7 @@ const LABEL_ONLY = /^\s*(?:\(?\d{1,4}(?:\.\d{1,4})*[.)]?|\(?[a-z][.)]|[ivxlc]{1,
 type Heading = { volume: number; pdfIndex: number; text: string; level: number };
 
 /** A heading line's candidacy, before the face's recurrence is known. */
-function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns" | "labelWraps">> & { sizes?: number[]; faces?: string[][]; labelWraps?: boolean }): boolean {
+function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns" | "labelWraps" | "commaWraps" | "skipMarked">> & { sizes?: number[]; faces?: string[][]; labelWraps?: boolean; commaWraps?: boolean; skipMarked?: boolean }): boolean {
   const text = line.text.trim();
   if (!text || text.length > o.maxChars) return false;
   if (o.faces)
@@ -125,7 +141,8 @@ function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<Typograp
       o.faces.some((level) => level.includes(line.font)) &&
       !LABEL_ONLY.test(text) &&
       /\p{L}/u.test(text) &&
-      (!SENTENCE_END.test(text) || (o.labelWraps === true && /:$/.test(text)))
+      (!SENTENCE_END.test(text) || (o.labelWraps === true && /:$/.test(text)) || (o.commaWraps === true && /,$/.test(text))) &&
+      !(o.skipMarked === true && line.raised.length > 0)
     );
   if (line.body || line.italic) return false;
   if (bodySize <= 0 || line.size < o.minRatio * bodySize) return false;
@@ -143,11 +160,13 @@ const faceSize = (face: string) => Number(face.split("|")[1]) || 0;
  * Exported for the tests.
  */
 export function layoutHeadings(layout: Layout, options: TypographicHeadingsOptions = {}): { headings: Heading[]; faces: TypographicHeadingStats["faces"] } {
-  const o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns" | "labelWraps">> & { sizes?: number[]; faces?: string[][]; labelWraps?: boolean } = {
+  const o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns" | "labelWraps" | "commaWraps" | "skipMarked">> & { sizes?: number[]; faces?: string[][]; labelWraps?: boolean; commaWraps?: boolean; skipMarked?: boolean } = {
     firstLevel: options.firstLevel ?? 2,
     ...(options.sizes ? { sizes: options.sizes } : {}),
     ...(options.faces ? { faces: options.faces } : {}),
     ...(options.faces && options.labelWraps ? { labelWraps: true } : {}),
+    ...(options.faces && options.commaWraps ? { commaWraps: true } : {}),
+    ...(options.faces && options.skipMarked ? { skipMarked: true } : {}),
     minRatio: options.minRatio ?? 1.15,
     maxChars: options.maxChars ?? 160,
     minPages: options.minPages ?? 3,
@@ -202,6 +221,8 @@ export function layoutHeadings(layout: Layout, options: TypographicHeadingsOptio
       }
       // `labelWraps`: a colon line that nothing carried on is not a heading after all
       if (o.labelWraps && /:$/.test(text)) continue;
+      // `commaWraps`: likewise a comma line
+      if (o.commaWraps && /,$/.test(text)) continue;
       headings.push({ volume, pdfIndex: page, text, level: levels.get(first.font)! });
     }
   }
@@ -251,7 +272,7 @@ export function applyTypographicHeadings(blocks: Block[], layout: Layout, option
     while (j < blocks.length && pageOf(blocks[j]) === key) j++;
     const pageBlocks = blocks.slice(i, j);
     const todo = byPage.get(key)!;
-    out.push(...cutPage(pageBlocks, todo, stats, Boolean(options.relevel && options.faces), Boolean(options.quotedRemainder), Boolean(options.skipRunIns)));
+    out.push(...cutPage(pageBlocks, todo, stats, Boolean(options.relevel && options.faces), Boolean(options.quotedRemainder), Boolean(options.skipRunIns), Boolean(options.commaWraps && options.faces)));
     i = j;
   }
   blocks.splice(0, blocks.length, ...out);
@@ -260,7 +281,7 @@ export function applyTypographicHeadings(blocks: Block[], layout: Layout, option
 
 const alnum = (s: string) => squash(s).text.replace(/[^\p{L}\p{N}]/gu, "");
 
-function cutPage(pageBlocks: Block[], todo: Heading[], stats: TypographicHeadingStats, relevel = false, quotedRemainder = false, skipRunIns = false): Block[] {
+function cutPage(pageBlocks: Block[], todo: Heading[], stats: TypographicHeadingStats, relevel = false, quotedRemainder = false, skipRunIns = false, joinBlocks = false): Block[] {
   let units = pageBlocks;
   let from = 0; // blocks before this index are done: headings run in reading order
   for (const h of todo) {
@@ -274,6 +295,34 @@ function cutPage(pageBlocks: Block[], todo: Heading[], stats: TypographicHeading
       continue;
     }
     let placed = false;
+    // (`commaWraps`: a wrapped heading the text reading cut into consecutive blocks, each a line of it)
+    if (joinBlocks) {
+      for (let k = from; k < units.length - 1 && !placed; k++) {
+        const first = units[k];
+        if (!SPLITTABLE(first) && first.kind !== "heading") continue;
+        let have = squash(first.text).text;
+        if (have.length < 3 || have.length >= want.length || !want.startsWith(have)) continue;
+        let m = k + 1;
+        while (m < units.length && have.length < want.length) {
+          const next = units[m];
+          if (!SPLITTABLE(next) && next.kind !== "heading") break;
+          const more = have + squash(next.text).text;
+          if (!want.startsWith(more)) break;
+          have = more;
+          m++;
+        }
+        if (have !== want) continue;
+        const parts = units.slice(k, m) as Array<Block & { text: string }>;
+        const title = parts.map((b) => b.text.replace(/\s+/g, " ").trim()).join(" ");
+        const heading = { kind: "heading", level: h.level, text: title, layoutHeading: true, ...(first.at ? { at: first.at } : {}), ...(first.source ? { source: first.source } : {}) } as Block;
+        units = [...units.slice(0, k), heading, ...units.slice(m)];
+        from = k + 1;
+        stats.split++;
+        stats.added.push({ volume: h.volume, pdfIndex: h.pdfIndex, level: h.level, text: title, before: "", after: "" });
+        placed = true;
+      }
+      if (placed) continue;
+    }
     for (let k = from; k < units.length && !placed; k++) {
       const block = units[k];
       if (block.kind === "heading") {
