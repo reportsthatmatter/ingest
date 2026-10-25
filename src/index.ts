@@ -37,6 +37,7 @@ export {
   contentsEntries,
   shortSubheads,
   shiftedPages,
+  facingPageMargins,
   quoteRunOn,
   quoteListRunOns,
   layoutPageJoins,

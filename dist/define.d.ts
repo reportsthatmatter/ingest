@@ -49,6 +49,8 @@ export type ResolvedPasses = {
     contentsEntries?: boolean;
     shortSubheads?: boolean;
     shiftedPages?: boolean;
+    /** `facingPageMargins`: each page takes the margin of its side of the spread (reportsthatmatter-fkx). */
+    facingPageMargins?: boolean;
     quoteRunOn?: boolean;
     quoteListRunOns?: boolean;
     /** `insetOpenings`: a short quotation stopping mid-sentence and a lower-case paragraph after it on the page are one paragraph. */
