@@ -640,6 +640,8 @@ export function stripRepeatedPageFurniture(pages, options = {}) {
         const key = furnitureKey(line);
         if (!key)
             return false;
+        if (options.keep?.test(normaliseWhitespace(line).trim()))
+            return false;
         const count = counts.get(key) ?? 0;
         if (count < MIN_REPEATED_FURNITURE || count < (options.minShare ?? 0) * pages.length) {
             return false;
