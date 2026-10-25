@@ -816,12 +816,8 @@ function alignChunks(blocks: Block[], chunks: string[]): Array<string | undefine
  * neither, or too short to say, takes the document's.
  */
 function pageMargin(body: string[], fallback: number): number {
-  const counts = new Map<number, number>();
-  for (const line of body) {
-    const opener = line.match(NUMBERED_OPENER);
-    if (opener) counts.set(opener[0].length, (counts.get(opener[0].length) ?? 0) + 1);
-  }
-  if (counts.size) return [...counts].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0];
+  const opener = openerMargin(body);
+  if (opener !== undefined) return opener;
   const lines = body.filter((line) => line.trim());
   return lines.length >= PAGE_MARGIN_MIN_LINES ? bodyIndent(lines) : fallback;
 }
@@ -878,7 +874,7 @@ function facingMargins(group: Array<{ pdfIndex: number; body: string[] }>, fallb
   });
   return (page) => {
     const side = sides[page.pdfIndex % 2] ?? sides[1 - (page.pdfIndex % 2)] ?? fallback;
-    const m = own.has(page as never) ? own.get(page as never) : openerMargin(page.body);
+    const m = own.has(page) ? own.get(page) : openerMargin(page.body);
     return m ?? side;
   };
 }

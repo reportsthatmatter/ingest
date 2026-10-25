@@ -849,9 +849,11 @@ export const shiftedPages = (): PagePass => ({
  * per volume, every line of the other side either opens a paragraph (and
  * only lower-case lines rejoin: "…I selected" / "Robert Jay QC to be
  * Counsel…") or reads as a quotation. A page's own margin is the column its
- * numbered paragraphs' text starts at ("1.6     I also…"), where that is one
- * of its volume's two sides; any other page takes the commonest such margin
- * among the volume's pages of the same parity. Not `geometry("per-page")`:
+ * numbered paragraphs' text starts at ("1.6     I also…"), whichever column
+ * that is (vol i p.25 sets its text at 15, a stop further in than its side's
+ * 12); a page with none takes the commonest such margin among the volume's
+ * pages of the same PDF-page parity. Where both are declared it overrides
+ * `geometry("per-page")` and `shiftedPages`. Not `geometry("per-page")`:
  * that measures a page with no numbered paragraph by its commonest indent,
  * which a page of long quotations hands to the quotation. A volume with no
  * numbered paragraphs keeps its geometry's margin.
