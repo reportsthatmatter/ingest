@@ -14,6 +14,9 @@ import { PARAGRAPH_ID_CHARS, slugify } from "./markdown.js";
  * one of them parses as a heading.
  */
 const MIN_SECTION_CHARS = 2500;
+// A printed page: arabic or the roman folio the markdown renderer accepts, with
+// the optional -N suffix a repeated number gets.
+const PAGE_ANCHOR = /id="page-(\d+|[ivxlc]+)(?:-\d+)?"/g;
 export function splitSections(html, minChars = MIN_SECTION_CHARS) {
     // Split on subsections as well as sections. In a 645-page report a single
     // top-level section can run to a megabyte — larger than the whole document we
@@ -21,7 +24,18 @@ export function splitSections(html, minChars = MIN_SECTION_CHARS) {
     const parts = mergeSlivers(html.split(/(?=<h[23]\b)/), minChars);
     const sections = [];
     const taken = new Set();
+    // The page in force where the next part begins: the last page anchor seen so
+    // far. A %%page N%% marker that sits just before a heading ends the previous
+    // part, so the heading's own part would otherwise name the *next* page.
+    let current;
     for (const part of parts) {
+        const anchors = [...part.matchAll(PAGE_ANCHOR)];
+        // The heading opens the part, so the page it is on is the one in force
+        // before the part's first anchor. The first anchor is only the answer when
+        // nothing precedes it (front matter, or the report's very first page).
+        const page = current ?? anchors[0]?.[1];
+        if (anchors.length)
+            current = anchors[anchors.length - 1][1];
         const heading = part.match(/<h([23])\b[^>]*>([\s\S]*?)<\/h\1>/);
         // Anything before the first heading is front matter for the report.
         const title = heading ? stripTags(withoutSidenotes(heading[2])) : "Front matter";
@@ -36,7 +50,7 @@ export function splitSections(html, minChars = MIN_SECTION_CHARS) {
             slug,
             title,
             html: part,
-            page: part.match(/id="page-(\d+)(?:-\d+)?"/)?.[1],
+            page,
             level: heading ? Number(heading[1]) : 2,
         });
     }
