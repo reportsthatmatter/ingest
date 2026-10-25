@@ -1,4 +1,5 @@
 import type { Layout, LayoutLine } from "./layout";
+import { joinTouchingDigits } from "./layout";
 import type { Block } from "./paragraphs";
 
 /**
@@ -107,7 +108,7 @@ const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  * already be linked by the time this one is looked for, so it matches either
  * way.
  */
-function anchorPattern(before: string, earlier: Array<{ offset: number; text: string }>): string | undefined {
+function anchorPattern(before: string, earlier: Array<{ offset: number; text: string }>, loose = false): string | undefined {
   const trimmed = before.trimEnd();
   const words = [...trimmed.matchAll(/\S+/g)];
   if (!words.length) return undefined;
@@ -116,11 +117,16 @@ function anchorPattern(before: string, earlier: Array<{ offset: number; text: st
   const marks = earlier.filter((r) => r.offset >= from && r.offset + r.text.length <= trimmed.length);
   let out = "";
   let at = from;
+  // `loose`: an OCR layer's text and its layout space a word differently ("2017 .945" against
+  // "2017.945", "m onth." against "month.": Mueller Vol I p.142), so any two characters may have
+  // spaces between them.
   const plain = (s: string) =>
-    foldForMatch(s)
-      .text.split(/\s+/)
-      .map(escape)
-      .join("\\s+");
+    loose
+      ? [...foldForMatch(s).text.replace(/\s+/g, "")].map(escape).join("\\s*")
+      : foldForMatch(s)
+          .text.split(/\s+/)
+          .map(escape)
+          .join("\\s+");
   for (const r of marks) {
     // The space between two raised numbers ("8 9 10") is gone once they are linked ("[^8][^9]").
     const gap = trimmed.slice(at, r.offset);
@@ -156,11 +162,12 @@ function increasingRun(values: number[]): number[] {
 type Candidate = { value: number; digits: string; anchor: string; glued: boolean };
 
 /** One page's raised digit runs, in reading order, that may be markers. */
-function pageCandidates(lines: LayoutLine[], bodySize: number): Candidate[] {
+function pageCandidates(lines: LayoutLine[], bodySize: number, joinDigits = false): Candidate[] {
   const out: Candidate[] = [];
   for (const line of lines) {
     if (bodySize > 0 && line.size < BODY_SIZE_RATIO * bodySize) continue;
-    for (const run of line.raised) {
+    const runs = joinDigits ? joinTouchingDigits(line.raised) : line.raised;
+    for (const run of runs) {
       if (!/^[1-9]\d{0,3}$/.test(run.text) || run.offset <= 0) continue;
       const before = line.text.slice(0, run.offset);
       // A note's own number opens its line, possibly after a bullet's indent.
@@ -168,7 +175,8 @@ function pageCandidates(lines: LayoutLine[], bodySize: number): Candidate[] {
       if (!/[\p{L}\p{N}.,;:!?)\]'"’”%…]\s*$/u.test(before)) continue;
       const anchor = anchorPattern(
         before,
-        line.raised.filter((r) => r.offset < run.offset)
+        runs.filter((r) => r.offset < run.offset),
+        joinDigits
       );
       if (!anchor) continue;
       const glued = /\d/.test(line.text[run.offset + run.text.length] ?? "");
@@ -230,7 +238,13 @@ export type MarkerNotes =
    */
   | { scope: "chapter"; chapterOf: (block: Block) => { key: number; numbers: ReadonlySet<number> } | undefined };
 
-export function linkLayoutMarkers(blocks: Block[], layout: Layout, notes: MarkerNotes): LayoutMarkerStats {
+export function linkLayoutMarkers(
+  blocks: Block[],
+  layout: Layout,
+  notes: MarkerNotes,
+  /** `scanned`: an OCR layer's touching raised digits are one number (`joinTouchingDigits`). */
+  options: { scanned?: boolean } = {}
+): LayoutMarkerStats {
   const stats: LayoutMarkerStats = { raised: 0, candidates: 0, linked: 0, unplaced: 0, links: [], misses: [] };
   const pages = new Map<string, Unit[]>();
   for (const block of blocks) {
@@ -248,7 +262,7 @@ export function linkLayoutMarkers(blocks: Block[], layout: Layout, notes: Marker
     let out = raisedCache.get(key);
     if (!out) {
       const page = layout.page(volume, pdfIndex);
-      out = page ? pageCandidates(page.lines, Number(page.bodyFont.split("|")[1]) || 0) : [];
+      out = page ? pageCandidates(page.lines, Number(page.bodyFont.split("|")[1]) || 0, options.scanned === true) : [];
       raisedCache.set(key, out);
     }
     return out;

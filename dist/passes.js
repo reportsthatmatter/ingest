@@ -870,13 +870,17 @@ export const quoteListRunOns = () => ({ name: "quoteListRunOns", stage: "page" }
  * layout misses markers.
  *
  * Opt-in: it reads `context.layout`, and a report whose markers are not
- * raised (a scan's OCR layer) gains nothing from it.
+ * raised (a scan's OCR layer) gains nothing from it. `scanned: true` for an
+ * OCR layer that does raise them but sets a number's digits as separate runs
+ * ("1", "2", "6", "2" for note 1262, Mueller Vol I p.172): touching runs are
+ * read as one number (`joinTouchingDigits`).
  */
 export const layoutMarkers = (options = {}) => ({
     name: "layoutMarkers",
     stage: "page",
     scope: options.scope ?? "page",
     ...(options.textFallback ? { textFallback: true } : {}),
+    ...(options.scanned ? { scanned: true } : {}),
 });
 /**
  * Subsection headings set only by face and size (Hillsborough's maroon 26pt and 21pt lines), read off the

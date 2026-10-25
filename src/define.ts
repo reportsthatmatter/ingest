@@ -72,7 +72,7 @@ export type ResolvedPasses = {
   /** `layoutPageJoins`: on, with its options. */
   layoutPageJoins?: PageBreakOptions;
   /** `layoutMarkers`: on, with where its notes are. */
-  layoutMarkers?: { scope: "page" | "document" | "chapter"; textFallback: boolean };
+  layoutMarkers?: { scope: "page" | "document" | "chapter"; textFallback: boolean; scanned?: boolean };
   /** `layoutEndnotes`: notes sections read off the layout, labelled by chapter. */
   layoutEndnotes?: boolean;
   /** `typographicHeadings`: on, with its options. */
@@ -395,7 +395,11 @@ function layoutPageJoinsOf(passes: Pass[]): PageBreakOptions | undefined {
   };
 }
 
-function layoutMarkersOf(passes: Pass[]): { scope: "page" | "document" | "chapter"; textFallback: boolean } | undefined {
+function layoutMarkersOf(
+  passes: Pass[]
+): { scope: "page" | "document" | "chapter"; textFallback: boolean; scanned?: boolean } | undefined {
   const pass = passes.find((p): p is LayoutMarkersPass => p.name === "layoutMarkers");
-  return pass ? { scope: pass.scope ?? "page", textFallback: pass.textFallback === true } : undefined;
+  return pass
+    ? { scope: pass.scope ?? "page", textFallback: pass.textFallback === true, ...(pass.scanned ? { scanned: true } : {}) }
+    : undefined;
 }

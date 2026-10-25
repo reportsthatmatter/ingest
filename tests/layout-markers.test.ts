@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { buildLayout, parseLayoutXml } from "../src/layout";
+import { buildLayout, joinTouchingDigits, parseLayoutXml } from "../src/layout";
 import { linkLayoutMarkers, pageDefinesNotes, foldForMatch } from "../src/markers";
 import { measureLayout } from "../src/oracle";
 import { ingestPageGroups } from "../src/pipeline";
@@ -254,5 +254,19 @@ describe("the layoutMarkers pass in the pipeline", () => {
     // with the text linkers after it, ", 2 people" is read as note 2
     const fallback = ingestPageGroups([[page]], { title: "T" }, def([layoutMarkers({ textFallback: true })]), [], { layout });
     expect(fallback.markdown).toContain("Of these,[^2] people were arrested.[^1]");
+  });
+});
+
+describe("joinTouchingDigits", () => {
+  const run = (text: string, offset: number) => ({ text, offset, size: 12, left: offset * 5 });
+  it("reads an OCR layer's one-digit runs as one number", () => {
+    expect(joinTouchingDigits([run("1", 10), run("2", 11), run("6", 12), run("2", 13)]).map((r) => r.text)).toEqual(["1262"]);
+    expect(joinTouchingDigits([run("1", 10), run("2", 11), run("64", 12)]).map((r) => r.text)).toEqual(["1264"]);
+  });
+  it("keeps apart two markers set close, numbers past four digits, and runs with anything between", () => {
+    expect(joinTouchingDigits([run("261", 10), run("262", 13)]).map((r) => r.text)).toEqual(["261", "262"]);
+    expect(joinTouchingDigits([run("12", 10), run("13", 12)]).map((r) => r.text)).toEqual(["12", "13"]);
+    expect(joinTouchingDigits([run("1", 10), run("2", 12)]).map((r) => r.text)).toEqual(["1", "2"]);
+    expect(joinTouchingDigits([run("102", 10), run("4", 13), run("1", 14)]).map((r) => r.text)).toEqual(["102", "4", "1"]);
   });
 });

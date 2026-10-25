@@ -1,3 +1,4 @@
+import { joinTouchingDigits } from "./layout.js";
 /** A line set this much smaller than the page's body is note text, a caption or a table. */
 const BODY_SIZE_RATIO = 0.85;
 const textOf = (u) => u.block.kind === "list" ? u.block.items[u.item] : "text" in u.block ? u.block.text : "";
@@ -44,7 +45,7 @@ const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  * already be linked by the time this one is looked for, so it matches either
  * way.
  */
-function anchorPattern(before, earlier) {
+function anchorPattern(before, earlier, loose = false) {
     const trimmed = before.trimEnd();
     const words = [...trimmed.matchAll(/\S+/g)];
     if (!words.length)
@@ -54,10 +55,15 @@ function anchorPattern(before, earlier) {
     const marks = earlier.filter((r) => r.offset >= from && r.offset + r.text.length <= trimmed.length);
     let out = "";
     let at = from;
-    const plain = (s) => foldForMatch(s)
-        .text.split(/\s+/)
-        .map(escape)
-        .join("\\s+");
+    // `loose`: an OCR layer's text and its layout space a word differently ("2017 .945" against
+    // "2017.945", "m onth." against "month.": Mueller Vol I p.142), so any two characters may have
+    // spaces between them.
+    const plain = (s) => loose
+        ? [...foldForMatch(s).text.replace(/\s+/g, "")].map(escape).join("\\s*")
+        : foldForMatch(s)
+            .text.split(/\s+/)
+            .map(escape)
+            .join("\\s+");
     for (const r of marks) {
         // The space between two raised numbers ("8 9 10") is gone once they are linked ("[^8][^9]").
         const gap = trimmed.slice(at, r.offset);
@@ -91,12 +97,13 @@ function increasingRun(values) {
     return out;
 }
 /** One page's raised digit runs, in reading order, that may be markers. */
-function pageCandidates(lines, bodySize) {
+function pageCandidates(lines, bodySize, joinDigits = false) {
     const out = [];
     for (const line of lines) {
         if (bodySize > 0 && line.size < BODY_SIZE_RATIO * bodySize)
             continue;
-        for (const run of line.raised) {
+        const runs = joinDigits ? joinTouchingDigits(line.raised) : line.raised;
+        for (const run of runs) {
             if (!/^[1-9]\d{0,3}$/.test(run.text) || run.offset <= 0)
                 continue;
             const before = line.text.slice(0, run.offset);
@@ -104,7 +111,7 @@ function pageCandidates(lines, bodySize) {
             // (after an ellipsis too: "from …49", Hillsborough p.148; reportsthatmatter-kgpr)
             if (!/[\p{L}\p{N}.,;:!?)\]'"’”%…]\s*$/u.test(before))
                 continue;
-            const anchor = anchorPattern(before, line.raised.filter((r) => r.offset < run.offset));
+            const anchor = anchorPattern(before, runs.filter((r) => r.offset < run.offset), joinDigits);
             if (!anchor)
                 continue;
             const glued = /\d/.test(line.text[run.offset + run.text.length] ?? "");
@@ -144,7 +151,9 @@ function locate(units, cursor, c) {
             all.push({ unit: u, ...h });
     return all.length === 1 ? all[0] : undefined;
 }
-export function linkLayoutMarkers(blocks, layout, notes) {
+export function linkLayoutMarkers(blocks, layout, notes, 
+/** `scanned`: an OCR layer's touching raised digits are one number (`joinTouchingDigits`). */
+options = {}) {
     const stats = { raised: 0, candidates: 0, linked: 0, unplaced: 0, links: [], misses: [] };
     const pages = new Map();
     for (const block of blocks) {
@@ -165,7 +174,7 @@ export function linkLayoutMarkers(blocks, layout, notes) {
         let out = raisedCache.get(key);
         if (!out) {
             const page = layout.page(volume, pdfIndex);
-            out = page ? pageCandidates(page.lines, Number(page.bodyFont.split("|")[1]) || 0) : [];
+            out = page ? pageCandidates(page.lines, Number(page.bodyFont.split("|")[1]) || 0, options.scanned === true) : [];
             raisedCache.set(key, out);
         }
         return out;

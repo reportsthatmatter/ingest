@@ -216,3 +216,23 @@ describe("what each signal counts, on a page built to show it", () => {
     expect(r.pages["1:1"]["headings-missed"]).toBe(1);
   });
 });
+
+describe("the layout oracle on an OCR layer's markers (Mueller Vol I, Paper Capture over page images)", () => {
+  it("PDF p.180 (printed 172): a marker whose digits are raised one by one is one marker", () => {
+    // "sanctions.1262" is raised as "1", "2", "6", "2": the page has thirteen markers, 1262 to 1274
+    // ("127" is the OCR's reading of 1270), not thirty-five
+    const { layout, blocks, footnotes } = fixture("mueller-v1-p180");
+    const r = measureLayout(layout, blocks, footnotes);
+    const labels = r.findings.filter((f) => f.signal === "markers-unlinked").map((f) => f.text);
+    expect(labels).toEqual(["1262", "1263", "1264", "1265", "1266", "1267", "1268", "1269", "127", "1271", "1272", "1273", "1274"]);
+  });
+
+  it("PDF p.150 (printed 142): the notes' raised dates are not markers", () => {
+    // the OCR sets the notes in the body's 17pt and raises their digits ("5/17/18 302"): only the
+    // body's eleven markers, 940 to 950, are expected
+    const { layout, blocks, footnotes } = fixture("mueller-v1-p150");
+    const r = measureLayout(layout, blocks, footnotes);
+    const labels = r.findings.filter((f) => f.signal === "markers-unlinked").map((f) => f.text);
+    expect(labels).toEqual(["941", "942", "943", "944", "945", "946", "947", "948", "949", "950"]);
+  });
+});

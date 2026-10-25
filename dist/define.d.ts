@@ -59,6 +59,7 @@ export type ResolvedPasses = {
     layoutMarkers?: {
         scope: "page" | "document" | "chapter";
         textFallback: boolean;
+        scanned?: boolean;
     };
     /** `layoutEndnotes`: notes sections read off the layout, labelled by chapter. */
     layoutEndnotes?: boolean;

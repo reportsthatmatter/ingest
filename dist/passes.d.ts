@@ -96,6 +96,7 @@ export type LayoutMarkersPass = {
     readonly stage: "page";
     readonly scope: "page" | "document" | "chapter";
     readonly textFallback?: boolean;
+    readonly scanned?: boolean;
 };
 /** `typographicHeadings`, with its options. */
 export type TypographicHeadingsPass = {
@@ -968,11 +969,15 @@ export declare const quoteListRunOns: () => PagePass;
  * layout misses markers.
  *
  * Opt-in: it reads `context.layout`, and a report whose markers are not
- * raised (a scan's OCR layer) gains nothing from it.
+ * raised (a scan's OCR layer) gains nothing from it. `scanned: true` for an
+ * OCR layer that does raise them but sets a number's digits as separate runs
+ * ("1", "2", "6", "2" for note 1262, Mueller Vol I p.172): touching runs are
+ * read as one number (`joinTouchingDigits`).
  */
 export declare const layoutMarkers: (options?: {
     scope?: "page" | "document" | "chapter";
     textFallback?: boolean;
+    scanned?: boolean;
 }) => LayoutMarkersPass;
 /**
  * Subsection headings set only by face and size (Hillsborough's maroon 26pt and 21pt lines), read off the
