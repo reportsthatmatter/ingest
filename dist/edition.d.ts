@@ -191,6 +191,26 @@ export type EditionReport = {
  * run in step is left unmarked.
  */
 export declare function fillPrintedGaps(printed: PrintedPage[]): PrintedPage[];
+/**
+ * Applies a report's corrections to the PDF page text a clean edition is aligned to
+ * (`IngestResult.pageText`, taken before the shadow's blocks are corrected). A correction
+ * scoped with `where` looks only at the pages it names (`printed` read off `printed`); it
+ * is applied where its `find` occurs exactly once in those pages, within a line or across
+ * the break between two lines of one page, and otherwise left to the shadow, which already
+ * holds every correction to matching exactly once in its blocks. Returns how many applied.
+ */
+export declare function correctPageText(pages: Array<{
+    volume: number;
+    pdfIndex: number;
+    lines: string[];
+}>, corrections: Array<{
+    find: string;
+    replace: string;
+    where?: {
+        volume?: number;
+        printed?: number;
+    };
+}>, printed: PrintedPage[]): number;
 export type PrintedPage = {
     volume: number;
     pdfIndex: number;
