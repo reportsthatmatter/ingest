@@ -152,12 +152,23 @@ function definesNote(line, run) {
 export function noiseRaised(line, run) {
     const before = line.text.slice(0, run.offset);
     const after = line.text.slice(run.offset + run.text.length);
+    // a struck marking: three or more tokens of one or two characters between "(" and the run, none a word
     const opened = /^\s*\(([^()]*)$/.exec(before);
-    if (opened && !/[A-Za-z]{3,}/.test(opened[1]) && /^[\s^|]*\)/.test(after))
-        return true;
+    if (opened && /^[\s^|]*\)/.test(after)) {
+        const tokens = opened[1].trim().split(/\s+/).filter(Boolean);
+        if (tokens.length >= 3 && tokens.every((t) => t.length <= 2))
+            return true;
+    }
+    // a row of strokes: lone 1s (three or more in the row, or one run of three or more 1s), and what stands
+    // before the row is no word, quotation or stop (an OCR-spaced marker "fly.” 1 1 1" is note 111, Challenger p.249)
     if (/^1+$/.test(run.text)) {
-        const token = before.trimEnd().split(/\s+/).pop() ?? "";
-        if (/^[1Il|i!"'^]+$/.test(token) && (before.endsWith(" ") || /^\s+1(?:\s|$)/.test(after)))
+        const head = before.trimEnd().split(/\s+/);
+        while (head.length && head[head.length - 1] === "1")
+            head.pop();
+        const ones = before.trimEnd().split(/\s+/).length - head.length + 1 + (after.match(/^(?:\s+1)+(?=\s|$)/)?.[0].trim().split(/\s+/).length ?? 0);
+        const lead = head[head.length - 1] ?? "";
+        const wordLike = /[A-Za-z]{2}|[.,;:!?\u201d\u2019")\]]$/.test(lead) && !/^[1Il|i!"'^]+$/.test(lead);
+        if (!wordLike && (ones >= 3 || run.text.length >= 3))
             return true;
     }
     return false;

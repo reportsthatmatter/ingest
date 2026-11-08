@@ -262,5 +262,12 @@ describe("noiseRaised: raised runs an OCR layer made of scan noise (Senate CIA s
     expect(at("(see the Committee's earlier report 12) and", "12")).toBe(false);
     expect(at("facilities in Country J.6,14 As noted", "6")).toBe(false);
     expect(at("in late May 2002.1 Al-Najjar was", "1")).toBe(false);
+    // an OCR-spaced marker of 1s after a word or a quotation is a marker (Challenger p.249, note 111)
+    expect(at("safe to fly.\u201d 1 1 1", "1", 0)).toBe(false);
+    expect(at("safe to fly.\u201d 1 1 1", "1", 2)).toBe(false);
+    // one lone 1 after a redaction's garble, followed by another digit, is a marker's first digit
+    expect(at("detention sites in Country | 1 8 and", "1")).toBe(false);
+    // a short parenthetical with no three-letter word is not a portion marking
+    expect(at("(U.S.12) and then", "12")).toBe(false);
   });
 });
