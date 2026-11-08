@@ -4,6 +4,7 @@ import type { Block } from "./paragraphs";
 import type { Footnote } from "./footnotes";
 import { linkInlineMarkers } from "./footnotes";
 import { noteOffPage } from "./noteplace";
+import type { EndnoteRange } from "./passes";
 
 /**
  * The layout oracle (quality-harness plan §3.3): what the PDF's own layout
@@ -198,6 +199,39 @@ function definesNote(line: LayoutLine, run: { text: string; left: number }): boo
   return line.text.trim().startsWith(run.text) && run.left - line.left < 5;
 }
 
+/**
+ * A raised run that an OCR layer made out of scan noise, not a marker (the Senate Intelligence
+ * Committee study, reportsthatmatter-fgle): it counted 24 struck portion markings and 40 or so rows
+ * of rules and box edges as unlinked markers.
+ *
+ * - Inside a paragraph's opening classification marking, read as garble: the line opens "(", the run
+ *   closes it, and nothing between is a word of three letters ("( T S / ^ H ^ ^ H ^ 1 ) In early",
+ *   p.41; "( T S i d l H M 1 ) In the course", p.66).
+ * - A raised "1" in a row of strokes: the token before it is only strokes or another lone "1"
+ *   ("^ ^ B \" 1 1 1 1 1 1 1 1 1 1 1", p.206), as a box's edge or a struck rule reads.
+ */
+export function noiseRaised(line: Pick<LayoutLine, "text">, run: { text: string; offset: number }): boolean {
+  const before = line.text.slice(0, run.offset);
+  const after = line.text.slice(run.offset + run.text.length);
+  // a struck marking: three or more tokens of one or two characters between "(" and the run, none a word
+  const opened = /^\s*\(([^()]*)$/.exec(before);
+  if (opened && /^[\s^|]*\)/.test(after)) {
+    const tokens = opened[1].trim().split(/\s+/).filter(Boolean);
+    if (tokens.length >= 3 && tokens.every((t) => t.length <= 2)) return true;
+  }
+  // a row of strokes: lone 1s (three or more in the row, or one run of three or more 1s), and what stands
+  // before the row is no word, quotation or stop (an OCR-spaced marker "fly.” 1 1 1" is note 111, Challenger p.249)
+  if (/^1+$/.test(run.text)) {
+    const head = before.trimEnd().split(/\s+/);
+    while (head.length && head[head.length - 1] === "1") head.pop();
+    const ones = before.trimEnd().split(/\s+/).length - head.length + 1 + (after.match(/^(?:\s+1)+(?=\s|$)/)?.[0].trim().split(/\s+/).length ?? 0);
+    const lead = head[head.length - 1] ?? "";
+    const wordLike = /[A-Za-z]{2}|[.,;:!?\u201d\u2019")\]]$/.test(lead) && !/^[1Il|i!"'^]+$/.test(lead);
+    if (!wordLike && (ones >= 3 || run.text.length >= 3)) return true;
+  }
+  return false;
+}
+
 function furniture(layout: Layout): Set<LayoutLine> {
   // Running heads and folios: the same text (digits aside) in the same place on several pages.
   const place = (l: LayoutLine) => `${norm(l.text.replace(/\d+/g, ""))}|${Math.round(l.top / 20)}`;
@@ -294,6 +328,8 @@ export function measureLayout(
      * needs `blocks` from `finalBlocks`; `footnotes` must be the whole `IngestResult.footnotes`.
      */
     noteOffPage?: boolean;
+    /** The report's `layoutMarkers({ endnoteRanges })`: a marker and its note in one stretch are not off the page. */
+    endnoteRanges?: ReadonlyArray<EndnoteRange>;
   } = {}
 ): OracleReport {
   const relink = options.relink ?? true;
@@ -452,7 +488,7 @@ export function measureLayout(
       }
       for (const l of lines) {
         if (!inBody(l) || l.top >= notesTop) continue;
-        for (const r of joinTouchingDigits(l.raised)) if (/^\d{1,4}$/.test(r.text) && !definesNote(l, r)) labels.push(r.text);
+        for (const r of joinTouchingDigits(l.raised)) if (/^\d{1,4}$/.test(r.text) && !definesNote(l, r) && !noiseRaised(l, r)) labels.push(r.text);
       }
       expected.markers += labels.length;
       pool.set(pageKey(v, p), labels);
@@ -487,7 +523,7 @@ export function measureLayout(
   }
 
   if (options.noteOffPage) {
-    for (const o of noteOffPage(blocks, footnotes as Footnote[])) {
+    for (const o of noteOffPage(blocks, footnotes as Footnote[], 1, options.endnoteRanges ?? [])) {
       note("note-off-page", o.volume, o.page, `[^${o.label}] opens a note from ${o.definedVolume > 1 || o.volume > 1 ? `vol ${o.definedVolume} ` : ""}p.${o.definedPage}`);
     }
   }

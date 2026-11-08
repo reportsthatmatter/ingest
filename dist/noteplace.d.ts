@@ -1,5 +1,6 @@
 import type { Block } from "./paragraphs.js";
 import { type Footnote } from "./footnotes.js";
+import type { EndnoteRange } from "./passes.js";
 /**
  * A reference whose rendered note was printed on another page.
  *
@@ -36,4 +37,6 @@ export declare function noteOffPage(
 /** The final blocks (`finalBlocks`): markers linked as `[^N]`. */
 blocks: Block[], footnotes: Footnote[], 
 /** How far apart, in pages, a reference and its note may be. */
-tolerance?: number): NoteOffPage[];
+tolerance?: number, 
+/** `layoutMarkers({ endnoteRanges })`: a reference and its note inside one such stretch are where they belong. */
+endnoteRanges?: ReadonlyArray<EndnoteRange>): NoteOffPage[];

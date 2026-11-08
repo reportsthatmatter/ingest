@@ -1,6 +1,7 @@
 import type { Block } from "./paragraphs";
 import { mergeFootnotes, type Footnote } from "./footnotes";
 import { resolveNoteReferences } from "./markdown";
+import type { EndnoteRange } from "./passes";
 
 /**
  * A reference whose rendered note was printed on another page.
@@ -41,8 +42,12 @@ export function noteOffPage(
   blocks: Block[],
   footnotes: Footnote[],
   /** How far apart, in pages, a reference and its note may be. */
-  tolerance = 1
+  tolerance = 1,
+  /** `layoutMarkers({ endnoteRanges })`: a reference and its note inside one such stretch are where they belong. */
+  endnoteRanges: ReadonlyArray<EndnoteRange> = []
 ): NoteOffPage[] {
+  const rangeOf = (volume: number, page: number) =>
+    endnoteRanges.find((r) => (r.volume ?? 1) === volume && page >= r.from && page <= r.to);
   const notes = mergeFootnotes(footnotes.map((n) => ({ ...n })));
   const order = notes.map((n) => String(n.label ?? n.number));
   // `collectNotes`: a definition with no text is not a definition, but it still takes a place in the order
@@ -75,6 +80,8 @@ export function noteOffPage(
     const target = list[Math.min(aligned[at] ?? seen, list.length - 1)];
     used.set(ref.label, seen + 1);
     if (!target || ref.volume === undefined) return;
+    const range = rangeOf(ref.volume, ref.page);
+    if (range && range === rangeOf(target.volume, target.page)) return;
     if (target.volume !== ref.volume || Math.abs(target.page - ref.page) > tolerance) {
       off.push({ volume: ref.volume, page: ref.page, label: ref.label, definedVolume: target.volume, definedPage: target.page });
     }

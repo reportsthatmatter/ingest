@@ -19,6 +19,14 @@ describe("noteOffPage (reportsthatmatter-y0w9)", () => {
     expect(noteOffPage(dense, notes)).toEqual([]);
   });
 
+  it("does not count a marker and its note inside one endnote range (layoutMarkers endnoteRanges, fgle)", () => {
+    const refs = [para("Finding.[^1]", 2)];
+    expect(noteOffPage(refs, [note(1, 9)])).toHaveLength(1);
+    expect(noteOffPage(refs, [note(1, 9)], 1, [{ from: 1, to: 9 }])).toEqual([]);
+    // a note outside the marker's range is still off its page
+    expect(noteOffPage(refs, [note(1, 12)], 1, [{ from: 1, to: 9 }])).toHaveLength(1);
+  });
+
   it("allows a page either side, for a paragraph that runs over the break", () => {
     expect(noteOffPage([para("Runs over.[^2]", 1)], [note(2, 2)])).toEqual([]);
     expect(noteOffPage([para("Runs over.[^2]", 1)], [note(2, 3)])).toHaveLength(1);

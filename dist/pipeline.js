@@ -447,6 +447,25 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
             notesByPage.set(key, new Set());
         notesByPage.get(key).add(note.number);
     }
+    // `layoutMarkers({ endnoteRanges })`: a page inside a stretch that prints its notes at its end
+    // cites any note collected in that stretch.
+    const notesOnPage = (ranges) => {
+        const union = new Map();
+        return (volume, pdfIndex) => {
+            const range = ranges.find((r) => (r.volume ?? 1) === volume && pdfIndex >= r.from && pdfIndex <= r.to);
+            if (!range)
+                return notesByPage.get(pageKey(volume, pdfIndex)) ?? new Set();
+            let notes = union.get(range);
+            if (!notes) {
+                notes = new Set();
+                for (let p = range.from; p <= range.to; p++)
+                    for (const n of notesByPage.get(pageKey(volume, p)) ?? [])
+                        notes.add(n);
+                union.set(range, notes);
+            }
+            return notes;
+        };
+    };
     const notesNear = (at) => {
         const page = at?.pdfIndex;
         if (page === undefined)
@@ -477,7 +496,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
             ? { scope: "chapter", chapterOf: (block) => chapters.get(block) }
             : resolved.layoutMarkers.scope === "document"
                 ? { scope: "document", known }
-                : { scope: "page", onPage: (volume, pdfIndex) => notesByPage.get(pageKey(volume, pdfIndex)) ?? new Set() }, resolved.layoutMarkers.scanned ? { scanned: true } : {});
+                : { scope: "page", onPage: notesOnPage(resolved.layoutMarkers.endnoteRanges ?? []) }, resolved.layoutMarkers.scanned ? { scanned: true } : {});
     }
     // With the layout deciding, the text-only linkers stay out unless asked for.
     const textLinkers = !markerStats || resolved.layoutMarkers.textFallback;
