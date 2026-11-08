@@ -1,4 +1,4 @@
-import type { Pass, VolumePass, BodyPass, SourcePass, FootnoteReset } from "./passes.js";
+import type { Pass, VolumePass, BodyPass, SourcePass, EndnoteRange, FootnoteReset } from "./passes.js";
 import type { PageHeadFolio } from "./clean.js";
 import type { PageBreakOptions } from "./pagebreaks.js";
 import type { EditionPass } from "./edition.js";
@@ -62,6 +62,7 @@ export type ResolvedPasses = {
         scope: "page" | "document" | "chapter";
         textFallback: boolean;
         scanned?: boolean;
+        endnoteRanges?: ReadonlyArray<EndnoteRange>;
     };
     /** `layoutEndnotes`: notes sections read off the layout, labelled by chapter. */
     layoutEndnotes?: boolean;

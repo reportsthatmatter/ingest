@@ -257,6 +257,45 @@ describe("the layoutMarkers pass in the pipeline", () => {
   });
 });
 
+describe("layoutMarkers({ endnoteRanges }) (reportsthatmatter-fgle)", () => {
+  const def = (passes: ReturnType<typeof layoutMarkers>[]) =>
+    resolvePasses(pipeline({ id: "t", title: "T", repo: ".", volumes: [{ path: "a.pdf" }], passes }));
+  const filler = "The Committee reviewed the records over several years and set out at length here what it found in them.";
+  // The Senate study's Findings: markers on its first pages, the notes together on its last
+  const layout = doc([
+    [{ text: filler }, { text: "The techniques were not effective.1", raised: [{ after: "effective.", digits: "1" }] }],
+    [{ text: filler }, { text: "The claims were inaccurate.2", raised: [{ after: "inaccurate.", digits: "2" }] }],
+    [{ text: "1 Records reviewed by the Committee.", note: true }, { text: "2 The CIA's own representations.", note: true }],
+  ]);
+  const pages = [
+    { index: 1, volume: 1, pdfIndex: 1, lines: [filler, "The techniques were not effective.1"] },
+    { index: 2, volume: 1, pdfIndex: 2, lines: [filler, "The claims were inaccurate.2"] },
+    { index: 3, volume: 1, pdfIndex: 3, lines: ["", "1 Records reviewed by the Committee.", "2 The CIA's own representations."] },
+  ];
+
+  it("is carried through resolvePasses, and only with page scope", () => {
+    expect(def([layoutMarkers({ endnoteRanges: [{ from: 11, to: 29 }] })]).layoutMarkers).toEqual({
+      scope: "page",
+      textFallback: false,
+      endnoteRanges: [{ from: 11, to: 29 }],
+    });
+    expect(() => layoutMarkers({ scope: "document", endnoteRanges: [{ from: 1, to: 2 }] })).toThrow(/scope "page"/);
+    expect(() => layoutMarkers({ endnoteRanges: [{ from: 5, to: 2 }] })).toThrow(/not a page range/);
+  });
+
+  it("links a marker to a note printed at the stretch's end; page scope alone leaves it bare", () => {
+    const plain = ingestPageGroups([pages], { title: "T" }, def([layoutMarkers()]), [], { layout });
+    expect(plain.footnotes.map((n) => n.number)).toEqual([1, 2]);
+    expect(plain.markdown).not.toContain("effective.[^1]");
+    const ranged = ingestPageGroups([pages], { title: "T" }, def([layoutMarkers({ endnoteRanges: [{ from: 1, to: 3 }] })]), [], { layout });
+    expect(ranged.markdown).toContain("The techniques were not effective.[^1]");
+    expect(ranged.markdown).toContain("The claims were inaccurate.[^2]");
+    // outside the range, page scope as before
+    const elsewhere = ingestPageGroups([pages], { title: "T" }, def([layoutMarkers({ endnoteRanges: [{ from: 4, to: 9 }] })]), [], { layout });
+    expect(elsewhere.markdown).toBe(plain.markdown);
+  });
+});
+
 describe("joinTouchingDigits", () => {
   const run = (text: string, offset: number) => ({ text, offset, size: 12, left: offset * 5 });
   it("reads an OCR layer's one-digit runs as one number", () => {

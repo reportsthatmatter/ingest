@@ -107,7 +107,14 @@ export type LayoutMarkersPass = {
   readonly scope: "page" | "document" | "chapter";
   readonly textFallback?: boolean;
   readonly scanned?: boolean;
+  readonly endnoteRanges?: ReadonlyArray<EndnoteRange>;
 };
+
+/**
+ * PDF pages (inclusive, 1-based within `volume`, default 1) of an enclosed document that prints its notes
+ * together at its end rather than at each page's foot, in a report that otherwise uses page-foot notes.
+ */
+export type EndnoteRange = { readonly volume?: number; readonly from: number; readonly to: number };
 
 /** `typographicHeadings`, with its options. */
 export type TypographicHeadingsPass = {
@@ -1151,16 +1158,27 @@ export const quoteListRunOns = (): PagePass => ({ name: "quoteListRunOns", stage
  * note 1262, Vol I p.172) is read as one (`joinTouchingDigits`), and the words
  * before a marker are found whatever the spacing, since the text layer and the
  * layout space OCR'd words differently ("2017 .945" against "2017.945", p.142).
+ *
+ * `endnoteRanges` (page scope only): stretches of PDF pages that print their notes together at the
+ * stretch's end, not at each page's foot. A marker on a page in one cites a note collected anywhere in
+ * it. The Senate Intelligence Committee study's Findings and Conclusions (PDF pp.11-29) cite notes 1-46,
+ * printed on its last two pages, inside a report whose other parts have page-foot notes: page scope
+ * found no note near the marker and left all 46 bare.
  */
 export const layoutMarkers = (
-  options: { scope?: "page" | "document" | "chapter"; textFallback?: boolean; scanned?: boolean } = {}
-): LayoutMarkersPass => ({
-  name: "layoutMarkers",
-  stage: "page",
-  scope: options.scope ?? "page",
-  ...(options.textFallback ? { textFallback: true } : {}),
-  ...(options.scanned ? { scanned: true } : {}),
-});
+  options: { scope?: "page" | "document" | "chapter"; textFallback?: boolean; scanned?: boolean; endnoteRanges?: EndnoteRange[] } = {}
+): LayoutMarkersPass => {
+  if (options.endnoteRanges?.length && (options.scope ?? "page") !== "page") throw new Error('layoutMarkers: endnoteRanges needs scope "page"');
+  for (const r of options.endnoteRanges ?? []) if (!(r.from >= 1 && r.to >= r.from)) throw new Error(`layoutMarkers: endnoteRanges ${r.from}-${r.to} is not a page range`);
+  return {
+    name: "layoutMarkers",
+    stage: "page",
+    scope: options.scope ?? "page",
+    ...(options.textFallback ? { textFallback: true } : {}),
+    ...(options.scanned ? { scanned: true } : {}),
+    ...(options.endnoteRanges?.length ? { endnoteRanges: options.endnoteRanges.map((r) => ({ ...r })) } : {}),
+  };
+};
 
 /**
  * Subsection headings set only by face and size (Hillsborough's maroon 26pt and 21pt lines), read off the

@@ -15,7 +15,10 @@ export function noteOffPage(
 /** The final blocks (`finalBlocks`): markers linked as `[^N]`. */
 blocks, footnotes, 
 /** How far apart, in pages, a reference and its note may be. */
-tolerance = 1) {
+tolerance = 1, 
+/** `layoutMarkers({ endnoteRanges })`: a reference and its note inside one such stretch are where they belong. */
+endnoteRanges = []) {
+    const rangeOf = (volume, page) => endnoteRanges.find((r) => (r.volume ?? 1) === volume && page >= r.from && page <= r.to);
     const notes = mergeFootnotes(footnotes.map((n) => ({ ...n })));
     const order = notes.map((n) => String(n.label ?? n.number));
     // `collectNotes`: a definition with no text is not a definition, but it still takes a place in the order
@@ -46,6 +49,9 @@ tolerance = 1) {
         const target = list[Math.min(aligned[at] ?? seen, list.length - 1)];
         used.set(ref.label, seen + 1);
         if (!target || ref.volume === undefined)
+            return;
+        const range = rangeOf(ref.volume, ref.page);
+        if (range && range === rangeOf(target.volume, target.page))
             return;
         if (target.volume !== ref.volume || Math.abs(target.page - ref.page) > tolerance) {
             off.push({ volume: ref.volume, page: ref.page, label: ref.label, definedVolume: target.volume, definedPage: target.page });

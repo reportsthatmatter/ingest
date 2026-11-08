@@ -5,6 +5,7 @@ import { markPrintedNumbers } from "./printed-numbers";
 import { strayFolios, type FolioRow } from "./folios";
 import { extractParagraphNotes } from "./paragraph-notes";
 import type { ResolvedPasses } from "./define";
+import type { EndnoteRange } from "./passes";
 import { applyCorrections, type Correction } from "./corrections";
 import { rejoinHyphenated, vocabulary, wholeWords } from "./hyphens";
 import {
@@ -580,6 +581,22 @@ export function ingestPageGroups(
     if (!notesByPage.has(key)) notesByPage.set(key, new Set());
     notesByPage.get(key)!.add(note.number);
   }
+  // `layoutMarkers({ endnoteRanges })`: a page inside a stretch that prints its notes at its end
+  // cites any note collected in that stretch.
+  const notesOnPage = (ranges: ReadonlyArray<EndnoteRange>) => {
+    const union = new Map<EndnoteRange, Set<number>>();
+    return (volume: number, pdfIndex: number): ReadonlySet<number> => {
+      const range = ranges.find((r) => (r.volume ?? 1) === volume && pdfIndex >= r.from && pdfIndex <= r.to);
+      if (!range) return notesByPage.get(pageKey(volume, pdfIndex)) ?? new Set();
+      let notes = union.get(range);
+      if (!notes) {
+        notes = new Set();
+        for (let p = range.from; p <= range.to; p++) for (const n of notesByPage.get(pageKey(volume, p)) ?? []) notes.add(n);
+        union.set(range, notes);
+      }
+      return notes;
+    };
+  };
   const notesNear = (at: Block["at"]): Set<number> => {
     const page = at?.pdfIndex;
     if (page === undefined) return new Set();
@@ -612,7 +629,7 @@ export function ingestPageGroups(
         ? { scope: "chapter", chapterOf: (block) => chapters.get(block) }
         : resolved.layoutMarkers.scope === "document"
         ? { scope: "document", known }
-        : { scope: "page", onPage: (volume, pdfIndex) => notesByPage.get(pageKey(volume, pdfIndex)) ?? new Set() },
+        : { scope: "page", onPage: notesOnPage(resolved.layoutMarkers.endnoteRanges ?? []) },
       resolved.layoutMarkers.scanned ? { scanned: true } : {}
     );
   }

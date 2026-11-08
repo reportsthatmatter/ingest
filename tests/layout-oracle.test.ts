@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { buildLayout, parseLayoutXml } from "../src/layout";
-import { measureLayout } from "../src/oracle";
+import { measureLayout, noiseRaised } from "../src/oracle";
 import type { Block } from "../src/paragraphs";
 
 /**
@@ -236,5 +236,31 @@ describe("the layout oracle on an OCR layer's markers (Mueller Vol I, Paper Capt
     const r = measureLayout(layout, blocks, footnotes);
     const labels = r.findings.filter((f) => f.signal === "markers-unlinked").map((f) => f.text);
     expect(labels).toEqual(["941", "942", "943", "944", "945", "946", "947", "948", "949", "950"]);
+  });
+});
+
+describe("noiseRaised: raised runs an OCR layer made of scan noise (Senate CIA study, reportsthatmatter-fgle)", () => {
+  const at = (text: string, digits: string, nth = 0) => {
+    let offset = -1;
+    for (let i = 0; i <= nth; i++) offset = text.indexOf(digits, offset + 1);
+    return noiseRaised({ text }, { text: digits, offset });
+  };
+  it("a struck portion marking read as garble: the line opens '(', the run closes it, no word between", () => {
+    expect(at("( T S / ^ H ^ ^ ^ ^ ^ ^ H ^ H 2 ) A a result of", "2")).toBe(true); // PDF p.64
+    expect(at("( T S i d l H M 1 ) In the course of", "1")).toBe(true); // p.66
+    expect(at("( ^ S y V ^ ^ I ^ ^ H I H r ^ 1 ) I\" May 2003, a senior", "1")).toBe(true); // p.62
+  });
+  it("a raised 1 in a row of strokes", () => {
+    expect(at("i m  i i IIi i  i J J M ^ ^ B \" 1 1 1 1 1 1", "1", 0)).toBe(true); // p.206
+    expect(at("i m  i i IIi i  i J J M ^ ^ B \" 1 1 1 1 1 1", "1", 3)).toBe(true);
+    expect(at("m i i  I I i i  M B B I ^ ^ ^ M B M I 1111  \" | M 1", "1111")).toBe(true); // p.51
+  });
+  it("keeps real markers, after a word, a quotation, a parenthesis with words in it, or a letter and a stop", () => {
+    expect(at("he CIA's Detention and Interrogation Program.1 The", "1")).toBe(false);
+    expect(at("maintaining the facility.\"1\" The memorandum", "1")).toBe(false);
+    expect(at("unilateral CIA asset (\"ASSET X\"1835) who gained", "1835")).toBe(false);
+    expect(at("(see the Committee's earlier report 12) and", "12")).toBe(false);
+    expect(at("facilities in Country J.6,14 As noted", "6")).toBe(false);
+    expect(at("in late May 2002.1 Al-Najjar was", "1")).toBe(false);
   });
 });

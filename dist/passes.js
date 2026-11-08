@@ -902,14 +902,28 @@ export const quoteListRunOns = () => ({ name: "quoteListRunOns", stage: "page" }
  * note 1262, Vol I p.172) is read as one (`joinTouchingDigits`), and the words
  * before a marker are found whatever the spacing, since the text layer and the
  * layout space OCR'd words differently ("2017 .945" against "2017.945", p.142).
+ *
+ * `endnoteRanges` (page scope only): stretches of PDF pages that print their notes together at the
+ * stretch's end, not at each page's foot. A marker on a page in one cites a note collected anywhere in
+ * it. The Senate Intelligence Committee study's Findings and Conclusions (PDF pp.11-29) cite notes 1-46,
+ * printed on its last two pages, inside a report whose other parts have page-foot notes: page scope
+ * found no note near the marker and left all 46 bare.
  */
-export const layoutMarkers = (options = {}) => ({
-    name: "layoutMarkers",
-    stage: "page",
-    scope: options.scope ?? "page",
-    ...(options.textFallback ? { textFallback: true } : {}),
-    ...(options.scanned ? { scanned: true } : {}),
-});
+export const layoutMarkers = (options = {}) => {
+    if (options.endnoteRanges?.length && (options.scope ?? "page") !== "page")
+        throw new Error('layoutMarkers: endnoteRanges needs scope "page"');
+    for (const r of options.endnoteRanges ?? [])
+        if (!(r.from >= 1 && r.to >= r.from))
+            throw new Error(`layoutMarkers: endnoteRanges ${r.from}-${r.to} is not a page range`);
+    return {
+        name: "layoutMarkers",
+        stage: "page",
+        scope: options.scope ?? "page",
+        ...(options.textFallback ? { textFallback: true } : {}),
+        ...(options.scanned ? { scanned: true } : {}),
+        ...(options.endnoteRanges?.length ? { endnoteRanges: options.endnoteRanges.map((r) => ({ ...r })) } : {}),
+    };
+};
 /**
  * Subsection headings set only by face and size (Hillsborough's maroon 26pt and 21pt lines), read off the
  * PDF's layout and cut out of the paragraph the text reading ran them into (reportsthatmatter-a8l):

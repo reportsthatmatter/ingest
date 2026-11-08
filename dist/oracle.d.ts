@@ -1,6 +1,7 @@
-import type { Layout } from "./layout.js";
+import type { Layout, LayoutLine } from "./layout.js";
 import type { Block } from "./paragraphs.js";
 import type { Footnote } from "./footnotes.js";
+import type { EndnoteRange } from "./passes.js";
 /**
  * The layout oracle (quality-harness plan §3.3): what the PDF's own layout
  * says the structure is, set against what the pipeline produced.
@@ -81,6 +82,21 @@ export declare const ORACLE: {
     furniturePages: number;
 };
 /**
+ * A raised run that an OCR layer made out of scan noise, not a marker (the Senate Intelligence
+ * Committee study, reportsthatmatter-fgle): it counted 24 struck portion markings and 40 or so rows
+ * of rules and box edges as unlinked markers.
+ *
+ * - Inside a paragraph's opening classification marking, read as garble: the line opens "(", the run
+ *   closes it, and nothing between is a word of three letters ("( T S / ^ H ^ ^ H ^ 1 ) In early",
+ *   p.41; "( T S i d l H M 1 ) In the course", p.66).
+ * - A raised "1" in a row of strokes: the token before it is only strokes or another lone "1"
+ *   ("^ ^ B \" 1 1 1 1 1 1 1 1 1 1 1", p.206), as a box's edge or a struck rule reads.
+ */
+export declare function noiseRaised(line: Pick<LayoutLine, "text">, run: {
+    text: string;
+    offset: number;
+}): boolean;
+/**
  * Measures one report's produced blocks against the PDF's layout.
  *
  * `footnotes` supplies the note numbers a marker may link to, as the pipeline
@@ -100,4 +116,6 @@ options?: {
      * needs `blocks` from `finalBlocks`; `footnotes` must be the whole `IngestResult.footnotes`.
      */
     noteOffPage?: boolean;
+    /** The report's `layoutMarkers({ endnoteRanges })`: a marker and its note in one stretch are not off the page. */
+    endnoteRanges?: ReadonlyArray<EndnoteRange>;
 }): OracleReport;

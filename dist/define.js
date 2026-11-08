@@ -221,6 +221,11 @@ function layoutPageJoinsOf(passes) {
 function layoutMarkersOf(passes) {
     const pass = passes.find((p) => p.name === "layoutMarkers");
     return pass
-        ? { scope: pass.scope ?? "page", textFallback: pass.textFallback === true, ...(pass.scanned ? { scanned: true } : {}) }
+        ? {
+            scope: pass.scope ?? "page",
+            textFallback: pass.textFallback === true,
+            ...(pass.scanned ? { scanned: true } : {}),
+            ...(pass.endnoteRanges?.length ? { endnoteRanges: pass.endnoteRanges } : {}),
+        }
         : undefined;
 }
