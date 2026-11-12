@@ -542,10 +542,20 @@ export function assembleEdition(
       // where both sides have words, only the words are replaced, from the first to the last, so emphasis or a
       // marker around them stays the edition's ("may *notexpect or be able to see.*": "*not expect or …*")
       const inner = ne > 0 && np > 0;
-      const from = inner ? clean[L + 1].start : clean[L].end;
-      const to = inner ? clean[R - 1].end : clean[R].start;
+      // each side's words with the punctuation they carry ("‘Abd", "Kamil’s,"), short of the edition's markup
+      const pt = pageText[pdf[jl].page];
+      let from = inner ? clean[L + 1].start : clean[L].end;
+      let to = inner ? clean[R - 1].end : clean[R].start;
+      let pFrom = pdf[jl + 1]?.start ?? 0;
+      let pTo = pdf[jr - 1]?.end ?? 0;
+      if (inner) {
+        while (from > clean[L].end && !/[\s*_\\[\]]/.test(text[from - 1])) from--;
+        while (to < clean[R].start && !/[\s*_\\[\]]/.test(text[to])) to++;
+        while (pFrom > pdf[jl].end && !/\s/.test(pt[pFrom - 1])) pFrom--;
+        while (pTo < pdf[jr].start && !/\s/.test(pt[pTo])) pTo++;
+      }
       const cs = text.slice(from, to);
-      const pdfText = inner ? pageText[pdf[jl].page].slice(pdf[jl + 1].start, pdf[jr - 1].end) : ps;
+      const pdfText = inner ? pt.slice(pFrom, pTo) : ps;
       // Emphasis that opens or closes at the stretch's edges ("used.* **Because of its detectable persistence") is
       // kept where it is, around the PDF's words; emphasis that changes inside it, or a note marker, is not
       // the PDF's to move.
