@@ -108,7 +108,7 @@ describe("typographicHeadings: a heading's words just after a paragraph label ar
 });
 
 describe("divisionCrossReferences: a line that names a chapter mid-sentence is not that chapter (Module 2 Volume II)", () => {
-  // vol. 2 PDF p.79: "(see" / "Appendix 1: …, in this" / "volume), believed …"
+  // vol. 2 PDF p.94: "(see" / "Appendix 1: …, in this" / "volume), believed …"
   const lines = [
     "Professor David Taylor-Robinson, expert witness on child health inequalities (see",
     "Appendix 1: The background to this module and the Inquiry’s methodology, in this",
