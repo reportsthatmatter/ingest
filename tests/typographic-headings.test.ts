@@ -248,3 +248,62 @@ describe("skipRunIns (wck)", () => {
     expect(c.map((x) => x.kind)).toEqual(["heading", "paragraph"]);
   });
 });
+
+describe("punctuationAside (Leveson, reportsthatmatter-r0w)", () => {
+  const faces = [["HelveticaNeue-Medium|21|#780030"]];
+  // the report's own pass joined page 2's two subheads, set too far apart to read as one, with a colon of its own
+  const read = (): Block[] => [
+    para("The ambulances were sent. It was too late.", 2),
+    para("The Police Federation responds to the Taylor Interim Report: Conclusion", 2),
+    para("2.12.6 There were no further findings.", 2),
+  ];
+
+  it("makes a paragraph that is one or more of the page's headings, punctuation aside, a heading, in its own spelling", () => {
+    const b = read();
+    const stats = applyTypographicHeadings(b, layout, { firstLevel: 4, faces, punctuationAside: true });
+    expect(b.map((x) => x.kind)).toEqual(["paragraph", "heading", "paragraph"]);
+    expect(b[1]).toMatchObject({ level: 4, text: "The Police Federation responds to the Taylor Interim Report: Conclusion" });
+    expect(stats.unplaced).toBe(0);
+  });
+
+  it("leaves it a paragraph without the option", () => {
+    const b = read();
+    applyTypographicHeadings(b, layout, { firstLevel: 4, faces });
+    expect(b.map((x) => x.kind)).toEqual(["paragraph", "paragraph", "paragraph"]);
+  });
+});
+
+describe("keepDivisions (Leveson, reportsthatmatter-r0w)", () => {
+  const chapters = buildLayout([
+    parseLayoutXml(
+      xml([
+        page(1, [
+          text(100, 100, 400, 22, 1, "Chapter 4"),
+          text(124, 100, 400, 22, 1, "The Conservative revival"),
+          body(200, "4.1 In common with a number of politicians of his generation, he has spent his life in politics."),
+          text(300, 100, 400, 22, 1, "Reflections"),
+          body(350, "4.2 Something else is said here in the body of the report."),
+        ]),
+      ])
+    ),
+  ]);
+  const faces = [["HelveticaNeue-Medium|21|#780030"]];
+  const read = (): Block[] => [
+    { kind: "heading", level: 3, text: "Chapter 4: The Conservative revival", at: at(1) },
+    para("4.1 In common with a number of politicians of his generation, he has spent his life in politics.", 1),
+    { kind: "heading", level: 2, text: "Reflections", at: at(1) },
+  ];
+
+  it("keeps a Part or chapter heading at the level the text reading gave it, and relevels the rest", () => {
+    const b = read();
+    applyTypographicHeadings(b, chapters, { firstLevel: 4, faces, relevel: true, keepDivisions: true });
+    expect(b[0]).toMatchObject({ level: 3 });
+    expect(b[2]).toMatchObject({ level: 4 });
+  });
+
+  it("relevels it too without the option", () => {
+    const b = read();
+    applyTypographicHeadings(b, chapters, { firstLevel: 4, faces, relevel: true });
+    expect(b[0]).toMatchObject({ level: 4 });
+  });
+});

@@ -102,6 +102,21 @@ export type TypographicHeadingsOptions = {
      * lowest subheadings, and a heading there never cites a note. Only with `faces`. Default false.
      */
     skipMarked?: boolean;
+    /**
+     * A paragraph whose letters and digits are exactly a heading's, its punctuation aside, is that heading.
+     * The Leveson Inquiry sets each Part's opener as "parT a" over "The inquiry"; the report's own pass
+     * reads it as "Part A: The inquiry", and the colon it adds kept the line from matching, so the Part
+     * stayed a paragraph (reportsthatmatter-r0w). The paragraph keeps its own spelling. Only with `faces`.
+     * Default false.
+     */
+    punctuationAside?: boolean;
+    /**
+     * Under `relevel`, a heading the text reading made a Part or a chapter ("Chapter 4: The Conservative
+     * revival…") keeps its level, whatever face it is set in: Leveson sets one chapter opener (Part I,
+     * Chapter 4, vol iii PDF p.179) in its sections' face, and relevelled it became a section of the
+     * chapter before it (reportsthatmatter-r0w). Only with `relevel`. Default false.
+     */
+    keepDivisions?: boolean;
 };
 export type TypographicHeadingStats = {
     /** Heading faces found, largest first, with the level each was given. */
