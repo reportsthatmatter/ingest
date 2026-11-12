@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildLayout, parseLayoutXml } from "../src/layout";
 import { layoutHeadings } from "../src/typographic-headings";
 import { splitFootnoteBlock } from "../src/clean";
+import { toBlocks } from "../src/paragraphs";
 
 /** The UK Covid-19 Inquiry's Module 2 Volume I (reportsthatmatter-gqsy.14). */
 
@@ -103,5 +104,57 @@ describe("typographicHeadings: a heading's words just after a paragraph label ar
       ["heading", "The Coronavirus: Action Plan"],
       ["paragraph", "3.84. As outlined in Chapter 2, the plan was commissioned on 10 February 2020."],
     ]);
+  });
+});
+
+describe("divisionCrossReferences: a line that names a chapter mid-sentence is not that chapter (Module 2 Volume II)", () => {
+  // vol. 2 PDF p.79: "(see" / "Appendix 1: …, in this" / "volume), believed …"
+  const lines = [
+    "Professor David Taylor-Robinson, expert witness on child health inequalities (see",
+    "Appendix 1: The background to this module and the Inquiry’s methodology, in this",
+    "volume), believed that the unequal impact of the pandemic on children could have been anticipated.",
+  ];
+  const read = (on: boolean) =>
+    toBlocks(lines, 0, undefined, false, true, false, true, undefined, undefined, undefined, undefined, undefined, false, false, false, false, false, false, false, undefined, on);
+  it("without it, the cross-reference is a top-level division heading", () => {
+    expect(read(false).some((b) => b.kind === "heading" && b.text.startsWith("Appendix 1:"))).toBe(true);
+  });
+  it("with it, the sentence stays one paragraph", () => {
+    const blocks = read(true);
+    expect(blocks.filter((b) => b.kind === "heading")).toEqual([]);
+    expect(blocks.map((b) => b.kind)).toEqual(["paragraph"]);
+  });
+  it("a division after a sentence's end is still a heading", () => {
+    const blocks = toBlocks(
+      ["The chapter before ends here.", "", "Chapter 9: Scientific and technical advice", "", "9.1. The first paragraph."],
+      0, undefined, false, true, false, true, undefined, undefined, undefined, undefined, undefined, false, false, false, false, false, false, false, undefined, true,
+    );
+    expect(blocks.some((b) => b.kind === "heading" && b.text === "Chapter 9: Scientific and technical advice")).toBe(true);
+  });
+});
+
+describe("typographicHeadings({ faceText }): a face shared with the contents is a heading only where its text says so", () => {
+  const fonts = `<fontspec id="0" size="18" family="ABCDEF+ProximaNova" color="#000000"/>
+<fontspec id="1" size="21" family="ABCDEF+ProximaNova-Semibold" color="#000000"/>`;
+  const pg = (n: number, lines: string[]) =>
+    `<page number="${n}" position="absolute" top="0" left="0" height="1262" width="892">\n${n === 1 ? fonts : ""}\n${lines.join("\n")}\n</page>`;
+  const layout2 = buildLayout([
+    parseLayoutXml(
+      xml([
+        // vol. 2 PDF p.5: the contents, in the face
+        pg(1, [text(200, 30, 1, "<b>Chapter 9: Scientific and technical advice </b>"), text(240, 30, 1, "<b>Chapter 10: Vulnerabilities and inequalities </b>")]),
+        // p.17: a recommendation box (a no-break space after "Recommendation", as most are set)
+        pg(2, [text(563, 30, 1, "<b>Recommendation 1: Chief Medical Officer for Northern Ireland</b>"), text(600, 25, 0, "The Department of Health (Northern Ireland) should reconstitute the role.")]),
+      ]),
+    ),
+  ]);
+  const recFaces = [["ProximaNova-Semibold|21|#000000|b"]];
+  it("without it, every contents line in the face is a heading", () => {
+    const { headings } = layoutHeadings(layout2, { faces: recFaces });
+    expect(headings.some((h) => h.text.startsWith("Chapter 9:"))).toBe(true);
+  });
+  it("with it, only the recommendation's title", () => {
+    const { headings } = layoutHeadings(layout2, { faces: recFaces, faceText: { "ProximaNova-Semibold|21|#000000|b": /^Recommendation\s+\d+:/ } });
+    expect(headings.map((h) => h.text)).toEqual(["Recommendation 1: Chief Medical Officer for Northern Ireland"]);
   });
 });

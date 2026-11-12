@@ -98,6 +98,10 @@ export function layoutHeadings(layout, options = {}) {
             // `commaWraps`: likewise a comma line
             if (o.commaWraps && /,$/.test(text))
                 continue;
+            // `faceText`: a shared face is a heading only where its text says so
+            const pattern = options.faces ? options.faceText?.[first.font] : undefined;
+            if (pattern && !pattern.test(text))
+                continue;
             headings.push({ volume, pdfIndex: page, text, level: levels.get(first.font) });
         }
     }

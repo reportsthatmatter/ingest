@@ -102,6 +102,16 @@ export type TypographicHeadingsOptions = {
      * lowest subheadings, and a heading there never cites a note. Only with `faces`. Default false.
      */
     skipMarked?: boolean;
+    /**
+     * A declared face that the report also sets other text in counts as a heading only where the heading's
+     * text (wrapped lines joined) matches the pattern given for it. The UK Covid-19 Inquiry heads each
+     * recommendation box of Module 2 Volume II in black Proxima Nova Semibold 14pt ("Recommendation 1: Chief
+     * Medical Officer for Northern Ireland", PDF vol. 2 p.17) and sets its contents entries in the same face
+     * (Volume I pp.6-10, Volume II pp.5-6): declared bare, the face made headings of every contents line and,
+     * under `relevel`, moved the contents' stray chapter headings. Keyed by the face key as in `faces`.
+     * Only with `faces`.
+     */
+    faceText?: Record<string, RegExp>;
 };
 export type TypographicHeadingStats = {
     /** Heading faces found, largest first, with the level each was given. */

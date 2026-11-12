@@ -103,6 +103,8 @@ export type ResolvedPasses = {
     hyphenFragments?: boolean;
     divisionLabels?: boolean;
     speakerTurns?: boolean;
+    /** `divisionCrossReferences`: a "Chapter 2: …" line that a sentence runs on into is prose (reportsthatmatter-nshl). */
+    divisionCrossReferences?: boolean;
     /** `hangingLabels`: an item under a short colon label ("Fact:") with its lines hanging in is one paragraph; the report's own labels. */
     hangingLabels?: {
         labels: readonly string[];

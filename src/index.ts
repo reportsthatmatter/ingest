@@ -65,6 +65,7 @@ export {
   hyphenFragments,
   divisionLabels,
   speakerTurns,
+  divisionCrossReferences,
   footnoteGap,
   footnoteRestarts,
   thumbIndexNotes,

@@ -1217,3 +1217,15 @@ export declare const divisionLabels: () => PagePass;
  * Opt-in: a line that opens "Label: “" is also a heading's lead-in or a quotation's attribution elsewhere.
  */
 export declare const speakerTurns: () => PagePass;
+/**
+ * A line that opens with a division's label but continues a sentence is a cross-reference, not a division
+ * (reportsthatmatter-nshl). The UK Covid-19 Inquiry's Module 2 Volume II names chapters of both volumes in
+ * running text, and where the line breaks before the name, "Chapter 2: The emergence of Covid-19, in Volume I,
+ * a reasonable worst-case" (PDF vol. 2 p.48) or "Appendix 1: The background to this module and the Inquiry's
+ * methodology, in this" (after "child health inequalities (see", p.79), the line read as a division heading:
+ * the second filed the rest of Chapter 10 under a top-level "Appendix 1" section. With this pass such a line
+ * is a heading only when the nearest line above it on the page ends a sentence or is itself heading-shaped.
+ * Chapters, appendices, annexes and sections only: a volume title under a run-on cover line stays.
+ * Opt-in: a report that sets a division title straight under a run-on line (none known) would lose it.
+ */
+export declare const divisionCrossReferences: () => PagePass;

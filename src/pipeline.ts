@@ -482,7 +482,8 @@ export function ingestPageGroups(
               resolved.recoverListedHeadings,
               resolved.letteredItems,
               resolved.speakerTurns,
-              resolved.hangingLabels
+              resolved.hangingLabels,
+              resolved.divisionCrossReferences
         );
       const read = (
         resolved.contentsEntries && (entries?.sections.size || isIllustrationList(pageLines))

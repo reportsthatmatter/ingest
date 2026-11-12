@@ -1457,7 +1457,8 @@ export function toBlocks(
   recoverListedHeadings = false,
   letteredItems = false,
   speakerTurns = false,
-  hangingLabels?: { labels: readonly string[] }
+  hangingLabels?: { labels: readonly string[] },
+  divisionCrossReferences = false
 ): Block[] {
   if (paragraphContents) lines = joinParagraphContents(lines);
   // With `listedHeadings`, a would-be heading the contents does not name is
@@ -1474,6 +1475,16 @@ export function toBlocks(
   const runsOn = (at: number) => {
     for (let j = at - 1; j >= 0; j--) {
       if (lines[j].trim()) return !/[.:;?!"”)\]]$/.test(lines[j].trim());
+    }
+    return false;
+  };
+  // `divisionCrossReferences`: the nearest non-blank line before `at`, on this page, is prose that does not
+  // end a sentence (not itself heading-shaped, so a title wrapped over a division keeps it).
+  const proseRunsOn = (at: number): boolean => {
+    for (let j = at - 1; j >= 0; j--) {
+      const prior = lines[j].trim();
+      if (!prior) continue;
+      return !/[.:;?!"”)\]]$/.test(prior) && !isHeadingLine(prior);
     }
     return false;
   };
@@ -1544,6 +1555,10 @@ export function toBlocks(
     const numberedHere =
       numberedHeadings && !(numberedOutsideTables && at !== undefined && inTable[at]);
     const heading = isHeadingLine(text, allowDivisions, allCapsHeadings, numberedHere);
+    // `divisionCrossReferences`: "Chapter 2: The emergence of Covid-19, in Volume I, a reasonable worst-case"
+    // is a line of prose that names a division, not a division: the line above it runs on into it. A volume's
+    // title ("Volume II: Key themes…", under "Modules 2, 2A, 2B, 2C: …" on its cover) is left alone.
+    if (divisionCrossReferences && heading && at !== undefined && /^(Chapter|Appendix|Annex|Section)\s/.test(text.trim()) && DIVISION_LABEL.test(text.trim()) && proseRunsOn(at)) return null;
     // `recoverListedHeadings`: a caps title that ends in a number ("…RESOLUTION
     // 1483") has the number read as a page number and trimmed, so the heading
     // found no longer matches the contents. Judge the whole line instead.
