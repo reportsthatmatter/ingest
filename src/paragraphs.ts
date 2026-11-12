@@ -744,8 +744,8 @@ const TOC_ENTRY = /[.·]{4,}\s*\d{1,4}\s*$|(?<![.,;:])[ \t]{3,}\d{1,4}\s*$/;
 /** Section headings carry the printed page number after the title. */
 function stripTrailingPageNumber(text: string): string {
   // "ENDNOTES FOR CHAPTER 1" ends on the chapter's number, not a page's; so do the Grenfell Tower
-  // Inquiry's "Floor 14" (Volume 6's chapter titles) and "Matters outstanding from Phase 1" (Part 11).
-  if (/\b(?:part|chapter|appendix|section|volume|phase|floor|stage)\s+\d{1,4}$/i.test(text)) return text.trim();
+  // Inquiry's "Floor 14" (Volume 6's chapter titles), "Matters outstanding from Phase 1" (Part 11) and "The escape of fire from Flat 16" (Chapter 110).
+  if (/\b(?:part|chapter|appendix|section|volume|phase|floor|stage|flat)\s+\d{1,4}$/i.test(text)) return text.trim();
   // A year range ends on a year: "Arconic's testing of ACM panels 1997 to 2006" (reportsthatmatter-gqsy.4.2).
   if (/\b(?:1[89]|20)\d\d\s*(?:to|and|-|–)\s*(?:1[89]|20)\d\d$/.test(text)) return text.trim();
   return text.replace(/\s+\d{1,4}$/, "").trim();

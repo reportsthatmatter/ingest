@@ -71,5 +71,6 @@ describe("a heading's own closing number is not a page number (reportsthatmatter
     const heading = (line: string) => toBlocks([line], 0).find((b) => b.kind === "heading") as { text: string } | undefined;
     expect(heading("Chapter 86: Floor 4")?.text).toMatch(/Floor 4$/);
     expect(heading("Part 11: Matters outstanding from Phase 1")?.text).toMatch(/Phase 1$/);
+    expect(heading("Chapter 110: The escape of fire from Flat 16")?.text).toMatch(/Flat 16$/);
   });
 });
