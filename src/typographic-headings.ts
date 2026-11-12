@@ -104,6 +104,21 @@ export type TypographicHeadingsOptions = {
    * lowest subheadings, and a heading there never cites a note. Only with `faces`. Default false.
    */
   skipMarked?: boolean;
+  /**
+   * A paragraph whose letters and digits are exactly a heading's, its punctuation aside, is that heading.
+   * The Leveson Inquiry sets each Part's opener as "parT a" over "The inquiry"; the report's own pass
+   * reads it as "Part A: The inquiry", and the colon it adds kept the line from matching, so the Part
+   * stayed a paragraph (reportsthatmatter-r0w). The paragraph keeps its own spelling. Only with `faces`.
+   * Default false.
+   */
+  punctuationAside?: boolean;
+  /**
+   * Under `relevel`, a heading the text reading made a Part or a chapter ("Chapter 4: The Conservative
+   * revival…") keeps its level, whatever face it is set in: Leveson sets one chapter opener (Part I,
+   * Chapter 4, vol iii PDF p.179) in its sections' face, and relevelled it became a section of the
+   * chapter before it (reportsthatmatter-r0w). Only with `relevel`. Default false.
+   */
+  keepDivisions?: boolean;
 };
 
 export type TypographicHeadingStats = {
@@ -133,7 +148,7 @@ const LABEL_ONLY = /^\s*(?:\(?\d{1,4}(?:\.\d{1,4})*[.)]?|\(?[a-z][.)]|[ivxlc]{1,
 type Heading = { volume: number; pdfIndex: number; text: string; level: number };
 
 /** A heading line's candidacy, before the face's recurrence is known. */
-function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns" | "labelWraps" | "commaWraps" | "skipMarked">> & { sizes?: number[]; faces?: string[][]; labelWraps?: boolean; commaWraps?: boolean; skipMarked?: boolean }): boolean {
+function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns" | "labelWraps" | "commaWraps" | "skipMarked" | "punctuationAside" | "keepDivisions">> & { sizes?: number[]; faces?: string[][]; labelWraps?: boolean; commaWraps?: boolean; skipMarked?: boolean }): boolean {
   const text = line.text.trim();
   if (!text || text.length > o.maxChars) return false;
   if (o.faces)
@@ -160,7 +175,7 @@ const faceSize = (face: string) => Number(face.split("|")[1]) || 0;
  * Exported for the tests.
  */
 export function layoutHeadings(layout: Layout, options: TypographicHeadingsOptions = {}): { headings: Heading[]; faces: TypographicHeadingStats["faces"] } {
-  const o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns" | "labelWraps" | "commaWraps" | "skipMarked">> & { sizes?: number[]; faces?: string[][]; labelWraps?: boolean; commaWraps?: boolean; skipMarked?: boolean } = {
+  const o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns" | "labelWraps" | "commaWraps" | "skipMarked" | "punctuationAside" | "keepDivisions">> & { sizes?: number[]; faces?: string[][]; labelWraps?: boolean; commaWraps?: boolean; skipMarked?: boolean } = {
     firstLevel: options.firstLevel ?? 2,
     ...(options.sizes ? { sizes: options.sizes } : {}),
     ...(options.faces ? { faces: options.faces } : {}),
@@ -272,19 +287,35 @@ export function applyTypographicHeadings(blocks: Block[], layout: Layout, option
     while (j < blocks.length && pageOf(blocks[j]) === key) j++;
     const pageBlocks = blocks.slice(i, j);
     const todo = byPage.get(key)!;
-    out.push(...cutPage(pageBlocks, todo, stats, Boolean(options.relevel && options.faces), Boolean(options.quotedRemainder), Boolean(options.skipRunIns), Boolean(options.commaWraps && options.faces)));
+    out.push(...cutPage(pageBlocks, todo, stats, Boolean(options.relevel && options.faces), Boolean(options.quotedRemainder), Boolean(options.skipRunIns), Boolean(options.commaWraps && options.faces), Boolean(options.punctuationAside && options.faces), Boolean(options.keepDivisions && options.relevel && options.faces)));
     i = j;
   }
   blocks.splice(0, blocks.length, ...out);
   return stats;
 }
 
+/** A Part or chapter heading as the text reading writes it: "Part A: The inquiry", "Chapter 4: …". */
+const DIVISION = /^(?:Part [A-Z]|Chapter \d{1,3}):/;
+
 const alnum = (s: string) => squash(s).text.replace(/[^\p{L}\p{N}]/gu, "");
 
-function cutPage(pageBlocks: Block[], todo: Heading[], stats: TypographicHeadingStats, relevel = false, quotedRemainder = false, skipRunIns = false, joinBlocks = false): Block[] {
+/** How many of the page's headings from `t` on (one to three, of one level) the paragraph is, its punctuation aside; 0 if none. */
+function asideSpan(text: string, todo: Heading[], t: number): number {
+  const have = alnum(text);
+  let want = "";
+  for (let n = 0; n < 3 && t + n < todo.length && todo[t + n].level === todo[t].level; n++) {
+    want += alnum(todo[t + n].text);
+    if (want.length >= 3 && want === have) return n + 1;
+    if (!have.startsWith(want)) return 0;
+  }
+  return 0;
+}
+
+function cutPage(pageBlocks: Block[], todo: Heading[], stats: TypographicHeadingStats, relevel = false, quotedRemainder = false, skipRunIns = false, joinBlocks = false, punctuationAside = false, keepDivisions = false): Block[] {
   let units = pageBlocks;
   let from = 0; // blocks before this index are done: headings run in reading order
-  for (const h of todo) {
+  for (let t = 0; t < todo.length; t++) {
+    const h = todo[t];
     const want = squash(h.text).text;
     const miss = () => {
       stats.unplaced++;
@@ -330,7 +361,7 @@ function cutPage(pageBlocks: Block[], todo: Heading[], stats: TypographicHeading
         const loose = relevel && alnum(block.text).length >= 3 && (alnum(block.text).startsWith(alnum(h.text)) || alnum(h.text).startsWith(alnum(block.text)));
         if (have.startsWith(want) || want.startsWith(have) || loose) {
           stats.already++;
-          if (relevel && block.level !== h.level) {
+          if (relevel && block.level !== h.level && !(keepDivisions && DIVISION.test(block.text))) {
             units = [...units.slice(0, k), { ...block, level: h.level } as Block, ...units.slice(k + 1)];
             stats.relevelled = (stats.relevelled ?? 0) + 1;
           }
@@ -340,6 +371,20 @@ function cutPage(pageBlocks: Block[], todo: Heading[], stats: TypographicHeading
         continue;
       }
       if (!SPLITTABLE(block)) continue;
+      // (`punctuationAside`: the whole paragraph is the heading, its punctuation aside)
+      // (or of this heading and the next one or two of its level on the page, which the face sets too far
+      // apart to read as one wrapped heading: Leveson's "parT a" and "The inquiry", 144 units apart in 54pt)
+      const span = punctuationAside && block.kind === "paragraph" ? asideSpan(block.text, todo, t) : 0;
+      if (span) {
+        t += span - 1;
+        const title = block.text.replace(/\s+/g, " ").trim();
+        units = [...units.slice(0, k), { kind: "heading", level: h.level, text: title, layoutHeading: true, ...(block.at ? { at: block.at } : {}), ...(block.source ? { source: block.source } : {}) } as Block, ...units.slice(k + 1)];
+        from = k + 1;
+        stats.split++;
+        stats.added.push({ volume: h.volume, pdfIndex: h.pdfIndex, level: h.level, text: title, before: "", after: "" });
+        placed = true;
+        break;
+      }
       const hay = squash(block.text);
       // at the start of the block, or after the end of a sentence (or a note marker) inside it
       let at = hay.text.indexOf(want);

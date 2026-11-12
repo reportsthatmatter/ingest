@@ -145,17 +145,33 @@ export function applyTypographicHeadings(blocks, layout, options = {}) {
             j++;
         const pageBlocks = blocks.slice(i, j);
         const todo = byPage.get(key);
-        out.push(...cutPage(pageBlocks, todo, stats, Boolean(options.relevel && options.faces), Boolean(options.quotedRemainder), Boolean(options.skipRunIns), Boolean(options.commaWraps && options.faces)));
+        out.push(...cutPage(pageBlocks, todo, stats, Boolean(options.relevel && options.faces), Boolean(options.quotedRemainder), Boolean(options.skipRunIns), Boolean(options.commaWraps && options.faces), Boolean(options.punctuationAside && options.faces), Boolean(options.keepDivisions && options.relevel && options.faces)));
         i = j;
     }
     blocks.splice(0, blocks.length, ...out);
     return stats;
 }
+/** A Part or chapter heading as the text reading writes it: "Part A: The inquiry", "Chapter 4: …". */
+const DIVISION = /^(?:Part [A-Z]|Chapter \d{1,3}):/;
 const alnum = (s) => squash(s).text.replace(/[^\p{L}\p{N}]/gu, "");
-function cutPage(pageBlocks, todo, stats, relevel = false, quotedRemainder = false, skipRunIns = false, joinBlocks = false) {
+/** How many of the page's headings from `t` on (one to three, of one level) the paragraph is, its punctuation aside; 0 if none. */
+function asideSpan(text, todo, t) {
+    const have = alnum(text);
+    let want = "";
+    for (let n = 0; n < 3 && t + n < todo.length && todo[t + n].level === todo[t].level; n++) {
+        want += alnum(todo[t + n].text);
+        if (want.length >= 3 && want === have)
+            return n + 1;
+        if (!have.startsWith(want))
+            return 0;
+    }
+    return 0;
+}
+function cutPage(pageBlocks, todo, stats, relevel = false, quotedRemainder = false, skipRunIns = false, joinBlocks = false, punctuationAside = false, keepDivisions = false) {
     let units = pageBlocks;
     let from = 0; // blocks before this index are done: headings run in reading order
-    for (const h of todo) {
+    for (let t = 0; t < todo.length; t++) {
+        const h = todo[t];
         const want = squash(h.text).text;
         const miss = () => {
             stats.unplaced++;
@@ -207,7 +223,7 @@ function cutPage(pageBlocks, todo, stats, relevel = false, quotedRemainder = fal
                 const loose = relevel && alnum(block.text).length >= 3 && (alnum(block.text).startsWith(alnum(h.text)) || alnum(h.text).startsWith(alnum(block.text)));
                 if (have.startsWith(want) || want.startsWith(have) || loose) {
                     stats.already++;
-                    if (relevel && block.level !== h.level) {
+                    if (relevel && block.level !== h.level && !(keepDivisions && DIVISION.test(block.text))) {
                         units = [...units.slice(0, k), { ...block, level: h.level }, ...units.slice(k + 1)];
                         stats.relevelled = (stats.relevelled ?? 0) + 1;
                     }
@@ -218,6 +234,20 @@ function cutPage(pageBlocks, todo, stats, relevel = false, quotedRemainder = fal
             }
             if (!SPLITTABLE(block))
                 continue;
+            // (`punctuationAside`: the whole paragraph is the heading, its punctuation aside)
+            // (or of this heading and the next one or two of its level on the page, which the face sets too far
+            // apart to read as one wrapped heading: Leveson's "parT a" and "The inquiry", 144 units apart in 54pt)
+            const span = punctuationAside && block.kind === "paragraph" ? asideSpan(block.text, todo, t) : 0;
+            if (span) {
+                t += span - 1;
+                const title = block.text.replace(/\s+/g, " ").trim();
+                units = [...units.slice(0, k), { kind: "heading", level: h.level, text: title, layoutHeading: true, ...(block.at ? { at: block.at } : {}), ...(block.source ? { source: block.source } : {}) }, ...units.slice(k + 1)];
+                from = k + 1;
+                stats.split++;
+                stats.added.push({ volume: h.volume, pdfIndex: h.pdfIndex, level: h.level, text: title, before: "", after: "" });
+                placed = true;
+                break;
+            }
             const hay = squash(block.text);
             // at the start of the block, or after the end of a sentence (or a note marker) inside it
             let at = hay.text.indexOf(want);
