@@ -43,10 +43,12 @@ function comparable(text: string): string {
 }
 
 function words(text: string): string[] {
-  // a slash joins two words, not one: "OTHER/NUC" (a table cell the PDF sets as "OTHER/" over "NUC"), "food/nutrition"
+  // a slash between two words joins two words, not one: "OTHER/NUC" (a table cell the PDF sets as "OTHER/" over
+  // "NUC"), "food/nutrition"; only between letters, so a URL (which the source may break at a line end) stays whole
   return comparable(text)
     .toLowerCase()
-    .split(/[\s/]+/)
+    .split(/\s+/)
+    .flatMap((word) => (/^[("'‘“]*\p{L}+(?:\/\p{L}+)+[)"'’”.,;:]*$/u.test(word) ? word.split("/") : [word]))
     .map((word) => word.replace(STOP_CHARS, ""))
     .filter(Boolean);
 }
