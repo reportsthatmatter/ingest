@@ -465,7 +465,7 @@ export function ingestPageGroups(
                 : resolved.shiftedPages
                   ? shiftedPageMargin(split.body, margins[resolved.geometry === "per-volume" ? groupIndex : 0])
                   : margins[resolved.geometry === "per-volume" ? groupIndex : 0],
-              resolved.quoteInset,
+              resolved.quoteInsetVolumes && !resolved.quoteInsetVolumes.includes(groupIndex + 1) ? undefined : resolved.quoteInset,
               resolved.numberedParagraphs,
               resolved.allCapsHeadings,
               resolved.chapterContents,

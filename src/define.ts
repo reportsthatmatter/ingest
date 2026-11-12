@@ -137,6 +137,8 @@ export type ResolvedPasses = {
   /** `foiaRedactions`: a FOIA release's box labels marked as redactions, its margin labels taken out. */
   foiaRedactions?: boolean;
   quoteInset?: number;
+  /** `quoteInset({ volumes })`: the volumes it applies to; omitted, all. */
+  quoteInsetVolumes?: readonly number[];
   allCapsHeadings: boolean;
   numberedHeadings?: boolean;
   bodyPasses: BodyPass[];
@@ -377,6 +379,9 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     quoteInset: passes.find(
       (pass): pass is QuoteInsetPass => pass.stage === "quoteInset"
     )?.columns,
+    quoteInsetVolumes: passes.find(
+      (pass): pass is QuoteInsetPass => pass.stage === "quoteInset"
+    )?.volumes,
     allCapsHeadings:
       passes.find(
         (pass): pass is AllCapsHeadingsPass => pass.stage === "allCapsHeadings"

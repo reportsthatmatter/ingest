@@ -200,6 +200,7 @@ export function resolvePasses(def) {
         asteriskBreaks: passes.some((pass) => pass.name === "asteriskBreaks"),
         layoutRunOvers: passes.some((pass) => pass.name === "layoutRunOvers"),
         quoteInset: passes.find((pass) => pass.stage === "quoteInset")?.columns,
+        quoteInsetVolumes: passes.find((pass) => pass.stage === "quoteInset")?.volumes,
         allCapsHeadings: passes.find((pass) => pass.stage === "allCapsHeadings")?.enabled ?? true,
         numberedHeadings: passes.find((pass) => pass.stage === "numberedHeadings")?.enabled ?? true,
         bodyPasses: passes.filter((pass) => pass.stage === "body"),

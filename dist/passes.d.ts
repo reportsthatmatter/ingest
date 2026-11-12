@@ -77,6 +77,8 @@ export type QuoteInsetPass = {
     readonly name: "quoteInset";
     readonly stage: "quoteInset";
     readonly columns: number;
+    /** Only these volumes (1-based); the others keep the default. Omitted: every volume. */
+    readonly volumes?: readonly number[];
 };
 /** Declares whether a standalone all-caps line may be read as a heading. */
 export type AllCapsHeadingsPass = {
@@ -1138,8 +1140,16 @@ export declare const figureFaces: (families: string[]) => BodyPass;
  *
  * It is a fact about the document's typography, which is exactly the kind of
  * thing a report declares rather than the parser guesses.
+ *
+ * `volumes` scopes it to some volumes of a multi-volume report, the others keeping the default
+ * (reportsthatmatter-nshl): the UK Covid-19 Inquiry's Module 2 Volume II sets each quotation's opening
+ * mark in the margin, four columns past a page whose unnumbered paragraphs set the margin (vol. 2 PDF
+ * p.94), so every quotation's first line read as a paragraph and the rest as the quotation; Volume I,
+ * already published, keeps its reading and its paragraph ids.
  */
-export declare const quoteInset: (columns: number) => QuoteInsetPass;
+export declare const quoteInset: (columns: number, options?: {
+    volumes?: readonly number[];
+}) => QuoteInsetPass;
 /**
  * Whether a standalone line set in capitals is read as a heading.
  *
