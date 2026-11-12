@@ -34,7 +34,7 @@ import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { align } from "./align";
-import { hasLetter, tokens, type Token } from "./tokens";
+import { fold, hasLetter, tokens, type Token } from "./tokens";
 import type { Page } from "./extract";
 import type { Suspect } from "./ocr";
 import type { Block } from "./paragraphs";
@@ -102,6 +102,17 @@ export type EditionSource = { path: string; sha256: string };
 /** A PDF page with at least this many body words and none the edition aligns to is a page the edition lacks. */
 const PAGE_NOT_IN_EDITION_WORDS = 40;
 
+/** `words: "pdf"`: the longest disagreement, in words a side, served in the PDF's words. */
+export const PDF_WORDS_MAX = 40;
+
+/** `words: "pdf"`: an unaligned stretch of the edition this long is aligned again on its own (a moved box or table). */
+const MOVED_RUN = 8;
+/** …to the PDF's unaligned words this many pages either side of where the in-order alignment has reached. */
+const MOVED_PAGES = 3;
+
+/** `words: "pdf"`: a whole line shorter than this inside a disagreement is a label set in the column, not its text. */
+const SHORT_LINE = 30;
+
 /** `cleanEdition`: declares the edition a report's text and structure come from. */
 export type EditionPass = {
   readonly name: "cleanEdition";
@@ -126,6 +137,17 @@ export type EditionPass = {
    * (reportsthatmatter-gq4j).
    */
   readonly floats?: "after" | "by-notes";
+  /**
+   * Whose words are served where the edition and the PDF disagree. `"edition"`
+   * (the default): the edition's, every disagreement a review-queue suspect.
+   * `"pdf"`: for an edition of an earlier version than the PDF (the Duelfer
+   * Report's 2004 web text against its revised 2005 printing, reportsthatmatter-ivg.4),
+   * a short disagreement inside one paragraph, list item or quotation (up to
+   * `PDF_WORDS_MAX` words a side, both ends aligned on one PDF page, in one
+   * run of its text) takes the PDF's words; each is listed in fidelity.md.
+   * Longer ones, and table cells, stay the edition's and stay suspects.
+   */
+  readonly words?: "edition" | "pdf";
   /** Reads and checks the edition's files and returns its blocks. */
   read(): Edition;
 };
@@ -146,6 +168,8 @@ export function cleanEdition(options: {
   notes?: "back" | "page-foot";
   /** See `EditionPass.floats`. */
   floats?: "after" | "by-notes";
+  /** See `EditionPass.words`. */
+  words?: "edition" | "pdf";
   read(files: Array<{ path: string; text: string }>): Edition;
 }): EditionPass {
   return {
@@ -154,6 +178,7 @@ export function cleanEdition(options: {
     sources: options.files,
     notes: options.notes ?? "back",
     ...(options.floats ? { floats: options.floats } : {}),
+    ...(options.words ? { words: options.words } : {}),
     read() {
       const files = options.files.map((file) => {
         const buffer = readFileSync(join(options.dir, file.path));
@@ -271,6 +296,13 @@ export type EditionReport = {
   /** A line-end hyphen of the PDF the edition kept ("air-line's"), closed up where the edition prints the word whole elsewhere. */
   hyphensClosed: number;
   disagreements: { editionNotInPdf: number; pdfNotInEdition: number };
+  /**
+   * `words: "pdf"`: the disagreements served in the PDF's words: how many,
+   * the edition words they replaced and the PDF words served, and how many
+   * short ones were left as the edition's because the edition marks them up
+   * (emphasis, a note marker) or the PDF breaks a paragraph or column inside.
+   */
+  servedFromPdf?: { replaced: number; editionWords: number; pdfWords: number; kept: number };
   /** The edition's gaps and what the PDF shadow filled each with (`fillGaps`). */
   filled?: FilledGap[];
 };
@@ -345,7 +377,7 @@ export function assembleEdition(
   pages: Page[],
   printed: PrintedPage[],
   sources: readonly EditionSource[],
-  options: { floats?: "after" | "by-notes" } = {}
+  options: { floats?: "after" | "by-notes"; words?: "edition" | "pdf" } = {}
 ): { body: string; notes: string; report: EditionReport; suspects: Suspect[]; blocks: Block[]; linkedText: string[]; notePages: Array<number | undefined> } {
   const blocks = structuredClone(edition.blocks);
   const notes = structuredClone(edition.notes);
@@ -417,10 +449,201 @@ export function assembleEdition(
     hyphenated.set(pair, (hyphenated.get(pair) ?? 0) + 1);
   }
   const edits = new Map<number, Array<{ start: number; end: number; text: string }>>();
+  // 4a. `words: "pdf"`: a short disagreement inside one field takes the PDF's words. The in-order alignment leaves a
+  // box or table the PDF prints elsewhere unaligned as a whole; each such stretch of the edition (a run of
+  // `MOVED_RUN` words or more inside one field) is aligned again on its own, to the PDF's unaligned words on the
+  // pages around it, so the disagreements inside it are found too. That second alignment serves only this step:
+  // pages, floats and the suspects below keep the in-order one.
+  const wmap = Int32Array.from(map);
+  const winv = Int32Array.from(inv);
+  if (options.words === "pdf") {
+    let c = 0;
+    while (c < clean.length) {
+      if (map[c] >= 0 || fields[clean[c].field].note) {
+        c++;
+        continue;
+      }
+      const f = clean[c].field;
+      let e = c;
+      while (e < clean.length && map[e] < 0 && clean[e].field === f) e++;
+      if (e - c >= MOVED_RUN) {
+        // the page of the nearest in-order word before (or after) the stretch
+        let near = c - 1;
+        while (near >= 0 && map[near] < 0) near--;
+        let after = e;
+        while (after < clean.length && map[after] < 0) after++;
+        const page = near >= 0 ? pdf[map[near]].page : after < clean.length ? pdf[map[after]].page : -1;
+        if (page >= 0) {
+          const window: number[] = [];
+          for (let j = 0; j < pdf.length; j++) if (winv[j] < 0 && Math.abs(pdf[j].page - page) <= MOVED_PAGES) window.push(j);
+          const local = align(
+            clean.slice(c, e).map((t) => t.word),
+            window.map((j) => pdf[j].word)
+          );
+          local.map.forEach((b, a) => {
+            if (b < 0) return;
+            wmap[c + a] = window[b];
+            winv[window[b]] = c + a;
+          });
+        }
+      }
+      c = e;
+    }
+  }
+  const versionTokens = new Set<number>();
+  const versionPdf = new Set<number>();
+  const replacements: Array<{ field: number; edition: string; pdf: string }> = [];
+  let versionKept = 0;
+  if (options.words === "pdf") {
+    // Text one side prints elsewhere is moved, not revised: a box the PDF sets inside a column, between two
+    // words of a paragraph the edition sets whole, or words of the edition the PDF prints in another order.
+    // A stretch with three words in a row that the other side holds anywhere is left as a disagreement
+    // (one or two words cannot be told from a revision this way, and are served from the PDF).
+    const trigrams = (ws: string[]) => {
+      const set = new Set<string>();
+      for (let k = 0; k + 3 <= ws.length; k++) set.add(`${ws[k]} ${ws[k + 1]} ${ws[k + 2]}`);
+      return set;
+    };
+    const editionGrams = trigrams(clean.map((t) => t.word));
+    const pdfGrams = trigrams(pdf.map((t) => t.word));
+    const movedFrom = (ws: string[], grams: Set<string>) => [...trigrams(ws)].some((g) => grams.has(g));
+    // A whole line of the PDF's stretch that is short is not running text: a photograph's label set in the column
+    // ("according / Director, SSO / to"), or one inside a word broken at the line end ("consid- / Kamal Mustafa /
+    // ered"). The column's own lines run to its width (some 45 characters and more).
+    const shortLine = (ps: string) => ps.split("\n").slice(1, -1).some((line) => line.trim().length < SHORT_LINE);
+    let prev = -1;
+    for (let c = 0; c < clean.length; c++) {
+      if (wmap[c] < 0) continue;
+      const L = prev;
+      prev = c;
+      if (L < 0) continue;
+      const R = c;
+      const f = clean[L].field;
+      if (clean[R].field !== f || fields[f].note) continue;
+      const jl = wmap[L];
+      const jr = wmap[R];
+      if (jr <= jl) continue;
+      const ne = R - L - 1;
+      const np = jr - jl - 1;
+      if ((ne === 0 && np === 0) || ne > PDF_WORDS_MAX || np > PDF_WORDS_MAX) continue;
+      // in a table cell, only a respelling: a word or three either side, none added or dropped (the PDF reads a
+      // table's cells in its own order, so a longer stretch may be another cell's)
+      if (fields[f].row !== undefined && (ne === 0 || np === 0 || ne > 3 || np > 3)) continue;
+      if (pdf[jl].page !== pdf[jr].page) continue;
+      let pdfFree = true;
+      for (let j = jl + 1; j < jr; j++) if (winv[j] >= 0) pdfFree = false;
+      if (!pdfFree) continue;
+      if (movedFrom(pdf.slice(jl + 1, jr).map((t) => t.word), editionGrams) || movedFrom(clean.slice(L + 1, R).map((t) => t.word), pdfGrams)) {
+        versionKept++;
+        continue;
+      }
+      const ps = pageText[pdf[jl].page].slice(pdf[jl].end, pdf[jr].start);
+      const text = fields[f].get();
+      // where both sides have words, only the words are replaced, from the first to the last, so emphasis or a
+      // marker around them stays the edition's ("may *notexpect or be able to see.*": "*not expect or …*")
+      const inner = ne > 0 && np > 0;
+      const from = inner ? clean[L + 1].start : clean[L].end;
+      const to = inner ? clean[R - 1].end : clean[R].start;
+      const cs = text.slice(from, to);
+      const pdfText = inner ? pageText[pdf[jl].page].slice(pdf[jl + 1].start, pdf[jr - 1].end) : ps;
+      // Emphasis that opens or closes at the stretch's edges ("used.* **Because of its detectable persistence") is
+      // kept where it is, around the PDF's words; emphasis that changes inside it, or a note marker, is not
+      // the PDF's to move.
+      const edge = (inner ? cs : "").match(/^((?:[\s.,;:!?)\]’”]*\*{1,3})*\s*)([^*\\[\]_]*?)(\s*(?:\*{1,3}[\s.,;:!?(\[‘“]*)*)$/);
+      const lead = edge ? edge[1] : "";
+      const trail = edge ? edge[3] : "";
+      // left as the edition's: a paragraph or column break inside the PDF's stretch, a short whole line in it (a
+      // label: `shortLine`), a label inside a word broken at the line end that shares the next line ("coun- /
+      // Dr. Zabun. tries"), or markup in the edition's other than at its edges
+      if (/\n[ \t]*\n/.test(ps) || /column-break/.test(ps) || shortLine(ps) || (/-[ \t]*\n/.test(ps) && np > ne + 1) || (/[*_\\[\]]/.test(cs) && !(edge && !/[*_\\[\]]/.test(edge[2])))) {
+        versionKept++;
+        continue;
+      }
+      // a line-end hyphen closes up where the edition prints the word whole, as elsewhere here
+      const served =
+        lead +
+        escapeInline(
+          pdfText
+            .replace(/(\p{L}+)-[ \t]*\n\s*(\p{L}+)/gu, (m, a: string, b: string) => ((wholeWords.get(fold(a + b)) ?? 0) > 0 ? a + b : `${a}-${b}`))
+            .replace(/\s+/g, " ")
+        ) +
+        trail;
+      if (!edits.has(f)) edits.set(f, []);
+      edits.get(f)!.push({ start: from, end: to, text: served });
+      for (let k = L + 1; k < R; k++) versionTokens.add(k);
+      for (let j = jl + 1; j < jr; j++) versionPdf.add(j);
+      replacements.push({ field: f, edition: cs.replace(/\s+/g, " ").trim(), pdf: served.trim() });
+    }
+  }
+  // 4b. `words: "pdf"`: a word the edition runs together that the PDF prints as two ("Kamilsought", "althoughthe":
+  // the aligner pairs it with both), and the punctuation between two words the PDF prints differently on one line
+  // ("purposes—Saddam" against "purposes. Saddam"), are the PDF's too
+  let versionJoins = 0;
+  let versionPunctuation = 0;
+  /** Word pairs whose separator 4b replaced: the typography step leaves them alone. */
+  const versionPairs = new Set<number>();
+  if (options.words === "pdf") {
+    for (let c = 0; c < clean.length; c++) {
+      const j = wmap[c];
+      const f = clean[c].field;
+      if (j < 0 || versionTokens.has(c) || fields[f].note || fields[f].row !== undefined) continue;
+      // (a) one edition word, several PDF words
+      let j2 = j;
+      while (j2 + 1 < pdf.length && winv[j2 + 1] === c && pdf[j2 + 1].page === pdf[j].page) j2++;
+      if (j2 > j && winv[j] === c && (c + 1 >= clean.length || wmap[c + 1] !== j)) {
+        const ps = pageText[pdf[j].page].slice(pdf[j].start, pdf[j2].end);
+        const served = ps
+          .replace(/(\p{L}+)-[ \t]*\n\s*(\p{L}+)/gu, (m, a: string, b: string) => ((wholeWords.get(fold(a + b)) ?? 0) > 0 ? a + b : `${a}-${b}`))
+          .replace(/\s+/g, " ");
+        const text = fields[f].get();
+        const was = text.slice(clean[c].start, clean[c].end);
+        if (served !== was && !/\n[ \t]*\n|column-break/.test(ps) && (ps.match(/\n/g) ?? []).length < 2) {
+          if (!edits.has(f)) edits.set(f, []);
+          edits.get(f)!.push({ start: clean[c].start, end: clean[c].end, text: escapeInline(served) });
+          versionTokens.add(c);
+          replacements.push({ field: f, edition: was, pdf: served });
+          versionJoins++;
+        }
+        continue;
+      }
+      // (b) the separator between this word and the next, both aligned in order on one line of the PDF
+      const d = c + 1;
+      if (d >= clean.length || clean[d].field !== f || wmap[d] !== j + 1 || pdf[j + 1].page !== pdf[j].page) continue;
+      if (clean[c].word !== pdf[j].word || clean[d].word !== pdf[j + 1].word) continue;
+      const text = fields[f].get();
+      const cs = text.slice(clean[c].end, clean[d].start);
+      const ps = pageText[pdf[j].page].slice(pdf[j].end, pdf[j + 1].start);
+      if (/\n/.test(ps) || /[*_\\[\]]/.test(cs) || /\p{L}|\p{N}/u.test(ps)) continue;
+      const served = ps.replace(/\s+/g, " ");
+      const norm = (x: string) => straighten(x).replace(/\s+/g, " ");
+      // only where the two differ in more than spacing around a dash or quotation marks (the typography step above
+      // handles hyphens and dashes), and the PDF's is punctuation the edition lacks or prints otherwise
+      if (norm(cs).trim() === norm(served).trim() || /^[-\u2013\u2014]$/.test(cs.trim()) && /^[-\u2013\u2014]$/.test(served.trim())) continue;
+      if (cs === "-" && served === " ") {
+        // a name the PDF respells apart ("al-Nasiri": "Al Nasiri"), its capitals with it: both words are served
+        const pdfForm = pageText[pdf[j].page].slice(pdf[j].start, pdf[j + 1].end);
+        if (!edits.has(f)) edits.set(f, []);
+        edits.get(f)!.push({ start: clean[c].start, end: clean[d].end, text: escapeInline(pdfForm) });
+        versionPairs.add(c);
+        versionTokens.add(c);
+        versionTokens.add(d);
+        replacements.push({ field: f, edition: text.slice(clean[c].start, clean[d].end), pdf: pdfForm });
+        versionPunctuation++;
+        c = d;
+        continue;
+      }
+      if (cs.trim() === "-" || served.trim() === "-") continue;
+      if (!edits.has(f)) edits.set(f, []);
+      edits.get(f)!.push({ start: clean[c].end, end: clean[d].start, text: served });
+      versionPairs.add(c);
+      replacements.push({ field: f, edition: `${clean[c].word}${cs}${clean[d].word}`, pdf: `${pdf[j].word}${served}${pdf[j + 1].word}` });
+      versionPunctuation++;
+    }
+  }
   for (let k = 0; k + 1 < clean.length; k++) {
     const a = clean[k];
     const b = clean[k + 1];
-    if (a.field !== b.field) continue;
+    if (a.field !== b.field || versionPairs.has(k) || versionTokens.has(k) || versionTokens.has(k + 1)) continue;
     const j = map[k];
     if (j < 0 || map[k + 1] !== j + 1) continue;
     if (pdf[j].page !== pdf[j + 1].page) continue;
@@ -458,6 +681,8 @@ export function assembleEdition(
     edits.get(a.field)!.push({ start: a.end, end: b.start, text: replacement });
     dashesRestored++;
   }
+  // the edition's own text, which the suspects below quote: their offsets are into it
+  const asRead = fields.map((field) => field.get());
   for (const [f, list] of edits) {
     let text = fields[f].get();
     for (const e of list.sort((x, y) => y.start - x.start)) text = text.slice(0, e.start) + e.text + text.slice(e.end);
@@ -674,7 +899,7 @@ export function assembleEdition(
     const flush = () => {
       const short = toks.length < 8 && run.length >= Math.ceil(toks.length / 2);
       if (run.length >= 4 || (short && run.length >= 2)) {
-        const text = fields[f].get();
+        const text = options.words === "pdf" ? asRead[f] : fields[f].get();
         const from = clean[run[0]].start;
         const to = clean[run[run.length - 1]].end;
         const block = fields[f].note ? undefined : printedOfBlock(fields[f].block);
@@ -691,7 +916,7 @@ export function assembleEdition(
       run = [];
     };
     for (const { c } of toks) {
-      if (map[c] < 0) run.push(c);
+      if (map[c] < 0 && !versionTokens.has(c)) run.push(c);
       else flush();
     }
     flush();
@@ -726,7 +951,7 @@ export function assembleEdition(
       continue;
     }
     pdfWords++;
-    if (inv[j] >= 0) {
+    if (inv[j] >= 0 || versionPdf.has(j)) {
       pdfAligned++;
       flushGap();
     } else gap.push(j);
@@ -758,6 +983,20 @@ export function assembleEdition(
         confidence: "possible",
       });
     }
+  }
+
+  // `words: "pdf"`: each disagreement served in the PDF's words, so none is resolved silently
+  for (const r of replacements) {
+    const block = printedOfBlock(fields[r.field].block);
+    suspects.push({
+      pattern: "edition words served as the PDF prints them",
+      match: r.pdf.slice(0, 120) || "(deleted)",
+      context: `edition: “${r.edition.slice(0, 140)}” → PDF: “${r.pdf.slice(0, 140)}”`,
+      page: pageNumber(block),
+      volume: block?.volume,
+      pdfIndex: block?.pdfIndex,
+      confidence: "possible",
+    });
   }
 
   // `floats: "by-notes"`: the joins whose floats read first, by where their notes are numbered
@@ -908,7 +1147,17 @@ export function assembleEdition(
       dashesRestored,
       spacesRestored,
       hyphensClosed,
-      disagreements: { editionNotInPdf, pdfNotInEdition: suspects.length - editionNotInPdf },
+      disagreements: { editionNotInPdf, pdfNotInEdition: suspects.length - editionNotInPdf - replacements.length },
+      ...(options.words === "pdf"
+        ? {
+            servedFromPdf: {
+              replaced: replacements.length,
+              editionWords: versionTokens.size,
+              pdfWords: versionPdf.size,
+              kept: versionKept,
+            },
+          }
+        : {}),
     },
   };
 }

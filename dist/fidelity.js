@@ -29,9 +29,10 @@ function comparable(text) {
     return text.replace(/\[\^\d+(?:-\d+)?\]:?/g, " ");
 }
 function words(text) {
+    // a slash joins two words, not one: "OTHER/NUC" (a table cell the PDF sets as "OTHER/" over "NUC"), "food/nutrition"
     return comparable(text)
         .toLowerCase()
-        .split(/\s+/)
+        .split(/[\s/]+/)
         .map((word) => word.replace(STOP_CHARS, ""))
         .filter(Boolean);
 }

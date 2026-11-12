@@ -43,9 +43,10 @@ function comparable(text: string): string {
 }
 
 function words(text: string): string[] {
+  // a slash joins two words, not one: "OTHER/NUC" (a table cell the PDF sets as "OTHER/" over "NUC"), "food/nutrition"
   return comparable(text)
     .toLowerCase()
-    .split(/\s+/)
+    .split(/[\s/]+/)
     .map((word) => word.replace(STOP_CHARS, ""))
     .filter(Boolean);
 }

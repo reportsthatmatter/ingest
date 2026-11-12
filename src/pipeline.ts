@@ -1000,7 +1000,7 @@ function ingestEdition(
     linkedText: shadow.linkedText,
     footnotes: shadow.footnotes,
   });
-  const assembled = assembleEdition(edition, pages, printed, pass.sources, { floats: pass.floats });
+  const assembled = assembleEdition(edition, pages, printed, pass.sources, { floats: pass.floats, words: pass.words });
   if (filled.length) {
     assembled.report.filled = filled;
     const printedOf = new Map(printed.map((entry) => [`${entry.volume}:${entry.pdfIndex}`, entry.number]));
@@ -1044,7 +1044,12 @@ function ingestEdition(
   return {
     markdown,
     corrections: 0,
-    sourceText: shadow.sourceText,
+    // With `words: "pdf"` the served words are the PDF's, read off the shadow's page text, whose columns are
+    // apart; the raw source text runs a two-column page's lines together, so a word broken at a line end
+    // ("delibera-" / "tions") has the other column's word after it there, and the fidelity check that every
+    // output word is in the source could not join it. The page text is the same source, read in its order (without
+    // the running furniture the shadow took off, which is not served either).
+    sourceText: pass.words === "pdf" ? pages.map((page) => page.lines.join("\n")).join("\n\n") : shadow.sourceText,
     footnotes,
     suspects: assembled.suspects,
     autoFixes: 0,
