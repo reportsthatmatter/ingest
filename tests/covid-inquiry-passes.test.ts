@@ -158,3 +158,16 @@ describe("typographicHeadings({ faceText }): a face shared with the contents is 
     expect(headings.map((h) => h.text)).toEqual(["Recommendation 1: Chief Medical Officer for Northern Ireland"]);
   });
 });
+
+describe("quoteInset({ volumes }): an inset declared for some volumes only", () => {
+  it("resolves the columns and the volumes; omitted, every volume", async () => {
+    const { resolvePasses } = await import("../src/define");
+    const { quoteInset } = await import("../src/passes");
+    const base = { id: "t", title: "t", authors: "", published_at: "", source_url: "", repo: ".", volumes: [] };
+    const scoped = resolvePasses({ ...base, passes: [quoteInset(4, { volumes: [2] })] } as never);
+    expect(scoped.quoteInset).toBe(4);
+    expect(scoped.quoteInsetVolumes).toEqual([2]);
+    const all = resolvePasses({ ...base, passes: [quoteInset(4)] } as never);
+    expect(all.quoteInsetVolumes).toBeUndefined();
+  });
+});
