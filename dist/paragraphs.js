@@ -626,8 +626,12 @@ export function danglesMidPhrase(text) {
 const TOC_ENTRY = /[.·]{4,}\s*\d{1,4}\s*$|(?<![.,;:])[ \t]{3,}\d{1,4}\s*$/;
 /** Section headings carry the printed page number after the title. */
 function stripTrailingPageNumber(text) {
-    // "ENDNOTES FOR CHAPTER 1" ends on the chapter's number, not a page's.
-    if (/\b(?:part|chapter|appendix|section|volume)\s+\d{1,4}$/i.test(text))
+    // "ENDNOTES FOR CHAPTER 1" ends on the chapter's number, not a page's; so do the Grenfell Tower
+    // Inquiry's "Floor 14" (Volume 6's chapter titles) and "Matters outstanding from Phase 1" (Part 11).
+    if (/\b(?:part|chapter|appendix|section|volume|phase|floor|stage)\s+\d{1,4}$/i.test(text))
+        return text.trim();
+    // A year range ends on a year: "Arconic's testing of ACM panels 1997 to 2006" (reportsthatmatter-gqsy.4.2).
+    if (/\b(?:1[89]|20)\d\d\s*(?:to|and|-|–)\s*(?:1[89]|20)\d\d$/.test(text))
         return text.trim();
     return text.replace(/\s+\d{1,4}$/, "").trim();
 }
@@ -1968,6 +1972,13 @@ export function endsSentence(text) {
         return false;
     return true;
 }
+/** `letteredItems` is in force for this block (`fromVolume`: only from that volume on). */
+function letteredOn(options, block) {
+    if (!options.letteredItems)
+        return false;
+    const volume = block.at?.volume ?? 1;
+    return volume >= (options.letteredItemsFrom ?? 1);
+}
 /** An item's own letter: "b." or "(c)" or "iv.", then its text. */
 const ITEM_LABEL = /^\(?(?:[a-z]|[ivx]{1,4})[.)]\s+\S/;
 /** Opens on a quotation mark, perhaps behind an ellipsis: `"… if Mr Wallis`. */
@@ -2168,7 +2179,7 @@ export function mergeAcrossPages(blocks, options = {}) {
                     (!heading &&
                         // A chart's label after a caption is not the paragraph's rest (Columbia).
                         words(block.text) > CHART_LABEL_WORDS &&
-                        !(options.letteredItems && ITEM_LABEL.test(block.text)) &&
+                        !(letteredOn(options, block) && ITEM_LABEL.test(block.text)) &&
                         layoutJoins(options.layout, target.text, block.text, block.at, options.layoutJoins))) {
                     // A word the page cut, as `mergeAcrossPages` closes it up at a page
                     // break; a compound already hyphenated ("case-to-" / "case") keeps it.
@@ -2345,13 +2356,30 @@ export function mergeAcrossPages(blocks, options = {}) {
                 continue;
             }
         }
+        // `numberedInSequence`: "…at about" / "02.05 she said…", a time or a clause reference wrapped to
+        // the head of a line, read as a paragraph number of a chapter the text is not in.
+        if (options.numberedInSequence &&
+            block.kind === "paragraph" &&
+            block.finding === undefined &&
+            previous?.kind === "paragraph" &&
+            !endsSentence(previous.text) &&
+            /^\d{1,3}[.)]\d{1,3}\s/.test(block.text) &&
+            // A chapter's first paragraph ("1.1 An Inquiry…") after a heading read as prose is a paragraph.
+            !/^\d{1,3}[.)]1\s/.test(block.text)) {
+            const chapter = String(Number(block.text.match(/^(\d{1,3})/)[1]));
+            const current = lastNumberedChapter(merged);
+            if (current !== undefined && String(Number(current)) !== chapter) {
+                previous.text = `${previous.text} ${block.text}`;
+                continue;
+            }
+        }
         if (block.kind === "paragraph" &&
             block.finding === undefined &&
             previous?.kind === "paragraph" &&
             !endsSentence(previous.text) &&
             // A lowercase opening is the usual sign of a continuation. After an
             // abbreviation the next word is often a name, so allow either.
-            !(options.letteredItems && ITEM_LABEL.test(block.text)) &&
+            !(letteredOn(options, block) && ITEM_LABEL.test(block.text)) &&
             !(options.numberedOpenings && NUMBERED_OPENING.test(block.text)) &&
             (/^[a-z,;]/.test(block.text) ||
                 ABBREVIATION.test(previous.text) ||
@@ -2370,7 +2398,7 @@ export function mergeAcrossPages(blocks, options = {}) {
             acrossPages &&
             block.at !== undefined &&
             opensPage(blocks, index) &&
-            !(options.letteredItems && ITEM_LABEL.test(block.text)) &&
+            !(letteredOn(options, block) && ITEM_LABEL.test(block.text)) &&
             layoutJoins(options.layout, previous.text, block.text, block.at, options.layoutJoins)) {
             previous.text = `${previous.text} ${block.text}`;
             continue;
@@ -2389,7 +2417,7 @@ export function mergeAcrossPages(blocks, options = {}) {
             previous.at !== undefined &&
             previous.at.pdfIndex !== block.at.pdfIndex &&
             opensPage(blocks, index) &&
-            !(options.letteredItems && ITEM_LABEL.test(block.text)) &&
+            !(letteredOn(options, block) && ITEM_LABEL.test(block.text)) &&
             isOffFaceBlock(options.layout, previous.text, previous.at)) {
             let target = (markerIndex === -1 ? merged.length : markerIndex) - 2;
             while (target >= 0 &&

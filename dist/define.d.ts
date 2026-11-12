@@ -71,7 +71,10 @@ export type ResolvedPasses = {
     unlistedHeadingsMinor?: boolean;
     hangingIndents?: boolean;
     letteredItems?: boolean;
+    /** `letteredItems({ fromVolume })`: the first volume it reads lettered items in. */
+    letteredItemsFrom?: number;
     numberedOpenings?: boolean;
+    numberedInSequence?: boolean;
     numberedFindings?: boolean;
     doubleSpaced?: boolean;
     contentsOutline?: boolean;
@@ -101,6 +104,7 @@ export type ResolvedPasses = {
     numberedOutsideTables?: boolean;
     photoCredits?: boolean;
     hyphenFragments?: boolean;
+    hyphenMajority?: boolean;
     divisionLabels?: boolean;
     speakerTurns?: boolean;
     /** `hangingLabels`: an item under a short colon label ("Fact:") with its lines hanging in is one paragraph; the report's own labels. */

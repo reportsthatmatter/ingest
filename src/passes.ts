@@ -399,7 +399,19 @@ export const hangingIndents = (): PagePass => ({ name: "hangingIndents", stage: 
  * lettered line followed by indented lines is also a table row or a
  * quotation's heading in another document.
  */
-export const letteredItems = (): PagePass => ({ name: "letteredItems", stage: "page" });
+export const letteredItems = (options: LetteredItemsOptions = {}): LetteredItemsPass => ({
+  name: "letteredItems",
+  stage: "page",
+  ...(options.fromVolume ? { fromVolume: options.fromVolume } : {}),
+});
+
+/**
+ * `fromVolume` (reportsthatmatter-gqsy.4.2): read lettered items only from that volume on, so a further
+ * volume can declare it without moving the ids of the volumes already published (the Grenfell Tower
+ * Inquiry's Volume 1 went live without it; its Volumes 2-7 set 100-odd items this way).
+ */
+export type LetteredItemsOptions = { fromVolume?: number };
+export type LetteredItemsPass = { readonly name: "letteredItems"; readonly stage: "page"; readonly fromVolume?: number };
 
 /**
  * Reads an item set under a short label of capitalised words and a colon, with
@@ -463,6 +475,20 @@ export const insetOpenings = (): PagePass => ({ name: "insetOpenings", stage: "p
  * moves those reports' ids; it only has an effect with `numberedParagraphs`.
  */
 export const numberedOpenings = (): PagePass => ({ name: "numberedOpenings", stage: "page" });
+
+/**
+ * A line that opens on another chapter's number, after a sentence left unfinished, carries the sentence
+ * on, on the same page as across one (reportsthatmatter-gqsy.4.2). `numberedParagraphs` reads any line
+ * opening "N.N " as a paragraph's own number, and in a report whose paragraphs run "97.107", "97.108" a
+ * time of day or a clause reference wrapped to the head of a line is not one: "…at about" / "02.05 she
+ * said that she had lost her friend…" (Grenfell Vol 6 p.209, inside 97.108), "…in accordance with
+ * paragraph" / "12.7 of Approved Document B…" (Vol 2, inside 22.105); 19 sentences severed across
+ * Volumes 2-7, two of them as ids that Volume 1 already holds. Joined only when the number's chapter is
+ * not the chapter of the last numbered paragraph and the paragraph above stops mid-sentence; a quoted
+ * standard's own numbering inside its chapter ("5.55 The visual observations…", Vol 1) stays as it was.
+ * Opt-in; only with `numberedParagraphs`.
+ */
+export const numberedInSequence = (): PagePass => ({ name: "numberedInSequence", stage: "page" });
 
 /**
  * This report's notes are endnotes: printed together at the back, never at a
@@ -1444,6 +1470,17 @@ export const strandedMarkers = (): BodyPass => ({
  * Opt-in: a report whose source breaks words at the line end declares it.
  */
 export const hyphenFragments = (): PagePass => ({ name: "hyphenFragments", stage: "page" });
+
+/**
+ * A line-end hyphen whose two readings the document both writes whole takes the one it writes more
+ * often (reportsthatmatter-gqsy.4.2). By default such a break closes up: the Grenfell Tower Inquiry's
+ * seven volumes print "high-rise" about 400 times and "highrise" once (Volume 3, PDF p.73), so every
+ * "high- rise" at a line end became "highrise", 13 of them, and four in Volume 1 changed when the other
+ * volumes were added. A tie keeps the default.
+ *
+ * Opt-in: a report whose volumes spell a compound both ways declares it.
+ */
+export const hyphenMajority = (): PagePass => ({ name: "hyphenMajority", stage: "page" });
 
 /**
  * A line that is only a division label, "Findings", "Recommendations:", "Issue 3", is a level-4 heading
