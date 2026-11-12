@@ -148,6 +148,7 @@ export function resolvePasses(def) {
             passes.some((pass) => pass.name === "listedHeadings"),
         endnotes: passes.some((pass) => pass.name === "endnotes"),
         layoutEndnotes: passes.some((pass) => pass.name === "layoutEndnotes"),
+        ...layoutEndnotesOf(passes),
         numberedSections: passes.some((pass) => pass.name === "numberedSections"),
         contentsEntries: passes.some((pass) => pass.name === "contentsEntries"),
         shortSubheads: passes.some((pass) => pass.name === "shortSubheads"),
@@ -228,4 +229,8 @@ function layoutMarkersOf(passes) {
             ...(pass.endnoteRanges?.length ? { endnoteRanges: pass.endnoteRanges } : {}),
         }
         : undefined;
+}
+function layoutEndnotesOf(passes) {
+    const pass = passes.find((p) => p.name === "layoutEndnotes");
+    return pass && "options" in pass && pass.options ? { layoutEndnotesOptions: pass.options } : {};
 }

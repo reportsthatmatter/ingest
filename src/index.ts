@@ -86,6 +86,8 @@ export type {
   PagePass,
   LayoutPageJoinsPass,
   LayoutMarkersPass,
+  LayoutEndnotesPass,
+  LayoutEndnotesOptions,
   EndnoteRange,
   TypographicHeadingsPass,
   PageHeadFoliosPass,

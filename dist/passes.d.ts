@@ -138,7 +138,7 @@ export type HangingLabelsPass = {
     readonly stage: "page";
     readonly labels: readonly string[];
 };
-export type Pass = FootnoteResetsPass | PageHeadFoliosPass | HangingLabelsPass | EditionPass | VisionStructurePass | TypographicHeadingsPass | NumberedHeadingsPass | LayoutMarkersPass | PageBreakContinuationsPass | LayoutPageJoinsPass | PagePass | BodyPass | SourcePass | VolumePass | GeometryPass | QuoteInsetPass | AllCapsHeadingsPass;
+export type Pass = FootnoteResetsPass | PageHeadFoliosPass | HangingLabelsPass | EditionPass | VisionStructurePass | TypographicHeadingsPass | NumberedHeadingsPass | LayoutMarkersPass | LayoutEndnotesPass | PageBreakContinuationsPass | LayoutPageJoinsPass | PagePass | BodyPass | SourcePass | VolumePass | GeometryPass | QuoteInsetPass | AllCapsHeadingsPass;
 /**
  * Takes the printed page number off each page. These documents are cited by
  * page ("Report at 62"), so the printed number is the citation unit readers
@@ -420,7 +420,39 @@ export declare const endnotes: () => PagePass;
  * Opt-in: it reads `context.layout`, and only a report whose notes sit in
  * such sections has them.
  */
-export declare const layoutEndnotes: () => PagePass;
+export declare const layoutEndnotes: (options?: LayoutEndnotesOptions) => LayoutEndnotesPass;
+/**
+ * `layoutEndnotes` options, each for a property of the source (all off by default). The Thirlwall Inquiry's
+ * three volumes (reportsthatmatter-gqsy.16.7) print each chapter's notes after it under a bare "Endnotes"
+ * sub-heading, numbered from 1 in the body's own face, while its Summary report, an earlier volume of the same
+ * report, sets its one note at a page foot.
+ */
+export type LayoutEndnotesOptions = {
+    /** The volumes (1-based) whose notes are printed in sections; every other volume keeps its page-foot notes. Default: all. */
+    readonly volumes?: ReadonlyArray<number>;
+    /**
+     * A note opens on a number set in the notes' own size at the section's note margin, not raised (Thirlwall
+     * Vol I p.17: "1  Countess of Chester Hospital ..."). A lone small number is then not read as a note's number
+     * (the folio is one).
+     */
+    readonly unraised?: boolean;
+    /**
+     * A section whose heading names no chapter ("Endnotes") holds the notes of the chapter printed before it: the
+     * body's markers from the end of the previous section (or the volume's start) up to its heading cite them.
+     */
+    readonly precedingChapter?: boolean;
+    /**
+     * The notes' face is matched on family without weight: a note set wholly as a link, semibold in the link colour
+     * (Thirlwall Vol I p.36), is still a note.
+     */
+    readonly anyWeight?: boolean;
+};
+/** `layoutEndnotes`, with its options. */
+export type LayoutEndnotesPass = {
+    readonly name: "layoutEndnotes";
+    readonly stage: "page";
+    readonly options?: LayoutEndnotesOptions;
+};
 /**
  * A footnote's run-over may be several ordinary-looking paragraphs, not one
  * unbroken run: PSI's "BSAM mark recap" note (reportsthatmatter-626) fills

@@ -1,4 +1,4 @@
-import type { Pass, VolumePass, BodyPass, SourcePass, EndnoteRange, FootnoteReset } from "./passes.js";
+import type { Pass, VolumePass, BodyPass, SourcePass, LayoutEndnotesOptions, EndnoteRange, FootnoteReset } from "./passes.js";
 import type { PageHeadFolio } from "./clean.js";
 import type { PageBreakOptions } from "./pagebreaks.js";
 import type { EditionPass } from "./edition.js";
@@ -66,6 +66,8 @@ export type ResolvedPasses = {
     };
     /** `layoutEndnotes`: notes sections read off the layout, labelled by chapter. */
     layoutEndnotes?: boolean;
+    /** `layoutEndnotes(options)`: which volumes, and how this source sets its notes. */
+    layoutEndnotesOptions?: LayoutEndnotesOptions;
     /** `typographicHeadings`: on, with its options. */
     typographicHeadings?: TypographicHeadingsOptions;
     unlistedHeadingsMinor?: boolean;

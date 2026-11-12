@@ -9,6 +9,8 @@ import type {
   NumberedHeadingsPass,
   LayoutPageJoinsPass,
   LayoutMarkersPass,
+  LayoutEndnotesPass,
+  LayoutEndnotesOptions,
   EndnoteRange,
   TypographicHeadingsPass,
   FootnoteResetsPass,
@@ -78,6 +80,8 @@ export type ResolvedPasses = {
   layoutMarkers?: { scope: "page" | "document" | "chapter"; textFallback: boolean; scanned?: boolean; endnoteRanges?: ReadonlyArray<EndnoteRange> };
   /** `layoutEndnotes`: notes sections read off the layout, labelled by chapter. */
   layoutEndnotes?: boolean;
+  /** `layoutEndnotes(options)`: which volumes, and how this source sets its notes. */
+  layoutEndnotesOptions?: LayoutEndnotesOptions;
   /** `typographicHeadings`: on, with its options. */
   typographicHeadings?: TypographicHeadingsOptions;
   unlistedHeadingsMinor?: boolean;
@@ -318,6 +322,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
       passes.some((pass) => pass.name === "listedHeadings"),
     endnotes: passes.some((pass) => pass.name === "endnotes"),
     layoutEndnotes: passes.some((pass) => pass.name === "layoutEndnotes"),
+    ...layoutEndnotesOf(passes),
     numberedSections: passes.some((pass) => pass.name === "numberedSections"),
     contentsEntries: passes.some((pass) => pass.name === "contentsEntries"),
     shortSubheads: passes.some((pass) => pass.name === "shortSubheads"),
@@ -412,4 +417,9 @@ function layoutMarkersOf(
         ...(pass.endnoteRanges?.length ? { endnoteRanges: pass.endnoteRanges } : {}),
       }
     : undefined;
+}
+
+function layoutEndnotesOf(passes: Pass[]): { layoutEndnotesOptions?: LayoutEndnotesOptions } {
+  const pass = passes.find((p): p is LayoutEndnotesPass => p.name === "layoutEndnotes");
+  return pass && "options" in pass && pass.options ? { layoutEndnotesOptions: pass.options } : {};
 }

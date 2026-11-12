@@ -1,4 +1,5 @@
 import type { Footnote } from "./footnotes.js";
+import type { LayoutEndnotesOptions } from "./passes.js";
 import type { Layout } from "./layout.js";
 import type { Block } from "./paragraphs.js";
 /** One chapter whose notes the report prints: its label, the words its body heading opens with, and its note numbers. */
@@ -13,6 +14,8 @@ export type EndnoteChapter = {
         volume: number;
         pdfIndex: number;
     };
+    /** `precedingChapter`: an unnamed section's chapter is the body printed before it, found by position. */
+    preceding?: boolean;
 };
 type PageAt = {
     index: number;
@@ -40,6 +43,7 @@ export declare function headingWords(s: string): string;
  */
 export declare class LayoutEndnotesReader {
     private readonly layout;
+    private readonly options;
     readonly chapters: EndnoteChapter[];
     private open;
     private noteSize;
@@ -48,7 +52,8 @@ export declare class LayoutEndnotesReader {
     private prev;
     private current;
     private furnitureKeys;
-    constructor(layout: Layout);
+    private readonly family;
+    constructor(layout: Layout, options?: LayoutEndnotesOptions);
     /** Lines that recur in the same place on three or more pages of the volume (running heads, folios, banners). */
     private isFurniture;
     private placeKey;

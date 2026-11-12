@@ -119,7 +119,10 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     let notesStarted = false;
     const notesLines = [];
     // `layoutEndnotes`: notes sections read off the layout, page by page.
-    const endnotesReader = resolved.layoutEndnotes && context.layout ? new LayoutEndnotesReader(context.layout) : undefined;
+    const endnotesReader = resolved.layoutEndnotes && context.layout ? new LayoutEndnotesReader(context.layout, resolved.layoutEndnotesOptions) : undefined;
+    // `layoutEndnotes({ volumes })`: only those volumes print their notes in sections; the others keep page-foot notes.
+    const endnoteVolumes = resolved.layoutEndnotesOptions?.volumes;
+    const sectionNotes = (volume) => resolved.layoutEndnotes === true && (!endnoteVolumes || endnoteVolumes.includes(volume));
     const endnotesHeadings = new Map();
     // `visionStructure`: a note's tail that ran over the page break, by the note it was added to.
     const runOvers = new Map();
@@ -143,7 +146,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
             footnoteNumbers: resolved.footnoteNumbers,
             thumbIndexNotes: resolved.thumbIndexNotes,
         };
-        let split = resolved.paragraphNotes || resolved.endnotes || resolved.layoutEndnotes
+        let split = resolved.paragraphNotes || resolved.endnotes || sectionNotes(page.volume)
             ? splitPageNumberOnly(page, { romanFolios: resolved.romanFolios, parenFolios: resolved.parenFolios, pageHeadFolios: resolved.pageHeadFolios })
             : splitPage(page, expectedNote, splitOptions);
         // `footnoteNumbers("period")`: a block opening "8. In all of the above cases" in the body's face is
@@ -189,7 +192,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         }
         // A page of a notes section: its notes are read off the layout, and its body keeps only what
         // is printed above the section's heading, the heading and the preamble.
-        const read = endnotesReader?.page(split, split.body);
+        const read = sectionNotes(split.volume) ? endnotesReader?.page(split, split.body) : undefined;
         if (read) {
             split.body = read.body;
             if (read.heading.length)

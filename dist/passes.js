@@ -318,7 +318,13 @@ export const endnotes = () => ({ name: "endnotes", stage: "page" });
  * Opt-in: it reads `context.layout`, and only a report whose notes sit in
  * such sections has them.
  */
-export const layoutEndnotes = () => ({ name: "layoutEndnotes", stage: "page" });
+export const layoutEndnotes = (options = {}) => {
+    for (const v of options.volumes ?? [])
+        if (!(Number.isInteger(v) && v >= 1))
+            throw new Error(`layoutEndnotes: volume ${v} is not a 1-based volume number`);
+    const set = Object.fromEntries(Object.entries(options).filter(([, v]) => v !== undefined && v !== false));
+    return Object.keys(set).length ? { name: "layoutEndnotes", stage: "page", options: { ...set } } : { name: "layoutEndnotes", stage: "page" };
+};
 /**
  * A footnote's run-over may be several ordinary-looking paragraphs, not one
  * unbroken run: PSI's "BSAM mark recap" note (reportsthatmatter-626) fills
