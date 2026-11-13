@@ -31,6 +31,8 @@ export declare const PARAGRAPH_ID_CHARS = "[\\p{L}\\p{N}-]+";
  * `#rioters-at-the-capitol-had-been` over `#p-318`.
  */
 export declare function paragraphId(text: string, taken: Set<string>): string;
+/** The id a paragraph's text asks for before de-duplication: `paragraphId` without the `-2`, `-3` suffix. */
+export declare function paragraphIdBase(text: string): string;
 /**
  * Whether linkified text (`two.ls`, `www.levesoninquiry`, `http://www`,
  * `org.uk/wp-content/...`) reads as a URL rather than an OCR fragment
@@ -50,6 +52,21 @@ export declare function isPlausibleUrl(text: string): boolean;
  * printed page it appears on.
  */
 export declare function renderMarkdown(markdown: string): string;
+/** A citable unit (a top-level paragraph or bulleted list) in reading order: the id it got and the id its text asks for. */
+export type IdUnit = {
+    id: string;
+    base: string;
+};
+/**
+ * `renderMarkdown`, also returning every citable unit in reading order. `forced` gives the unit at
+ * a reading-order index a fixed id (reserved ids, reportsthatmatter-efso, see `renderArtifacts`);
+ * every forced id, and every `blocked` one, is taken before the pass starts, so an unforced unit
+ * can never take one and is suffixed past it instead.
+ */
+export declare function renderMarkdownUnits(markdown: string, forced?: ReadonlyMap<number, string>, blocked?: ReadonlySet<string>): {
+    html: string;
+    units: IdUnit[];
+};
 /** The collected `## Notes` block, which sidenotes replace in the body. */
 export declare function stripNotesSection(markdown: string): string;
 /**

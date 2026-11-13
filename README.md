@@ -207,6 +207,8 @@ owns the text. Paragraph ids — the thing a citation actually resolves through
 id-affecting change is a version a report adopts deliberately, the same way a
 pipeline change already is.
 
+**Reserved ids.** Ids come from the text (its first words, `-2`, `-3` for repeats), so a new paragraph earlier in the report that opens the same way (a second "Key Messages", another reference to the same author and year) would take a published id and push the old paragraph to `-2`. `renderArtifacts(markdown, { reserved })` prevents that: `reserved` lists the ids already published, oldest first, each with the section it was served in, `paragraphFingerprint` of its text and of the next passage's text. Each keeps its paragraph when that paragraph can still be found (the same text followed by the same passage, anywhere, so a chapter split out of its Part keeps its ids; else the same text in the same section; else the one left in that section after a correction), and a new paragraph that asks for it is suffixed instead. A reservation that matches nothing constrains nothing, and when every match is already where the plain pass puts it the output is byte-identical. The site keeps the list (`reports/<id>/reserved-ids.txt`, decision 0012, reportsthatmatter-efso); `rtm-publish` renders without it, so publish through the site.
+
 **Publishing** takes that output live, without a site deploy:
 
 ```bash

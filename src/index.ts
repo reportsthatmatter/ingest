@@ -212,9 +212,9 @@ export type { Footnote } from "./footnotes";
 export type { Suspect } from "./ocr";
 
 // — Rendering: markdown → the content a report publishes —
-export { renderArtifacts } from "./render";
-export type { RenderedArtifacts, ReportMeta, SectionSummary } from "./render";
-export { renderMarkdown, paragraphId, slugify, PARAGRAPH_ID_CHARS, resolveNoteReferences, collectNoteOrder } from "./markdown";
+export { renderArtifacts, paragraphFingerprint, reservedAssignments } from "./render";
+export type { RenderedArtifacts, ReportMeta, SectionSummary, ReservedId, RenderOptions } from "./render";
+export { renderMarkdown, renderMarkdownUnits, paragraphId, paragraphIdBase, slugify, PARAGRAPH_ID_CHARS, resolveNoteReferences, collectNoteOrder } from "./markdown";
 export { splitSections, sectionFor, paragraphIndex } from "./sections";
 export type { Section } from "./sections";
 export { extractPassages } from "./passages";
