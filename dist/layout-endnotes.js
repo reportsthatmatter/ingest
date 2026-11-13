@@ -26,12 +26,18 @@ import { normaliseWhitespace } from "./extract.js";
  */
 /** A notes section's heading: "ENDNOTES", "Notes", "ENDNOTES FOR CHAPTER 5", "Notes to Appendix A". */
 const NOTES_HEAD = /^(?:end\s?)?notes(?:\s+(?:for|to)\s+(.{1,40}))?$/i;
+/** `unraised`: a note's opening line, its number in the notes' own size, then a gap and its text. */
+const UNRAISED_OPENER = /^\s*\d{1,4}\s+\S/;
 /** How far a note's number may run ahead of the note before it (a note set where the reader missed it). */
 const MAX_NOTE_STEP = 8;
 const squash = (s) => s.replace(/\s+/g, "");
 const lettersOf = (s) => s.replace(/[^\p{L}]/gu, "").length;
 const normal = (s) => normaliseWhitespace(s.replace(/ /g, " "));
 const familyBase = (family) => family.replace(/(?:Bold)?(?:Italic|Oblique)$/i, "").replace(/[-,]$/, "");
+/** `anyWeight`: the family without its weight as well ("SourceSans3-SemiBold" is "SourceSans3"). */
+const familyRoot = (family) => familyBase(family)
+    .replace(/(?:Extra|Semi|Demi|Ultra)?(?:Bold|Light|Medium|Black|Heavy|Thin|Regular|Book)$/i, "")
+    .replace(/[-,]$/, "");
 /** Words for matching a chapter name against a heading: lower case, letters and digits. */
 export function headingWords(s) {
     return s
@@ -45,6 +51,7 @@ export function headingWords(s) {
  */
 export class LayoutEndnotesReader {
     layout;
+    options;
     chapters = [];
     open = false;
     noteSize = 0;
@@ -53,8 +60,11 @@ export class LayoutEndnotesReader {
     prev = 0;
     current;
     furnitureKeys = new Map();
-    constructor(layout) {
+    family;
+    constructor(layout, options = {}) {
         this.layout = layout;
+        this.options = options;
+        this.family = options.anyWeight ? familyRoot : familyBase;
     }
     /** Lines that recur in the same place on three or more pages of the volume (running heads, folios, banners). */
     isFurniture(line) {
@@ -88,12 +98,14 @@ export class LayoutEndnotesReader {
         return m[1] ? { name: m[1] } : {};
     }
     inNotesFace(l) {
-        return familyBase(l.family) === this.noteFamily && Math.abs(l.size - this.noteSize) <= 1.5;
+        return this.family(l.family) === this.noteFamily && Math.abs(l.size - this.noteSize) <= 1.5;
     }
     /** A number set alone in a smaller face, the note's text on the next line (Deepwater). */
     smallNumber(l) {
+        if (this.options.unraised)
+            return undefined;
         const m = l.text.trim().match(/^(\d{1,4})$/);
-        if (!m || familyBase(l.family) !== this.noteFamily || l.size >= this.noteSize - 0.5)
+        if (!m || this.family(l.family) !== this.noteFamily || l.size >= this.noteSize - 0.5)
             return undefined;
         return Number(m[1]);
     }
@@ -123,9 +135,15 @@ export class LayoutEndnotesReader {
     /** The column note margins on a page: the lefts of its raised openers, clustered. */
     learnColumns(lines) {
         const lefts = lines
-            .filter((l) => this.inNotesFace(l) && l.raised[0]?.offset === 0 && /^\d/.test(l.text.trim()))
+            .filter((l) => this.inNotesFace(l) && (this.options.unraised ? UNRAISED_OPENER.test(l.text) : l.raised[0]?.offset === 0 && /^\d/.test(l.text.trim())))
             .map((l) => l.left)
             .sort((a, b) => a - b);
+        // `unraised`: a run-over line can open on a number too ("16-min-1-.pdf"), but it hangs inside the note's
+        // first line; the margin is the leftmost opener's.
+        if (this.options.unraised && lefts.length) {
+            this.columns = [lefts[0]];
+            return;
+        }
         const columns = [];
         for (const left of lefts) {
             if (!columns.length || left - columns[columns.length - 1] > 40)
@@ -147,7 +165,9 @@ export class LayoutEndnotesReader {
             return undefined;
         const bodySize = Math.max(this.layout.bodyFont.size, Number(page.bodyFont.split("|")[1]) || 0);
         const inPage = page.lines.filter((l) => l.left >= 0 && l.left < page.width && l.text.trim());
-        const head = inPage.find((l) => this.headOf(l, bodySize) && !this.isFurniture(l));
+        // `precedingChapter`: the bare heading is printed after every chapter, at the head of a page as often as not,
+        // so its recurring in one place is no sign of a running head (a section still needs a note under it).
+        const head = inPage.find((l) => this.headOf(l, bodySize) && (this.options.precedingChapter || !this.isFurniture(l)));
         if (!head && !this.open)
             return undefined;
         let body = [];
@@ -157,17 +177,19 @@ export class LayoutEndnotesReader {
             this.closeNote();
             const name = this.headOf(head, bodySize).name;
             region = inPage.filter((l) => l.top >= head.top - 1 && l !== head);
-            const opening = region.find((l) => l.raised[0]?.offset === 0 && /^\d/.test(l.text.trim()));
+            const opening = region.find((l) => this.options.unraised ? UNRAISED_OPENER.test(l.text) && l.size < head.size - 1 : l.raised[0]?.offset === 0 && /^\d/.test(l.text.trim()));
             if (!opening)
                 return undefined;
             this.open = true;
             this.noteSize = opening.size;
-            this.noteFamily = familyBase(opening.family);
+            this.noteFamily = this.family(opening.family);
             this.columns = [];
             this.prev = 0;
             this.sectionAt = at;
             if (name !== undefined)
                 this.startChapter(name, at);
+            else if (this.options.precedingChapter)
+                this.startChapter(undefined, at, true);
             // The body keeps what is printed above the heading (in the text reader's own lines), then the
             // heading and the section's preamble as the layout sets them.
             const headText = normal(head.text);
@@ -274,12 +296,13 @@ export class LayoutEndnotesReader {
     }
     /** Where the open section's heading is: its chapters' bodies end there at the latest. */
     sectionAt;
-    startChapter(name, at) {
+    startChapter(name, at, preceding = false) {
         this.chapters.push({
             key: this.chapters.length + 1,
             name,
             numbers: new Set(),
             notesAt: { volume: at.volume, pdfIndex: at.pdfIndex },
+            ...(preceding ? { preceding: true } : {}),
         });
     }
     inSequence(n) {
@@ -341,6 +364,26 @@ function joinLine(text, line) {
  */
 export function chapterOfBlocks(blocks, chapters) {
     const out = new Map();
+    // `precedingChapter`: an unnamed section cites the body printed before it, in its own volume, back to the
+    // previous section. A block takes the first such section at or after its page; a block on the section's
+    // own page is printed above its heading.
+    const preceding = chapters.filter((c) => c.preceding);
+    if (preceding.length) {
+        let k = 0;
+        let lastAt;
+        for (const b of blocks) {
+            const at = b.at ?? lastAt;
+            lastAt = at;
+            if (!at)
+                continue;
+            const volume = at.volume ?? 1;
+            while (k < preceding.length && (preceding[k].notesAt.volume < volume || (preceding[k].notesAt.volume === volume && preceding[k].notesAt.pdfIndex < at.pdfIndex)))
+                k++;
+            const chapter = preceding[k];
+            if (chapter && chapter.notesAt.volume === volume)
+                out.set(b, chapter);
+        }
+    }
     const starts = [];
     let from = 0;
     for (const chapter of chapters) {

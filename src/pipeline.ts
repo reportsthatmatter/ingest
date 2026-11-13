@@ -7,7 +7,7 @@ import { extractParagraphNotes } from "./paragraph-notes";
 import type { ResolvedPasses } from "./define";
 import type { EndnoteRange } from "./passes";
 import { applyCorrections, type Correction } from "./corrections";
-import { rejoinHyphenated, vocabulary, wholeWords } from "./hyphens";
+import { rejoinHyphenated, vocabulary, wholeWords, wholeWordCounts } from "./hyphens";
 import {
   toBlocks,
   blocksToMarkdown,
@@ -215,7 +215,10 @@ export function ingestPageGroups(
   const notesLines: NotesLine[] = [];
   // `layoutEndnotes`: notes sections read off the layout, page by page.
   const endnotesReader =
-    resolved.layoutEndnotes && context.layout ? new LayoutEndnotesReader(context.layout) : undefined;
+    resolved.layoutEndnotes && context.layout ? new LayoutEndnotesReader(context.layout, resolved.layoutEndnotesOptions) : undefined;
+  // `layoutEndnotes({ volumes })`: only those volumes print their notes in sections; the others keep page-foot notes.
+  const endnoteVolumes = resolved.layoutEndnotesOptions?.volumes;
+  const sectionNotes = (volume: number) => resolved.layoutEndnotes === true && (!endnoteVolumes || endnoteVolumes.includes(volume));
   const endnotesHeadings = new Map<string, string[]>();
 
   // `visionStructure`: a note's tail that ran over the page break, by the note it was added to.
@@ -241,7 +244,7 @@ export function ingestPageGroups(
         footnoteNumbers: resolved.footnoteNumbers,
         thumbIndexNotes: resolved.thumbIndexNotes,
       };
-      let split = resolved.paragraphNotes || resolved.endnotes || resolved.layoutEndnotes
+      let split = resolved.paragraphNotes || resolved.endnotes || sectionNotes(page.volume)
         ? splitPageNumberOnly(page, { romanFolios: resolved.romanFolios, parenFolios: resolved.parenFolios, pageHeadFolios: resolved.pageHeadFolios })
         : splitPage(page, expectedNote, splitOptions);
       // `footnoteNumbers("period")`: a block opening "8. In all of the above cases" in the body's face is
@@ -293,7 +296,7 @@ export function ingestPageGroups(
 
       // A page of a notes section: its notes are read off the layout, and its body keeps only what
       // is printed above the section's heading, the heading and the preamble.
-      const read = endnotesReader?.page(split, split.body);
+      const read = sectionNotes(split.volume) ? endnotesReader?.page(split, split.body) : undefined;
       if (read) {
         split.body = read.body;
         if (read.heading.length) endnotesHeadings.set(`${split.volume}:${split.pdfIndex}`, read.heading);
@@ -465,7 +468,7 @@ export function ingestPageGroups(
                 : resolved.shiftedPages
                   ? shiftedPageMargin(split.body, margins[resolved.geometry === "per-volume" ? groupIndex : 0])
                   : margins[resolved.geometry === "per-volume" ? groupIndex : 0],
-              resolved.quoteInset,
+              resolved.quoteInsetVolumes && !resolved.quoteInsetVolumes.includes(groupIndex + 1) ? undefined : resolved.quoteInset,
               resolved.numberedParagraphs,
               resolved.allCapsHeadings,
               resolved.chapterContents,
@@ -480,9 +483,10 @@ export function ingestPageGroups(
               resolved.unmarkedHeadings,
               resolved.numberedOutsideTables,
               resolved.recoverListedHeadings,
-              resolved.letteredItems,
+              Boolean(resolved.letteredItems) && split.volume >= (resolved.letteredItemsFrom ?? 1),
               resolved.speakerTurns,
-              resolved.hangingLabels
+              resolved.hangingLabels,
+              resolved.divisionCrossReferences
         );
       const read = (
         resolved.contentsEntries && (entries?.sections.size || isIllustrationList(pageLines))
@@ -659,7 +663,9 @@ export function ingestPageGroups(
     layoutJoins: resolved.layoutPageJoins,
     photoCredits: resolved.photoCredits,
     letteredItems: resolved.letteredItems,
+    letteredItemsFrom: resolved.letteredItemsFrom,
     numberedOpenings: resolved.numberedOpenings,
+    numberedInSequence: resolved.numberedInSequence,
     layout: context.layout,
   });
   const visionReport = hybrid?.report(hybrid.joins(joined));
@@ -681,7 +687,10 @@ export function ingestPageGroups(
   // Rejoin words the typesetter broke at a line end, decided from the
   // document's own vocabulary. Before autoFix, so a repaired word is judged
   // whole rather than as two fragments.
-  const hyphenOptions = resolved.hyphenFragments ? { fragments: wholeWords(sourceText) } : {};
+  const hyphenOptions = {
+    ...(resolved.hyphenFragments ? { fragments: wholeWords(sourceText) } : {}),
+    ...(resolved.hyphenMajority ? { majority: wholeWordCounts(sourceText) } : {}),
+  };
   body = rejoinHyphenated(body, vocabulary(sourceText), hyphenOptions);
 
   const fixed = autoFix(body);
@@ -1000,7 +1009,7 @@ function ingestEdition(
     linkedText: shadow.linkedText,
     footnotes: shadow.footnotes,
   });
-  const assembled = assembleEdition(edition, pages, printed, pass.sources, { floats: pass.floats });
+  const assembled = assembleEdition(edition, pages, printed, pass.sources, { floats: pass.floats, words: pass.words });
   if (filled.length) {
     assembled.report.filled = filled;
     const printedOf = new Map(printed.map((entry) => [`${entry.volume}:${entry.pdfIndex}`, entry.number]));
@@ -1044,7 +1053,12 @@ function ingestEdition(
   return {
     markdown,
     corrections: 0,
-    sourceText: shadow.sourceText,
+    // With `words: "pdf"` the served words are the PDF's, read off the shadow's page text, whose columns are
+    // apart; the raw source text runs a two-column page's lines together, so a word broken at a line end
+    // ("delibera-" / "tions") has the other column's word after it there, and the fidelity check that every
+    // output word is in the source could not join it. The page text is the same source, read in its order (without
+    // the running furniture the shadow took off, which is not served either).
+    sourceText: pass.words === "pdf" ? pages.map((page) => page.lines.join("\n")).join("\n\n") : shadow.sourceText,
     footnotes,
     suspects: assembled.suspects,
     autoFixes: 0,

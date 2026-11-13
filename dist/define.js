@@ -63,6 +63,7 @@ export const KNOWN_PAGE_PASS_NAMES = [
     "citationRunOver",
     "contentsEntries",
     "contentsOutline",
+    "divisionCrossReferences",
     "divisionLabels",
     "doubleSpaced",
     "endnotes",
@@ -81,6 +82,7 @@ export const KNOWN_PAGE_PASS_NAMES = [
     "hangingLabels",
     "holdNoteSequence",
     "hyphenFragments",
+    "hyphenMajority",
     "insetOpenings",
     "layoutEndnotes",
     "layoutMarkers",
@@ -91,6 +93,7 @@ export const KNOWN_PAGE_PASS_NAMES = [
     "listedHeadings",
     "noteFaceRunOver",
     "numberedFindings",
+    "numberedInSequence",
     "numberedOpenings",
     "numberedOutsideTables",
     "numberedParagraphs",
@@ -148,6 +151,7 @@ export function resolvePasses(def) {
             passes.some((pass) => pass.name === "listedHeadings"),
         endnotes: passes.some((pass) => pass.name === "endnotes"),
         layoutEndnotes: passes.some((pass) => pass.name === "layoutEndnotes"),
+        ...layoutEndnotesOf(passes),
         numberedSections: passes.some((pass) => pass.name === "numberedSections"),
         contentsEntries: passes.some((pass) => pass.name === "contentsEntries"),
         shortSubheads: passes.some((pass) => pass.name === "shortSubheads"),
@@ -162,7 +166,9 @@ export function resolvePasses(def) {
         unlistedHeadingsMinor: passes.some((pass) => pass.name === "unlistedHeadingsMinor"),
         hangingIndents: passes.some((pass) => pass.name === "hangingIndents"),
         letteredItems: passes.some((pass) => pass.name === "letteredItems"),
+        letteredItemsFrom: passes.find((pass) => pass.name === "letteredItems")?.fromVolume,
         numberedOpenings: passes.some((pass) => pass.name === "numberedOpenings") && passes.some((pass) => pass.name === "numberedParagraphs"),
+        numberedInSequence: passes.some((pass) => pass.name === "numberedInSequence") && passes.some((pass) => pass.name === "numberedParagraphs"),
         numberedFindings: passes.some((pass) => pass.name === "numberedFindings"),
         doubleSpaced: passes.some((pass) => pass.name === "doubleSpaced"),
         contentsOutline: passes.some((pass) => pass.name === "contentsOutline"),
@@ -184,8 +190,10 @@ export function resolvePasses(def) {
         numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),
         photoCredits: passes.some((pass) => pass.name === "photoCredits"),
         hyphenFragments: passes.some((pass) => pass.name === "hyphenFragments"),
+        hyphenMajority: passes.some((pass) => pass.name === "hyphenMajority"),
         divisionLabels: passes.some((pass) => pass.name === "divisionLabels"),
         speakerTurns: passes.some((pass) => pass.name === "speakerTurns"),
+        divisionCrossReferences: passes.some((pass) => pass.name === "divisionCrossReferences"),
         hangingLabels: passes.find((pass) => pass.name === "hangingLabels") ?? undefined,
         footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
         footnoteRestarts: passes.some((pass) => pass.name === "footnoteRestarts"),
@@ -198,6 +206,7 @@ export function resolvePasses(def) {
         asteriskBreaks: passes.some((pass) => pass.name === "asteriskBreaks"),
         layoutRunOvers: passes.some((pass) => pass.name === "layoutRunOvers"),
         quoteInset: passes.find((pass) => pass.stage === "quoteInset")?.columns,
+        quoteInsetVolumes: passes.find((pass) => pass.stage === "quoteInset")?.volumes,
         allCapsHeadings: passes.find((pass) => pass.stage === "allCapsHeadings")?.enabled ?? true,
         numberedHeadings: passes.find((pass) => pass.stage === "numberedHeadings")?.enabled ?? true,
         bodyPasses: passes.filter((pass) => pass.stage === "body"),
@@ -228,4 +237,8 @@ function layoutMarkersOf(passes) {
             ...(pass.endnoteRanges?.length ? { endnoteRanges: pass.endnoteRanges } : {}),
         }
         : undefined;
+}
+function layoutEndnotesOf(passes) {
+    const pass = passes.find((p) => p.name === "layoutEndnotes");
+    return pass && "options" in pass && pass.options ? { layoutEndnotesOptions: pass.options } : {};
 }

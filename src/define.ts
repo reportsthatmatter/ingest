@@ -9,6 +9,8 @@ import type {
   NumberedHeadingsPass,
   LayoutPageJoinsPass,
   LayoutMarkersPass,
+  LayoutEndnotesPass,
+  LayoutEndnotesOptions,
   EndnoteRange,
   TypographicHeadingsPass,
   FootnoteResetsPass,
@@ -78,12 +80,17 @@ export type ResolvedPasses = {
   layoutMarkers?: { scope: "page" | "document" | "chapter"; textFallback: boolean; scanned?: boolean; endnoteRanges?: ReadonlyArray<EndnoteRange> };
   /** `layoutEndnotes`: notes sections read off the layout, labelled by chapter. */
   layoutEndnotes?: boolean;
+  /** `layoutEndnotes(options)`: which volumes, and how this source sets its notes. */
+  layoutEndnotesOptions?: LayoutEndnotesOptions;
   /** `typographicHeadings`: on, with its options. */
   typographicHeadings?: TypographicHeadingsOptions;
   unlistedHeadingsMinor?: boolean;
   hangingIndents?: boolean;
   letteredItems?: boolean;
+  /** `letteredItems({ fromVolume })`: the first volume it reads lettered items in. */
+  letteredItemsFrom?: number;
   numberedOpenings?: boolean;
+  numberedInSequence?: boolean;
   numberedFindings?: boolean;
   doubleSpaced?: boolean;
   contentsOutline?: boolean;
@@ -113,8 +120,11 @@ export type ResolvedPasses = {
   numberedOutsideTables?: boolean;
   photoCredits?: boolean;
   hyphenFragments?: boolean;
+  hyphenMajority?: boolean;
   divisionLabels?: boolean;
   speakerTurns?: boolean;
+  /** `divisionCrossReferences`: a "Chapter 2: …" line that a sentence runs on into is prose (reportsthatmatter-nshl). */
+  divisionCrossReferences?: boolean;
   /** `hangingLabels`: an item under a short colon label ("Fact:") with its lines hanging in is one paragraph; the report's own labels. */
   hangingLabels?: { labels: readonly string[] };
   footnoteGap?: boolean;
@@ -135,6 +145,8 @@ export type ResolvedPasses = {
   /** `foiaRedactions`: a FOIA release's box labels marked as redactions, its margin labels taken out. */
   foiaRedactions?: boolean;
   quoteInset?: number;
+  /** `quoteInset({ volumes })`: the volumes it applies to; omitted, all. */
+  quoteInsetVolumes?: readonly number[];
   allCapsHeadings: boolean;
   numberedHeadings?: boolean;
   bodyPasses: BodyPass[];
@@ -226,6 +238,7 @@ export const KNOWN_PAGE_PASS_NAMES: readonly string[] = [
   "citationRunOver",
   "contentsEntries",
   "contentsOutline",
+  "divisionCrossReferences",
   "divisionLabels",
   "doubleSpaced",
   "endnotes",
@@ -244,6 +257,7 @@ export const KNOWN_PAGE_PASS_NAMES: readonly string[] = [
   "hangingLabels",
   "holdNoteSequence",
   "hyphenFragments",
+  "hyphenMajority",
   "insetOpenings",
   "layoutEndnotes",
   "layoutMarkers",
@@ -254,6 +268,7 @@ export const KNOWN_PAGE_PASS_NAMES: readonly string[] = [
   "listedHeadings",
   "noteFaceRunOver",
   "numberedFindings",
+  "numberedInSequence",
   "numberedOpenings",
   "numberedOutsideTables",
   "numberedParagraphs",
@@ -318,6 +333,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
       passes.some((pass) => pass.name === "listedHeadings"),
     endnotes: passes.some((pass) => pass.name === "endnotes"),
     layoutEndnotes: passes.some((pass) => pass.name === "layoutEndnotes"),
+    ...layoutEndnotesOf(passes),
     numberedSections: passes.some((pass) => pass.name === "numberedSections"),
     contentsEntries: passes.some((pass) => pass.name === "contentsEntries"),
     shortSubheads: passes.some((pass) => pass.name === "shortSubheads"),
@@ -332,8 +348,11 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     unlistedHeadingsMinor: passes.some((pass) => pass.name === "unlistedHeadingsMinor"),
     hangingIndents: passes.some((pass) => pass.name === "hangingIndents"),
     letteredItems: passes.some((pass) => pass.name === "letteredItems"),
+    letteredItemsFrom: (passes.find((pass) => pass.name === "letteredItems") as { fromVolume?: number } | undefined)?.fromVolume,
     numberedOpenings:
       passes.some((pass) => pass.name === "numberedOpenings") && passes.some((pass) => pass.name === "numberedParagraphs"),
+    numberedInSequence:
+      passes.some((pass) => pass.name === "numberedInSequence") && passes.some((pass) => pass.name === "numberedParagraphs"),
     numberedFindings: passes.some((pass) => pass.name === "numberedFindings"),
     doubleSpaced: passes.some((pass) => pass.name === "doubleSpaced"),
     contentsOutline: passes.some((pass) => pass.name === "contentsOutline"),
@@ -357,8 +376,10 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),
     photoCredits: passes.some((pass) => pass.name === "photoCredits"),
     hyphenFragments: passes.some((pass) => pass.name === "hyphenFragments"),
+    hyphenMajority: passes.some((pass) => pass.name === "hyphenMajority"),
     divisionLabels: passes.some((pass) => pass.name === "divisionLabels"),
     speakerTurns: passes.some((pass) => pass.name === "speakerTurns"),
+    divisionCrossReferences: passes.some((pass) => pass.name === "divisionCrossReferences"),
     hangingLabels: passes.find((pass): pass is HangingLabelsPass => pass.name === "hangingLabels") ?? undefined,
     footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
     footnoteRestarts: passes.some((pass) => pass.name === "footnoteRestarts"),
@@ -373,6 +394,9 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     quoteInset: passes.find(
       (pass): pass is QuoteInsetPass => pass.stage === "quoteInset"
     )?.columns,
+    quoteInsetVolumes: passes.find(
+      (pass): pass is QuoteInsetPass => pass.stage === "quoteInset"
+    )?.volumes,
     allCapsHeadings:
       passes.find(
         (pass): pass is AllCapsHeadingsPass => pass.stage === "allCapsHeadings"
@@ -412,4 +436,9 @@ function layoutMarkersOf(
         ...(pass.endnoteRanges?.length ? { endnoteRanges: pass.endnoteRanges } : {}),
       }
     : undefined;
+}
+
+function layoutEndnotesOf(passes: Pass[]): { layoutEndnotesOptions?: LayoutEndnotesOptions } {
+  const pass = passes.find((p): p is LayoutEndnotesPass => p.name === "layoutEndnotes");
+  return pass && "options" in pass && pass.options ? { layoutEndnotesOptions: pass.options } : {};
 }

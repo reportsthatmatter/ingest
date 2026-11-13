@@ -5,7 +5,7 @@ import { markPrintedNumbers } from "./printed-numbers.js";
 import { strayFolios } from "./folios.js";
 import { extractParagraphNotes } from "./paragraph-notes.js";
 import { applyCorrections } from "./corrections.js";
-import { rejoinHyphenated, vocabulary, wholeWords } from "./hyphens.js";
+import { rejoinHyphenated, vocabulary, wholeWords, wholeWordCounts } from "./hyphens.js";
 import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, spacedContentsBlocks, shortSubheadAt, isIllustrationList, mergeAcrossPages, contentsHeadings, contentsTitles, headingKey, numberedContents, emptyOutline, readContentsOutline, learnOutline, learnUnlabelled, outlineContentsBlocks, divisionContents, bodyIndent, } from "./paragraphs.js";
 import { parseFootnotes, linkInlineMarkers, linkFlushMarkers, renderEndnotes, isNotesChapterHead, parseNotesAppendix, linkFlushMarkersByChapter, } from "./footnotes.js";
 import { noteFaceRunOverCount } from "./note-run-over.js";
@@ -119,7 +119,10 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     let notesStarted = false;
     const notesLines = [];
     // `layoutEndnotes`: notes sections read off the layout, page by page.
-    const endnotesReader = resolved.layoutEndnotes && context.layout ? new LayoutEndnotesReader(context.layout) : undefined;
+    const endnotesReader = resolved.layoutEndnotes && context.layout ? new LayoutEndnotesReader(context.layout, resolved.layoutEndnotesOptions) : undefined;
+    // `layoutEndnotes({ volumes })`: only those volumes print their notes in sections; the others keep page-foot notes.
+    const endnoteVolumes = resolved.layoutEndnotesOptions?.volumes;
+    const sectionNotes = (volume) => resolved.layoutEndnotes === true && (!endnoteVolumes || endnoteVolumes.includes(volume));
     const endnotesHeadings = new Map();
     // `visionStructure`: a note's tail that ran over the page break, by the note it was added to.
     const runOvers = new Map();
@@ -143,7 +146,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
             footnoteNumbers: resolved.footnoteNumbers,
             thumbIndexNotes: resolved.thumbIndexNotes,
         };
-        let split = resolved.paragraphNotes || resolved.endnotes || resolved.layoutEndnotes
+        let split = resolved.paragraphNotes || resolved.endnotes || sectionNotes(page.volume)
             ? splitPageNumberOnly(page, { romanFolios: resolved.romanFolios, parenFolios: resolved.parenFolios, pageHeadFolios: resolved.pageHeadFolios })
             : splitPage(page, expectedNote, splitOptions);
         // `footnoteNumbers("period")`: a block opening "8. In all of the above cases" in the body's face is
@@ -189,7 +192,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         }
         // A page of a notes section: its notes are read off the layout, and its body keeps only what
         // is printed above the section's heading, the heading and the preamble.
-        const read = endnotesReader?.page(split, split.body);
+        const read = sectionNotes(split.volume) ? endnotesReader?.page(split, split.body) : undefined;
         if (read) {
             split.body = read.body;
             if (read.heading.length)
@@ -353,7 +356,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
                     ? pageMargin(split.body, margins[0])
                     : resolved.shiftedPages
                         ? shiftedPageMargin(split.body, margins[resolved.geometry === "per-volume" ? groupIndex : 0])
-                        : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings, resolved.hangingIndents, resolved.unmarkedHeadings, resolved.numberedOutsideTables, resolved.recoverListedHeadings, resolved.letteredItems, resolved.speakerTurns, resolved.hangingLabels);
+                        : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInsetVolumes && !resolved.quoteInsetVolumes.includes(groupIndex + 1) ? undefined : resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings, resolved.hangingIndents, resolved.unmarkedHeadings, resolved.numberedOutsideTables, resolved.recoverListedHeadings, Boolean(resolved.letteredItems) && split.volume >= (resolved.letteredItemsFrom ?? 1), resolved.speakerTurns, resolved.hangingLabels, resolved.divisionCrossReferences);
             const read = (resolved.contentsEntries && (entries?.sections.size || isIllustrationList(pageLines))
                 ? spacedContentsBlocks(pageLines)
                 : isContentsPage(pageLines)
@@ -525,7 +528,9 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         layoutJoins: resolved.layoutPageJoins,
         photoCredits: resolved.photoCredits,
         letteredItems: resolved.letteredItems,
+        letteredItemsFrom: resolved.letteredItemsFrom,
         numberedOpenings: resolved.numberedOpenings,
+        numberedInSequence: resolved.numberedInSequence,
         layout: context.layout,
     });
     const visionReport = hybrid?.report(hybrid.joins(joined));
@@ -541,7 +546,10 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     // Rejoin words the typesetter broke at a line end, decided from the
     // document's own vocabulary. Before autoFix, so a repaired word is judged
     // whole rather than as two fragments.
-    const hyphenOptions = resolved.hyphenFragments ? { fragments: wholeWords(sourceText) } : {};
+    const hyphenOptions = {
+        ...(resolved.hyphenFragments ? { fragments: wholeWords(sourceText) } : {}),
+        ...(resolved.hyphenMajority ? { majority: wholeWordCounts(sourceText) } : {}),
+    };
     body = rejoinHyphenated(body, vocabulary(sourceText), hyphenOptions);
     const fixed = autoFix(body);
     body = fixed.text;
@@ -840,7 +848,7 @@ function ingestEdition(pageGroups, meta, resolved, corrections, context) {
         linkedText: shadow.linkedText,
         footnotes: shadow.footnotes,
     });
-    const assembled = assembleEdition(edition, pages, printed, pass.sources, { floats: pass.floats });
+    const assembled = assembleEdition(edition, pages, printed, pass.sources, { floats: pass.floats, words: pass.words });
     if (filled.length) {
         assembled.report.filled = filled;
         const printedOf = new Map(printed.map((entry) => [`${entry.volume}:${entry.pdfIndex}`, entry.number]));
@@ -884,7 +892,12 @@ function ingestEdition(pageGroups, meta, resolved, corrections, context) {
     return {
         markdown,
         corrections: 0,
-        sourceText: shadow.sourceText,
+        // With `words: "pdf"` the served words are the PDF's, read off the shadow's page text, whose columns are
+        // apart; the raw source text runs a two-column page's lines together, so a word broken at a line end
+        // ("delibera-" / "tions") has the other column's word after it there, and the fidelity check that every
+        // output word is in the source could not join it. The page text is the same source, read in its order (without
+        // the running furniture the shadow took off, which is not served either).
+        sourceText: pass.words === "pdf" ? pages.map((page) => page.lines.join("\n")).join("\n\n") : shadow.sourceText,
         footnotes,
         suspects: assembled.suspects,
         autoFixes: 0,

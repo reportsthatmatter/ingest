@@ -26,7 +26,13 @@ export declare function vocabulary(sourceText: string): Set<string>;
  */
 export declare function rejoinHyphenated(text: string, words: Set<string>, options?: {
     fragments?: Set<string>;
+    majority?: Map<string, number>;
 }): string;
+/**
+ * How often the source writes each word whole (`hyphenMajority`): not counting a line-end break's
+ * head or tail, so a typesetter's "high- rise" is no vote for either spelling.
+ */
+export declare function wholeWordCounts(sourceText: string): Map<string, number>;
 /**
  * Words the source writes whole: not as the head of a line-end break and not as its tail.
  * `vocabulary` counts "indel-" as "indel", so a fragment looks like a word; this does not.

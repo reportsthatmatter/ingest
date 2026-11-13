@@ -743,8 +743,11 @@ const TOC_ENTRY = /[.·]{4,}\s*\d{1,4}\s*$|(?<![.,;:])[ \t]{3,}\d{1,4}\s*$/;
 
 /** Section headings carry the printed page number after the title. */
 function stripTrailingPageNumber(text: string): string {
-  // "ENDNOTES FOR CHAPTER 1" ends on the chapter's number, not a page's.
-  if (/\b(?:part|chapter|appendix|section|volume)\s+\d{1,4}$/i.test(text)) return text.trim();
+  // "ENDNOTES FOR CHAPTER 1" ends on the chapter's number, not a page's; so do the Grenfell Tower
+  // Inquiry's "Floor 14" (Volume 6's chapter titles), "Matters outstanding from Phase 1" (Part 11) and "The escape of fire from Flat 16" (Chapter 110).
+  if (/\b(?:part|chapter|appendix|section|volume|phase|floor|stage|flat)\s+\d{1,4}$/i.test(text)) return text.trim();
+  // A year range ends on a year: "Arconic's testing of ACM panels 1997 to 2006" (reportsthatmatter-gqsy.4.2).
+  if (/\b(?:1[89]|20)\d\d\s*(?:to|and|-|–)\s*(?:1[89]|20)\d\d$/.test(text)) return text.trim();
   return text.replace(/\s+\d{1,4}$/, "").trim();
 }
 
@@ -1457,7 +1460,8 @@ export function toBlocks(
   recoverListedHeadings = false,
   letteredItems = false,
   speakerTurns = false,
-  hangingLabels?: { labels: readonly string[] }
+  hangingLabels?: { labels: readonly string[] },
+  divisionCrossReferences = false
 ): Block[] {
   if (paragraphContents) lines = joinParagraphContents(lines);
   // With `listedHeadings`, a would-be heading the contents does not name is
@@ -1474,6 +1478,16 @@ export function toBlocks(
   const runsOn = (at: number) => {
     for (let j = at - 1; j >= 0; j--) {
       if (lines[j].trim()) return !/[.:;?!"”)\]]$/.test(lines[j].trim());
+    }
+    return false;
+  };
+  // `divisionCrossReferences`: the nearest non-blank line before `at`, on this page, is prose that does not
+  // end a sentence (not itself heading-shaped, so a title wrapped over a division keeps it).
+  const proseRunsOn = (at: number): boolean => {
+    for (let j = at - 1; j >= 0; j--) {
+      const prior = lines[j].trim();
+      if (!prior) continue;
+      return !/[.:;?!"”)\]]$/.test(prior) && !isHeadingLine(prior);
     }
     return false;
   };
@@ -1544,6 +1558,10 @@ export function toBlocks(
     const numberedHere =
       numberedHeadings && !(numberedOutsideTables && at !== undefined && inTable[at]);
     const heading = isHeadingLine(text, allowDivisions, allCapsHeadings, numberedHere);
+    // `divisionCrossReferences`: "Chapter 2: The emergence of Covid-19, in Volume I, a reasonable worst-case"
+    // is a line of prose that names a division, not a division: the line above it runs on into it. A volume's
+    // title ("Volume II: Key themes…", under "Modules 2, 2A, 2B, 2C: …" on its cover) is left alone.
+    if (divisionCrossReferences && heading && at !== undefined && /^(Chapter|Appendix|Annex|Section)\s/.test(text.trim()) && DIVISION_LABEL.test(text.trim()) && proseRunsOn(at)) return null;
     // `recoverListedHeadings`: a caps title that ends in a number ("…RESOLUTION
     // 1483") has the number read as a page number and trimmed, so the heading
     // found no longer matches the contents. Judge the whole line instead.
@@ -2206,12 +2224,19 @@ export type MergeOptions = {
    * above, however the item above ends.
    */
   letteredItems?: boolean;
+  /** `letteredItems({ fromVolume })`: blocks of earlier volumes are merged as if it were not declared. */
+  letteredItemsFrom?: number;
   /**
    * `numberedOpenings` (reportsthatmatter-f951): a block opening on a printed
    * paragraph number ("2.86 RBKC's…") is not joined onto a paragraph ending in
    * an abbreviation or an initial ("…Approved Document B.").
    */
   numberedOpenings?: boolean;
+  /**
+   * `numberedInSequence` (reportsthatmatter-gqsy.4.2): a block opening on another chapter's number
+   * after a sentence left unfinished continues that sentence, on the same page or across one.
+   */
+  numberedInSequence?: boolean;
   /**
    * The `quoteListRunOns` pass (reportsthatmatter-38s.9): a block quotation
    * or list item running over a page arrives as two quotations or two lists.
@@ -2232,6 +2257,13 @@ export type MergeOptions = {
    */
   layoutJoins?: PageBreakOptions;
 };
+
+/** `letteredItems` is in force for this block (`fromVolume`: only from that volume on). */
+function letteredOn(options: MergeOptions, block: Block): boolean {
+  if (!options.letteredItems) return false;
+  const volume = (block as { at?: { volume?: number } }).at?.volume ?? 1;
+  return volume >= (options.letteredItemsFrom ?? 1);
+}
 
 /** An item's own letter: "b." or "(c)" or "iv.", then its text. */
 const ITEM_LABEL = /^\(?(?:[a-z]|[ivx]{1,4})[.)]\s+\S/;
@@ -2459,7 +2491,7 @@ export function mergeAcrossPages(blocks: Block[], options: MergeOptions = {}): B
           (!heading &&
             // A chart's label after a caption is not the paragraph's rest (Columbia).
             words(block.text) > CHART_LABEL_WORDS &&
-            !(options.letteredItems && ITEM_LABEL.test(block.text)) &&
+            !(letteredOn(options, block) && ITEM_LABEL.test(block.text)) &&
             layoutJoins(options.layout, target.text, block.text, block.at, options.layoutJoins))
         ) {
           // A word the page cut, as `mergeAcrossPages` closes it up at a page
@@ -2657,6 +2689,26 @@ export function mergeAcrossPages(blocks: Block[], options: MergeOptions = {}): B
       }
     }
 
+    // `numberedInSequence`: "…at about" / "02.05 she said…", a time or a clause reference wrapped to
+    // the head of a line, read as a paragraph number of a chapter the text is not in.
+    if (
+      options.numberedInSequence &&
+      block.kind === "paragraph" &&
+      block.finding === undefined &&
+      previous?.kind === "paragraph" &&
+      !endsSentence(previous.text) &&
+      /^\d{1,3}[.)]\d{1,3}\s/.test(block.text) &&
+      // A chapter's first paragraph ("1.1 An Inquiry…") after a heading read as prose is a paragraph.
+      !/^\d{1,3}[.)]1\s/.test(block.text)
+    ) {
+      const chapter = String(Number(block.text.match(/^(\d{1,3})/)![1]));
+      const current = lastNumberedChapter(merged);
+      if (current !== undefined && String(Number(current)) !== chapter) {
+        previous.text = `${previous.text} ${block.text}`;
+        continue;
+      }
+    }
+
     if (
       block.kind === "paragraph" &&
       block.finding === undefined &&
@@ -2664,7 +2716,7 @@ export function mergeAcrossPages(blocks: Block[], options: MergeOptions = {}): B
       !endsSentence(previous.text) &&
       // A lowercase opening is the usual sign of a continuation. After an
       // abbreviation the next word is often a name, so allow either.
-      !(options.letteredItems && ITEM_LABEL.test(block.text)) &&
+      !(letteredOn(options, block) && ITEM_LABEL.test(block.text)) &&
       !(options.numberedOpenings && NUMBERED_OPENING.test(block.text)) &&
       (/^[a-z,;]/.test(block.text) ||
         ABBREVIATION.test(previous.text) ||
@@ -2686,7 +2738,7 @@ export function mergeAcrossPages(blocks: Block[], options: MergeOptions = {}): B
       acrossPages &&
       block.at !== undefined &&
       opensPage(blocks, index) &&
-      !(options.letteredItems && ITEM_LABEL.test(block.text)) &&
+      !(letteredOn(options, block) && ITEM_LABEL.test(block.text)) &&
       layoutJoins(options.layout, previous.text, block.text, block.at, options.layoutJoins)
     ) {
       previous.text = `${previous.text} ${block.text}`;
@@ -2708,7 +2760,7 @@ export function mergeAcrossPages(blocks: Block[], options: MergeOptions = {}): B
       previous.at !== undefined &&
       previous.at.pdfIndex !== block.at.pdfIndex &&
       opensPage(blocks, index) &&
-      !(options.letteredItems && ITEM_LABEL.test(block.text)) &&
+      !(letteredOn(options, block) && ITEM_LABEL.test(block.text)) &&
       isOffFaceBlock(options.layout, previous.text, previous.at)
     ) {
       let target = (markerIndex === -1 ? merged.length : markerIndex) - 2;

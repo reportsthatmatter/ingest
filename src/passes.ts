@@ -84,6 +84,8 @@ export type QuoteInsetPass = {
   readonly name: "quoteInset";
   readonly stage: "quoteInset";
   readonly columns: number;
+  /** Only these volumes (1-based); the others keep the default. Omitted: every volume. */
+  readonly volumes?: readonly number[];
 };
 
 /** Declares whether a standalone all-caps line may be read as a heading. */
@@ -156,6 +158,7 @@ export type Pass =
   | TypographicHeadingsPass
   | NumberedHeadingsPass
   | LayoutMarkersPass
+  | LayoutEndnotesPass
   | PageBreakContinuationsPass
   | LayoutPageJoinsPass
   | PagePass
@@ -399,7 +402,19 @@ export const hangingIndents = (): PagePass => ({ name: "hangingIndents", stage: 
  * lettered line followed by indented lines is also a table row or a
  * quotation's heading in another document.
  */
-export const letteredItems = (): PagePass => ({ name: "letteredItems", stage: "page" });
+export const letteredItems = (options: LetteredItemsOptions = {}): LetteredItemsPass => ({
+  name: "letteredItems",
+  stage: "page",
+  ...(options.fromVolume ? { fromVolume: options.fromVolume } : {}),
+});
+
+/**
+ * `fromVolume` (reportsthatmatter-gqsy.4.2): read lettered items only from that volume on, so a further
+ * volume can declare it without moving the ids of the volumes already published (the Grenfell Tower
+ * Inquiry's Volume 1 went live without it; its Volumes 2-7 set 100-odd items this way).
+ */
+export type LetteredItemsOptions = { fromVolume?: number };
+export type LetteredItemsPass = { readonly name: "letteredItems"; readonly stage: "page"; readonly fromVolume?: number };
 
 /**
  * Reads an item set under a short label of capitalised words and a colon, with
@@ -465,6 +480,20 @@ export const insetOpenings = (): PagePass => ({ name: "insetOpenings", stage: "p
 export const numberedOpenings = (): PagePass => ({ name: "numberedOpenings", stage: "page" });
 
 /**
+ * A line that opens on another chapter's number, after a sentence left unfinished, carries the sentence
+ * on, on the same page as across one (reportsthatmatter-gqsy.4.2). `numberedParagraphs` reads any line
+ * opening "N.N " as a paragraph's own number, and in a report whose paragraphs run "97.107", "97.108" a
+ * time of day or a clause reference wrapped to the head of a line is not one: "…at about" / "02.05 she
+ * said that she had lost her friend…" (Grenfell Vol 6 p.209, inside 97.108), "…in accordance with
+ * paragraph" / "12.7 of Approved Document B…" (Vol 2, inside 22.105); 19 sentences severed across
+ * Volumes 2-7, two of them as ids that Volume 1 already holds. Joined only when the number's chapter is
+ * not the chapter of the last numbered paragraph and the paragraph above stops mid-sentence; a quoted
+ * standard's own numbering inside its chapter ("5.55 The visual observations…", Vol 1) stays as it was.
+ * Opt-in; only with `numberedParagraphs`.
+ */
+export const numberedInSequence = (): PagePass => ({ name: "numberedInSequence", stage: "page" });
+
+/**
  * This report's notes are endnotes: printed together at the back, never at a
  * page foot, so no page is searched for a footnote block (reportsthatmatter-vpx).
  *
@@ -499,7 +528,41 @@ export const endnotes = (): PagePass => ({ name: "endnotes", stage: "page" });
  * Opt-in: it reads `context.layout`, and only a report whose notes sit in
  * such sections has them.
  */
-export const layoutEndnotes = (): PagePass => ({ name: "layoutEndnotes", stage: "page" });
+export const layoutEndnotes = (options: LayoutEndnotesOptions = {}): LayoutEndnotesPass => {
+  for (const v of options.volumes ?? []) if (!(Number.isInteger(v) && v >= 1)) throw new Error(`layoutEndnotes: volume ${v} is not a 1-based volume number`);
+  const set = Object.fromEntries(Object.entries(options).filter(([, v]) => v !== undefined && v !== false));
+  return Object.keys(set).length ? { name: "layoutEndnotes", stage: "page", options: { ...set } } : { name: "layoutEndnotes", stage: "page" };
+};
+
+/**
+ * `layoutEndnotes` options, each for a property of the source (all off by default). The Thirlwall Inquiry's
+ * three volumes (reportsthatmatter-gqsy.16.7) print each chapter's notes after it under a bare "Endnotes"
+ * sub-heading, numbered from 1 in the body's own face, while its Summary report, an earlier volume of the same
+ * report, sets its one note at a page foot.
+ */
+export type LayoutEndnotesOptions = {
+  /** The volumes (1-based) whose notes are printed in sections; every other volume keeps its page-foot notes. Default: all. */
+  readonly volumes?: ReadonlyArray<number>;
+  /**
+   * A note opens on a number set in the notes' own size at the section's note margin, not raised (Thirlwall
+   * Vol I p.17: "1  Countess of Chester Hospital ..."). A lone small number is then not read as a note's number
+   * (the folio is one).
+   */
+  readonly unraised?: boolean;
+  /**
+   * A section whose heading names no chapter ("Endnotes") holds the notes of the chapter printed before it: the
+   * body's markers from the end of the previous section (or the volume's start) up to its heading cite them.
+   */
+  readonly precedingChapter?: boolean;
+  /**
+   * The notes' face is matched on family without weight: a note set wholly as a link, semibold in the link colour
+   * (Thirlwall Vol I p.36), is still a note.
+   */
+  readonly anyWeight?: boolean;
+};
+
+/** `layoutEndnotes`, with its options. */
+export type LayoutEndnotesPass = { readonly name: "layoutEndnotes"; readonly stage: "page"; readonly options?: LayoutEndnotesOptions };
 
 /**
  * A footnote's run-over may be several ordinary-looking paragraphs, not one
@@ -1339,11 +1402,18 @@ export const figureFaces = (families: string[]): BodyPass => {
  *
  * It is a fact about the document's typography, which is exactly the kind of
  * thing a report declares rather than the parser guesses.
+ *
+ * `volumes` scopes it to some volumes of a multi-volume report, the others keeping the default
+ * (reportsthatmatter-nshl): the UK Covid-19 Inquiry's Module 2 Volume II sets each quotation's opening
+ * mark in the margin, four columns past a page whose unnumbered paragraphs set the margin (vol. 2 PDF
+ * p.94), so every quotation's first line read as a paragraph and the rest as the quotation; Volume I,
+ * already published, keeps its reading and its paragraph ids.
  */
-export const quoteInset = (columns: number): QuoteInsetPass => ({
+export const quoteInset = (columns: number, options: { volumes?: readonly number[] } = {}): QuoteInsetPass => ({
   name: "quoteInset",
   stage: "quoteInset",
   columns,
+  ...(options.volumes ? { volumes: options.volumes } : {}),
 });
 
 /**
@@ -1446,6 +1516,17 @@ export const strandedMarkers = (): BodyPass => ({
 export const hyphenFragments = (): PagePass => ({ name: "hyphenFragments", stage: "page" });
 
 /**
+ * A line-end hyphen whose two readings the document both writes whole takes the one it writes more
+ * often (reportsthatmatter-gqsy.4.2). By default such a break closes up: the Grenfell Tower Inquiry's
+ * seven volumes print "high-rise" about 400 times and "highrise" once (Volume 3, PDF p.73), so every
+ * "high- rise" at a line end became "highrise", 13 of them, and four in Volume 1 changed when the other
+ * volumes were added. A tie keeps the default.
+ *
+ * Opt-in: a report whose volumes spell a compound both ways declares it.
+ */
+export const hyphenMajority = (): PagePass => ({ name: "hyphenMajority", stage: "page" });
+
+/**
  * A line that is only a division label, "Findings", "Recommendations:", "Issue 3", is a level-4 heading
  * (reportsthatmatter-liv). The committees that wrote Challenger and Columbia set one over each run of
  * findings and recommendations; left as paragraphs, each took a paragraph id of its own and counted as
@@ -1465,3 +1546,15 @@ export const divisionLabels = (): PagePass => ({ name: "divisionLabels", stage: 
  * Opt-in: a line that opens "Label: “" is also a heading's lead-in or a quotation's attribution elsewhere.
  */
 export const speakerTurns = (): PagePass => ({ name: "speakerTurns", stage: "page" });
+/**
+ * A line that opens with a division's label but continues a sentence is a cross-reference, not a division
+ * (reportsthatmatter-nshl). The UK Covid-19 Inquiry's Module 2 Volume II names chapters of both volumes in
+ * running text, and where the line breaks before the name, "Chapter 2: The emergence of Covid-19, in Volume I,
+ * a reasonable worst-case" (PDF vol. 2 p.48) or "Appendix 1: The background to this module and the Inquiry's
+ * methodology, in this" (after "child health inequalities (see", p.94), the line read as a division heading:
+ * the second filed the rest of Chapter 10 under a top-level "Appendix 1" section. With this pass such a line
+ * is a heading only when the nearest line above it on the page ends a sentence or is itself heading-shaped.
+ * Chapters, appendices, annexes and sections only: a volume title under a run-on cover line stays.
+ * Opt-in: a report that sets a division title straight under a run-on line (none known) would lose it.
+ */
+export const divisionCrossReferences = (): PagePass => ({ name: "divisionCrossReferences", stage: "page" });

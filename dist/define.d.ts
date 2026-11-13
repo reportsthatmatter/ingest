@@ -1,4 +1,4 @@
-import type { Pass, VolumePass, BodyPass, SourcePass, EndnoteRange, FootnoteReset } from "./passes.js";
+import type { Pass, VolumePass, BodyPass, SourcePass, LayoutEndnotesOptions, EndnoteRange, FootnoteReset } from "./passes.js";
 import type { PageHeadFolio } from "./clean.js";
 import type { PageBreakOptions } from "./pagebreaks.js";
 import type { EditionPass } from "./edition.js";
@@ -66,12 +66,17 @@ export type ResolvedPasses = {
     };
     /** `layoutEndnotes`: notes sections read off the layout, labelled by chapter. */
     layoutEndnotes?: boolean;
+    /** `layoutEndnotes(options)`: which volumes, and how this source sets its notes. */
+    layoutEndnotesOptions?: LayoutEndnotesOptions;
     /** `typographicHeadings`: on, with its options. */
     typographicHeadings?: TypographicHeadingsOptions;
     unlistedHeadingsMinor?: boolean;
     hangingIndents?: boolean;
     letteredItems?: boolean;
+    /** `letteredItems({ fromVolume })`: the first volume it reads lettered items in. */
+    letteredItemsFrom?: number;
     numberedOpenings?: boolean;
+    numberedInSequence?: boolean;
     numberedFindings?: boolean;
     doubleSpaced?: boolean;
     contentsOutline?: boolean;
@@ -101,8 +106,11 @@ export type ResolvedPasses = {
     numberedOutsideTables?: boolean;
     photoCredits?: boolean;
     hyphenFragments?: boolean;
+    hyphenMajority?: boolean;
     divisionLabels?: boolean;
     speakerTurns?: boolean;
+    /** `divisionCrossReferences`: a "Chapter 2: …" line that a sentence runs on into is prose (reportsthatmatter-nshl). */
+    divisionCrossReferences?: boolean;
     /** `hangingLabels`: an item under a short colon label ("Fact:") with its lines hanging in is one paragraph; the report's own labels. */
     hangingLabels?: {
         labels: readonly string[];
@@ -125,6 +133,8 @@ export type ResolvedPasses = {
     /** `foiaRedactions`: a FOIA release's box labels marked as redactions, its margin labels taken out. */
     foiaRedactions?: boolean;
     quoteInset?: number;
+    /** `quoteInset({ volumes })`: the volumes it applies to; omitted, all. */
+    quoteInsetVolumes?: readonly number[];
     allCapsHeadings: boolean;
     numberedHeadings?: boolean;
     bodyPasses: BodyPass[];
