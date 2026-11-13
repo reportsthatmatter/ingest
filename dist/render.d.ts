@@ -32,21 +32,23 @@ export type RenderedArtifacts = {
     fragments: Record<string, string>;
 };
 /**
- * A paragraph id already published, and where: the section it was served in and its text's
- * `paragraphFingerprint`. See `renderArtifacts`' `reserved` option.
+ * A paragraph id already published, and where: the section it was served in, `paragraphFingerprint`
+ * of its text and of the next citable passage's text (`next`, "" for the last). See
+ * `renderArtifacts`' `reserved` option.
  */
 export type ReservedId = {
     id: string;
     section: string;
     fingerprint?: string;
+    next?: string;
 };
 export type RenderOptions = {
     /**
      * Published ids, highest priority first (oldest first: the meaning a link was made with). Each
-     * keeps the paragraph it named when that paragraph is still in the same section, so a new
-     * paragraph whose text asks for the same id (a repeated "Key Messages", a second reference to
-     * the same author and year) is suffixed instead of taking it (reportsthatmatter-efso, site
-     * decision 0012). A reservation whose paragraph cannot be found constrains nothing.
+     * keeps the paragraph it named when that paragraph can still be found, so a new paragraph whose
+     * text asks for the same id (a repeated "Key Messages", a second reference to the same author
+     * and year) is suffixed instead of taking it (reportsthatmatter-efso, site decision 0012). A
+     * reservation whose paragraph cannot be found constrains nothing.
      */
     reserved?: readonly ReservedId[];
 };
@@ -57,9 +59,18 @@ export declare function paragraphFingerprint(text: string): string;
  * every matched reservation its own paragraph, so a report whose ids never moved renders exactly
  * as without reservations.
  *
- * Each reservation is matched, in priority order, to a unit in the same section whose text asks
- * for that id's family (`base`, `base-N`): first one with the same text fingerprint, then (a
- * paragraph corrected since) the first left in that section.
+ * A reservation can only go to a unit whose text asks for that id's family (`base`, `base-N`).
+ * Three tiers, each run over every reservation in priority order before the next:
+ * 1. the same text followed by the same next passage, anywhere (a chapter split out of its Part
+ *    keeps its ids; where several units qualify, those in the same section, then the first);
+ * 2. the same text in the same section;
+ * 3. the first unit left in the same section (a paragraph corrected since).
+ *
+ * `blocked`: reservations that lost their paragraph to an older one (it matched tier 1 or 2 but
+ * was claimed first). No other paragraph may take them: an id never changes meaning twice.
  */
-export declare function reservedAssignments(units: readonly IdUnit[], sections: readonly Section[], reserved: readonly ReservedId[]): Map<number, string>;
+export declare function reservedAssignments(units: readonly IdUnit[], sections: readonly Section[], reserved: readonly ReservedId[]): {
+    forced: Map<number, string>;
+    blocked: Set<string>;
+};
 export declare function renderArtifacts(markdown: string, options?: RenderOptions): RenderedArtifacts;

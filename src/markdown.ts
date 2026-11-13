@@ -335,10 +335,14 @@ export type IdUnit = { id: string; base: string };
 /**
  * `renderMarkdown`, also returning every citable unit in reading order. `forced` gives the unit at
  * a reading-order index a fixed id (reserved ids, reportsthatmatter-efso, see `renderArtifacts`);
- * every forced id is taken before the pass starts, so an unforced unit can never take one and is
- * suffixed past it instead.
+ * every forced id, and every `blocked` one, is taken before the pass starts, so an unforced unit
+ * can never take one and is suffixed past it instead.
  */
-export function renderMarkdownUnits(markdown: string, forced?: ReadonlyMap<number, string>): { html: string; units: IdUnit[] } {
+export function renderMarkdownUnits(
+  markdown: string,
+  forced?: ReadonlyMap<number, string>,
+  blocked?: ReadonlySet<string>
+): { html: string; units: IdUnit[] } {
   const units: IdUnit[] = [];
   const { content } = splitFrontMatter(markdown);
 
@@ -347,7 +351,7 @@ export function renderMarkdownUnits(markdown: string, forced?: ReadonlyMap<numbe
 
   md.core.ruler.push("rtm_anchors", (state) => {
     const tokens = state.tokens;
-    const taken = new Set<string>(forced?.values() ?? []);
+    const taken = new Set<string>([...(forced?.values() ?? []), ...(blocked ?? [])]);
     let page: string | null = null;
     // The id for the next citable unit: its forced id, else its text's, suffixed past every id taken.
     const unitId = (text: string): string => {

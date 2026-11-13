@@ -329,17 +329,17 @@ export function renderMarkdown(markdown) {
 /**
  * `renderMarkdown`, also returning every citable unit in reading order. `forced` gives the unit at
  * a reading-order index a fixed id (reserved ids, reportsthatmatter-efso, see `renderArtifacts`);
- * every forced id is taken before the pass starts, so an unforced unit can never take one and is
- * suffixed past it instead.
+ * every forced id, and every `blocked` one, is taken before the pass starts, so an unforced unit
+ * can never take one and is suffixed past it instead.
  */
-export function renderMarkdownUnits(markdown, forced) {
+export function renderMarkdownUnits(markdown, forced, blocked) {
     const units = [];
     const { content } = splitFrontMatter(markdown);
     const md = new MarkdownIt({ html: false, linkify: true, typographer: false });
     configureLinkify(md);
     md.core.ruler.push("rtm_anchors", (state) => {
         const tokens = state.tokens;
-        const taken = new Set(forced?.values() ?? []);
+        const taken = new Set([...(forced?.values() ?? []), ...(blocked ?? [])]);
         let page = null;
         // The id for the next citable unit: its forced id, else its text's, suffixed past every id taken.
         const unitId = (text) => {

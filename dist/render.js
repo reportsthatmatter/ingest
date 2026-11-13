@@ -39,9 +39,15 @@ function familiesOf(id) {
  * every matched reservation its own paragraph, so a report whose ids never moved renders exactly
  * as without reservations.
  *
- * Each reservation is matched, in priority order, to a unit in the same section whose text asks
- * for that id's family (`base`, `base-N`): first one with the same text fingerprint, then (a
- * paragraph corrected since) the first left in that section.
+ * A reservation can only go to a unit whose text asks for that id's family (`base`, `base-N`).
+ * Three tiers, each run over every reservation in priority order before the next:
+ * 1. the same text followed by the same next passage, anywhere (a chapter split out of its Part
+ *    keeps its ids; where several units qualify, those in the same section, then the first);
+ * 2. the same text in the same section;
+ * 3. the first unit left in the same section (a paragraph corrected since).
+ *
+ * `blocked`: reservations that lost their paragraph to an older one (it matched tier 1 or 2 but
+ * was claimed first). No other paragraph may take them: an id never changes meaning twice.
  */
 export function reservedAssignments(units, sections, reserved) {
     const sectionOf = paragraphIndex(sections);
@@ -51,43 +57,65 @@ export function reservedAssignments(units, sections, reserved) {
             textOf.set(p.paragraphId, p.text);
     const byFamily = new Map();
     units.forEach((u, k) => byFamily.set(u.base, [...(byFamily.get(u.base) ?? []), k]));
-    const fingerprints = new Map();
-    const fingerprintOf = (k) => {
-        if (!fingerprints.has(k)) {
-            const text = textOf.get(units[k].id);
-            fingerprints.set(k, text === undefined ? "" : paragraphFingerprint(text));
-        }
-        return fingerprints.get(k);
-    };
+    // Each unit's fingerprint and the next passage's, over the units that are passages (have text), as a record is made.
+    const fp = units.map((u) => {
+        const text = textOf.get(u.id);
+        return text === undefined ? undefined : paragraphFingerprint(text);
+    });
+    const nextFp = new Array(units.length).fill("");
+    let following = "";
+    for (let k = units.length - 1; k >= 0; k--) {
+        nextFp[k] = following;
+        if (fp[k] !== undefined)
+            following = fp[k];
+    }
     const claimed = new Map();
     const placed = new Set();
-    const candidates = (r) => familiesOf(r.id)
+    const family = (r) => familiesOf(r.id)
         .flatMap((f) => byFamily.get(f) ?? [])
-        .filter((k) => (!claimed.has(k) && sectionOf[units[k].id] === r.section))
+        .filter((k) => !claimed.has(k))
         .sort((a, b) => a - b);
-    for (const exact of [true, false]) {
+    const tiers = [
+        (r, ks) => {
+            if (r.fingerprint === undefined || r.next === undefined)
+                return undefined;
+            const hits = ks.filter((k) => fp[k] === r.fingerprint && nextFp[k] === r.next);
+            return hits.find((k) => sectionOf[units[k].id] === r.section) ?? hits[0];
+        },
+        (r, ks) => (r.fingerprint === undefined ? undefined : ks.find((k) => sectionOf[units[k].id] === r.section && fp[k] === r.fingerprint)),
+        (r, ks) => ks.find((k) => sectionOf[units[k].id] === r.section),
+    ];
+    for (const tier of tiers) {
         for (const r of reserved) {
             if (placed.has(r.id))
                 continue;
-            const k = candidates(r).find((k) => !exact || (r.fingerprint !== undefined && fingerprintOf(k) === r.fingerprint));
+            const k = tier(r, family(r));
             if (k === undefined)
                 continue;
             claimed.set(k, r.id);
             placed.add(r.id);
         }
     }
-    for (const [k, id] of claimed)
-        if (units[k].id !== id)
-            return claimed;
-    return new Map();
+    const blocked = new Set();
+    for (const r of reserved) {
+        if (placed.has(r.id) || r.fingerprint === undefined)
+            continue;
+        const lost = familiesOf(r.id)
+            .flatMap((f) => byFamily.get(f) ?? [])
+            .some((k) => claimed.has(k) && fp[k] === r.fingerprint && (nextFp[k] === r.next || sectionOf[units[k].id] === r.section));
+        if (lost)
+            blocked.add(r.id);
+    }
+    const moved = [...claimed].some(([k, id]) => units[k].id !== id) || units.some((u, k) => !claimed.has(k) && blocked.has(u.id));
+    return moved ? { forced: claimed, blocked } : { forced: new Map(), blocked: new Set() };
 }
 export function renderArtifacts(markdown, options = {}) {
     let { html, units } = renderMarkdownUnits(markdown);
     let sections = splitSections(html);
     if (options.reserved?.length) {
-        const forced = reservedAssignments(units, sections, options.reserved);
+        const { forced, blocked } = reservedAssignments(units, sections, options.reserved);
         if (forced.size) {
-            ({ html } = renderMarkdownUnits(markdown, forced));
+            ({ html } = renderMarkdownUnits(markdown, forced, blocked));
             sections = splitSections(html);
         }
     }

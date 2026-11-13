@@ -10,8 +10,11 @@ const chapter = (n: number, body: string) => `## Chapter ${n}\n\n${body}\n\n${fi
 const doc = (...chapters: string[]) => chapters.join("\n\n") + "\n";
 
 /** What publishing `r` records: every passage's id, section and fingerprint, in reading order. */
-const record = (r: RenderedArtifacts): ReservedId[] =>
-  r.meta.sections.flatMap((s) => extractPassages(r.fragments[s.slug]).map((p) => ({ id: p.paragraphId, section: s.slug, fingerprint: paragraphFingerprint(p.text) })));
+const record = (r: RenderedArtifacts): ReservedId[] => {
+  const out = r.meta.sections.flatMap((s) => extractPassages(r.fragments[s.slug]).map((p) => ({ id: p.paragraphId, section: s.slug, fingerprint: paragraphFingerprint(p.text), next: "" })));
+  out.forEach((e, i) => (e.next = out[i + 1]?.fingerprint ?? ""));
+  return out;
+};
 
 /** id -> [section, text] */
 const where = (r: RenderedArtifacts) =>
@@ -76,10 +79,40 @@ describe("reserved ids (efso)", () => {
     expect(w["key-messages-climate-change-costs-3"][0]).toBe("chapter-1");
   });
 
-  it("gives a contested paragraph to the first reservation; a later one constrains nothing", () => {
+  it("gives a contested paragraph to the first reservation and retires the later one", () => {
+    // key-messages-2 was published (later) for the chapter 2 paragraph that key-messages first named: it is not reused.
     const next = doc(chapter(1, "Key Messages"), chapter(2, "Key Messages"));
     const fp = paragraphFingerprint("Key Messages");
-    const w = where(renderArtifacts(next, { reserved: [{ id: "key-messages", section: "chapter-2", fingerprint: fp }, { id: "key-messages-5", section: "chapter-2", fingerprint: fp }] }));
+    const reserved = [
+      { id: "key-messages", section: "chapter-2", fingerprint: fp },
+      { id: "key-messages-2", section: "chapter-2", fingerprint: fp },
+    ];
+    const w = where(renderArtifacts(next, { reserved }));
+    expect(w["key-messages"][0]).toBe("chapter-2");
+    expect(w["key-messages-2"]).toBeUndefined();
+    expect(w["key-messages-3"][0]).toBe("chapter-1");
+  });
+
+  it("does not retire an id whose own paragraph was merely corrected or removed", () => {
+    const next = doc(chapter(1, "Key Messages"), chapter(2, "Key Messages"));
+    const reserved = [{ id: "key-messages-2", section: "chapter-9", fingerprint: paragraphFingerprint("Key Messages: gone") }];
+    expect(renderArtifacts(next, { reserved })).toEqual(renderArtifacts(next));
+  });
+
+  it("finds a paragraph whose section was re-split, by its text and the passage after it", () => {
+    // As if chapter 6 had been served inside a Part section that no longer holds it (reportsthatmatter-owre).
+    const moved = record(published).map((e) => (e.section === "chapter-6" ? { ...e, section: "part-ii" } : e));
+    const w = where(renderArtifacts(doc(chapter(1, "Key Messages"), chapter(2, "Key Messages"), chapter(6, "Key Messages")), { reserved: moved }));
+    expect(w["key-messages"][0]).toBe("chapter-2");
+    expect(w["key-messages-2"][0]).toBe("chapter-6");
+    expect(w["key-messages-3"][0]).toBe("chapter-1");
+  });
+
+  it("does not use the text-and-next match when the old id's own section still has its paragraph", () => {
+    // Identical openings and identical following text in two chapters: the section decides.
+    const same = "Key Messages\n\nThe same boilerplate follows.";
+    const old = renderArtifacts(doc(chapter(2, same)));
+    const w = where(renderArtifacts(doc(chapter(1, same), chapter(2, same)), { reserved: record(old) }));
     expect(w["key-messages"][0]).toBe("chapter-2");
     expect(w["key-messages-2"][0]).toBe("chapter-1");
   });

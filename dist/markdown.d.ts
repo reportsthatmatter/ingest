@@ -60,10 +60,10 @@ export type IdUnit = {
 /**
  * `renderMarkdown`, also returning every citable unit in reading order. `forced` gives the unit at
  * a reading-order index a fixed id (reserved ids, reportsthatmatter-efso, see `renderArtifacts`);
- * every forced id is taken before the pass starts, so an unforced unit can never take one and is
- * suffixed past it instead.
+ * every forced id, and every `blocked` one, is taken before the pass starts, so an unforced unit
+ * can never take one and is suffixed past it instead.
  */
-export declare function renderMarkdownUnits(markdown: string, forced?: ReadonlyMap<number, string>): {
+export declare function renderMarkdownUnits(markdown: string, forced?: ReadonlyMap<number, string>, blocked?: ReadonlySet<string>): {
     html: string;
     units: IdUnit[];
 };
