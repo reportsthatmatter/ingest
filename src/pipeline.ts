@@ -7,7 +7,7 @@ import { extractParagraphNotes } from "./paragraph-notes";
 import type { ResolvedPasses } from "./define";
 import type { EndnoteRange } from "./passes";
 import { applyCorrections, type Correction } from "./corrections";
-import { rejoinHyphenated, vocabulary, wholeWords } from "./hyphens";
+import { rejoinHyphenated, vocabulary, wholeWords, wholeWordCounts } from "./hyphens";
 import {
   toBlocks,
   blocksToMarkdown,
@@ -483,7 +483,7 @@ export function ingestPageGroups(
               resolved.unmarkedHeadings,
               resolved.numberedOutsideTables,
               resolved.recoverListedHeadings,
-              resolved.letteredItems,
+              Boolean(resolved.letteredItems) && split.volume >= (resolved.letteredItemsFrom ?? 1),
               resolved.speakerTurns,
               resolved.hangingLabels,
               resolved.divisionCrossReferences
@@ -663,7 +663,9 @@ export function ingestPageGroups(
     layoutJoins: resolved.layoutPageJoins,
     photoCredits: resolved.photoCredits,
     letteredItems: resolved.letteredItems,
+    letteredItemsFrom: resolved.letteredItemsFrom,
     numberedOpenings: resolved.numberedOpenings,
+    numberedInSequence: resolved.numberedInSequence,
     layout: context.layout,
   });
   const visionReport = hybrid?.report(hybrid.joins(joined));
@@ -685,7 +687,10 @@ export function ingestPageGroups(
   // Rejoin words the typesetter broke at a line end, decided from the
   // document's own vocabulary. Before autoFix, so a repaired word is judged
   // whole rather than as two fragments.
-  const hyphenOptions = resolved.hyphenFragments ? { fragments: wholeWords(sourceText) } : {};
+  const hyphenOptions = {
+    ...(resolved.hyphenFragments ? { fragments: wholeWords(sourceText) } : {}),
+    ...(resolved.hyphenMajority ? { majority: wholeWordCounts(sourceText) } : {}),
+  };
   body = rejoinHyphenated(body, vocabulary(sourceText), hyphenOptions);
 
   const fixed = autoFix(body);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rejoinHyphenated, vocabulary, wholeWords } from "../src/hyphens";
+import { rejoinHyphenated, vocabulary, wholeWords, wholeWordCounts } from "../src/hyphens";
 
 const words = (source: string) => vocabulary(source);
 
@@ -72,5 +72,24 @@ describe("rejoinHyphenated with hyphenFragments", () => {
 
   it("does nothing without the option", () => {
     expect(rejoinHyphenated("an indel- ible mark", v)).toBe("an indel- ible mark");
+  });
+});
+
+describe("rejoinHyphenated with hyphenMajority", () => {
+  const source = "high-rise blocks, high-rise towers, high-rise flats and one highrise block";
+  it("keeps the hyphen when the document writes the hyphenated form more often", () => {
+    expect(rejoinHyphenated("on high- rise buildings", words(source), { majority: wholeWordCounts(source) })).toBe("on high-rise buildings");
+  });
+  it("closes up as before without the option", () => {
+    expect(rejoinHyphenated("on high- rise buildings", words(source))).toBe("on highrise buildings");
+  });
+  it("closes up when the joined form is the more common or the counts tie", () => {
+    const tie = "co-operation and cooperation";
+    expect(rejoinHyphenated("full co- operation", words(tie), { majority: wholeWordCounts(tie) })).toBe("full cooperation");
+    const joined = "cooperation, cooperation and co-operation";
+    expect(rejoinHyphenated("full co- operation", words(joined), { majority: wholeWordCounts(joined) })).toBe("full cooperation");
+  });
+  it("does not count a line-end break as a vote", () => {
+    expect(wholeWordCounts("high- rise and high-rise").get("high-rise")).toBe(1);
   });
 });

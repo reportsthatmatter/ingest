@@ -325,12 +325,19 @@ export type MergeOptions = {
      * above, however the item above ends.
      */
     letteredItems?: boolean;
+    /** `letteredItems({ fromVolume })`: blocks of earlier volumes are merged as if it were not declared. */
+    letteredItemsFrom?: number;
     /**
      * `numberedOpenings` (reportsthatmatter-f951): a block opening on a printed
      * paragraph number ("2.86 RBKC's…") is not joined onto a paragraph ending in
      * an abbreviation or an initial ("…Approved Document B.").
      */
     numberedOpenings?: boolean;
+    /**
+     * `numberedInSequence` (reportsthatmatter-gqsy.4.2): a block opening on another chapter's number
+     * after a sentence left unfinished continues that sentence, on the same page or across one.
+     */
+    numberedInSequence?: boolean;
     /**
      * The `quoteListRunOns` pass (reportsthatmatter-38s.9): a block quotation
      * or list item running over a page arrives as two quotations or two lists.

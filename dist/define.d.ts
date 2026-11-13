@@ -73,7 +73,10 @@ export type ResolvedPasses = {
     unlistedHeadingsMinor?: boolean;
     hangingIndents?: boolean;
     letteredItems?: boolean;
+    /** `letteredItems({ fromVolume })`: the first volume it reads lettered items in. */
+    letteredItemsFrom?: number;
     numberedOpenings?: boolean;
+    numberedInSequence?: boolean;
     numberedFindings?: boolean;
     doubleSpaced?: boolean;
     contentsOutline?: boolean;
@@ -103,6 +106,7 @@ export type ResolvedPasses = {
     numberedOutsideTables?: boolean;
     photoCredits?: boolean;
     hyphenFragments?: boolean;
+    hyphenMajority?: boolean;
     divisionLabels?: boolean;
     speakerTurns?: boolean;
     /** `divisionCrossReferences`: a "Chapter 2: …" line that a sentence runs on into is prose (reportsthatmatter-nshl). */

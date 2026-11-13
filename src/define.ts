@@ -87,7 +87,10 @@ export type ResolvedPasses = {
   unlistedHeadingsMinor?: boolean;
   hangingIndents?: boolean;
   letteredItems?: boolean;
+  /** `letteredItems({ fromVolume })`: the first volume it reads lettered items in. */
+  letteredItemsFrom?: number;
   numberedOpenings?: boolean;
+  numberedInSequence?: boolean;
   numberedFindings?: boolean;
   doubleSpaced?: boolean;
   contentsOutline?: boolean;
@@ -117,6 +120,7 @@ export type ResolvedPasses = {
   numberedOutsideTables?: boolean;
   photoCredits?: boolean;
   hyphenFragments?: boolean;
+  hyphenMajority?: boolean;
   divisionLabels?: boolean;
   speakerTurns?: boolean;
   /** `divisionCrossReferences`: a "Chapter 2: …" line that a sentence runs on into is prose (reportsthatmatter-nshl). */
@@ -253,6 +257,7 @@ export const KNOWN_PAGE_PASS_NAMES: readonly string[] = [
   "hangingLabels",
   "holdNoteSequence",
   "hyphenFragments",
+  "hyphenMajority",
   "insetOpenings",
   "layoutEndnotes",
   "layoutMarkers",
@@ -263,6 +268,7 @@ export const KNOWN_PAGE_PASS_NAMES: readonly string[] = [
   "listedHeadings",
   "noteFaceRunOver",
   "numberedFindings",
+  "numberedInSequence",
   "numberedOpenings",
   "numberedOutsideTables",
   "numberedParagraphs",
@@ -342,8 +348,11 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     unlistedHeadingsMinor: passes.some((pass) => pass.name === "unlistedHeadingsMinor"),
     hangingIndents: passes.some((pass) => pass.name === "hangingIndents"),
     letteredItems: passes.some((pass) => pass.name === "letteredItems"),
+    letteredItemsFrom: (passes.find((pass) => pass.name === "letteredItems") as { fromVolume?: number } | undefined)?.fromVolume,
     numberedOpenings:
       passes.some((pass) => pass.name === "numberedOpenings") && passes.some((pass) => pass.name === "numberedParagraphs"),
+    numberedInSequence:
+      passes.some((pass) => pass.name === "numberedInSequence") && passes.some((pass) => pass.name === "numberedParagraphs"),
     numberedFindings: passes.some((pass) => pass.name === "numberedFindings"),
     doubleSpaced: passes.some((pass) => pass.name === "doubleSpaced"),
     contentsOutline: passes.some((pass) => pass.name === "contentsOutline"),
@@ -367,6 +376,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     numberedOutsideTables: passes.some((pass) => pass.name === "numberedOutsideTables"),
     photoCredits: passes.some((pass) => pass.name === "photoCredits"),
     hyphenFragments: passes.some((pass) => pass.name === "hyphenFragments"),
+    hyphenMajority: passes.some((pass) => pass.name === "hyphenMajority"),
     divisionLabels: passes.some((pass) => pass.name === "divisionLabels"),
     speakerTurns: passes.some((pass) => pass.name === "speakerTurns"),
     divisionCrossReferences: passes.some((pass) => pass.name === "divisionCrossReferences"),

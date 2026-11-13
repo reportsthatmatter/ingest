@@ -44,6 +44,11 @@ export function rejoinHyphenated(text, words, options = {}) {
         if (knowsHyphenated && !knowsJoined)
             return `${head}-${tail}`;
         if (knowsJoined && knowsHyphenated) {
+            // Opt-in (`hyphenMajority`): the form the document writes whole more often. One stray
+            // "highrise" among 400 "high-rise" no longer closes up every "high- rise" at a line end.
+            if (options.majority && (options.majority.get(hyphenated) ?? 0) > (options.majority.get(joined) ?? 0)) {
+                return `${head}-${tail}`;
+            }
             // Both are real words in this document. The break itself is evidence
             // the typesetter made it, so prefer the joined form.
             return `${head}${tail}`;
@@ -56,6 +61,19 @@ export function rejoinHyphenated(text, words, options = {}) {
             return `${head}${tail}`;
         return whole;
     });
+}
+/**
+ * How often the source writes each word whole (`hyphenMajority`): not counting a line-end break's
+ * head or tail, so a typesetter's "high- rise" is no vote for either spelling.
+ */
+export function wholeWordCounts(sourceText) {
+    const counts = new Map();
+    for (const token of sourceText.replace(BREAK, " ").toLowerCase().split(/[^a-zà-ÿ-]+/)) {
+        const word = token.replace(/^-+|-+$/g, "");
+        if (word.length > 2)
+            counts.set(word, (counts.get(word) ?? 0) + 1);
+    }
+    return counts;
 }
 /**
  * Words the source writes whole: not as the head of a line-end break and not as its tail.
