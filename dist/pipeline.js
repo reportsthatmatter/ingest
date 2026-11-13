@@ -5,7 +5,7 @@ import { markPrintedNumbers } from "./printed-numbers.js";
 import { strayFolios } from "./folios.js";
 import { extractParagraphNotes } from "./paragraph-notes.js";
 import { applyCorrections } from "./corrections.js";
-import { rejoinHyphenated, vocabulary, wholeWords } from "./hyphens.js";
+import { rejoinHyphenated, vocabulary, wholeWords, wholeWordCounts } from "./hyphens.js";
 import { toBlocks, blocksToMarkdown, isContentsPage, parseContentsPage, spacedContentsBlocks, shortSubheadAt, isIllustrationList, mergeAcrossPages, contentsHeadings, contentsTitles, headingKey, numberedContents, emptyOutline, readContentsOutline, learnOutline, learnUnlabelled, outlineContentsBlocks, divisionContents, bodyIndent, } from "./paragraphs.js";
 import { parseFootnotes, linkInlineMarkers, linkFlushMarkers, renderEndnotes, isNotesChapterHead, parseNotesAppendix, linkFlushMarkersByChapter, } from "./footnotes.js";
 import { noteFaceRunOverCount } from "./note-run-over.js";
@@ -356,7 +356,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
                     ? pageMargin(split.body, margins[0])
                     : resolved.shiftedPages
                         ? shiftedPageMargin(split.body, margins[resolved.geometry === "per-volume" ? groupIndex : 0])
-                        : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInsetVolumes && !resolved.quoteInsetVolumes.includes(groupIndex + 1) ? undefined : resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings, resolved.hangingIndents, resolved.unmarkedHeadings, resolved.numberedOutsideTables, resolved.recoverListedHeadings, resolved.letteredItems, resolved.speakerTurns, resolved.hangingLabels, resolved.divisionCrossReferences);
+                        : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInsetVolumes && !resolved.quoteInsetVolumes.includes(groupIndex + 1) ? undefined : resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings, resolved.hangingIndents, resolved.unmarkedHeadings, resolved.numberedOutsideTables, resolved.recoverListedHeadings, Boolean(resolved.letteredItems) && split.volume >= (resolved.letteredItemsFrom ?? 1), resolved.speakerTurns, resolved.hangingLabels, resolved.divisionCrossReferences);
             const read = (resolved.contentsEntries && (entries?.sections.size || isIllustrationList(pageLines))
                 ? spacedContentsBlocks(pageLines)
                 : isContentsPage(pageLines)
@@ -528,7 +528,9 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
         layoutJoins: resolved.layoutPageJoins,
         photoCredits: resolved.photoCredits,
         letteredItems: resolved.letteredItems,
+        letteredItemsFrom: resolved.letteredItemsFrom,
         numberedOpenings: resolved.numberedOpenings,
+        numberedInSequence: resolved.numberedInSequence,
         layout: context.layout,
     });
     const visionReport = hybrid?.report(hybrid.joins(joined));
@@ -544,7 +546,10 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
     // Rejoin words the typesetter broke at a line end, decided from the
     // document's own vocabulary. Before autoFix, so a repaired word is judged
     // whole rather than as two fragments.
-    const hyphenOptions = resolved.hyphenFragments ? { fragments: wholeWords(sourceText) } : {};
+    const hyphenOptions = {
+        ...(resolved.hyphenFragments ? { fragments: wholeWords(sourceText) } : {}),
+        ...(resolved.hyphenMajority ? { majority: wholeWordCounts(sourceText) } : {}),
+    };
     body = rejoinHyphenated(body, vocabulary(sourceText), hyphenOptions);
     const fixed = autoFix(body);
     body = fixed.text;

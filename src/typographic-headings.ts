@@ -127,6 +127,7 @@ export type TypographicHeadingsOptions = {
    * chapter before it (reportsthatmatter-r0w). Only with `relevel`. Default false.
    */
   keepDivisions?: boolean;
+  /**
    * A declared face that the report also sets other text in counts as a heading only where the heading's
    * text (wrapped lines joined) matches the pattern given for it. The UK Covid-19 Inquiry heads each
    * recommendation box of Module 2 Volume II in black Proxima Nova Semibold 14pt ("Recommendation 1: Chief
