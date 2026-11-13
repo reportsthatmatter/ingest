@@ -51,6 +51,10 @@ export const PARAGRAPH_ID_CHARS = "[\\p{L}\\p{N}-]+";
  * `#rioters-at-the-capitol-had-been` over `#p-318`.
  */
 export function paragraphId(text, taken) {
+    return nextFreeId(paragraphIdBase(text), taken);
+}
+/** The id a paragraph's text asks for before de-duplication: `paragraphId` without the `-2`, `-3` suffix. */
+export function paragraphIdBase(text) {
     const words = text
         .toLowerCase()
         .replace(/\[\^\d+(?:-\d+)?\]/g, " ")
@@ -61,9 +65,11 @@ export function paragraphId(text, taken) {
     // very short paragraph can be almost entirely stopwords — keep them then.
     const meaningful = words.filter((word) => !STOPWORDS.has(word));
     const chosen = (meaningful.length >= 2 ? meaningful : words).slice(0, 5);
-    let base = chosen.join("-").slice(0, 60).replace(/-+$/, "");
-    if (!base)
-        base = "para";
+    const base = chosen.join("-").slice(0, 60).replace(/-+$/, "");
+    return base || "para";
+}
+/** `base` if free, else the first free `base-2`, `base-3`, …; marks the answer taken. */
+function nextFreeId(base, taken) {
     if (!taken.has(base)) {
         taken.add(base);
         return base;
@@ -318,13 +324,30 @@ function textToken(state, content) {
  * printed page it appears on.
  */
 export function renderMarkdown(markdown) {
+    return renderMarkdownUnits(markdown).html;
+}
+/**
+ * `renderMarkdown`, also returning every citable unit in reading order. `forced` gives the unit at
+ * a reading-order index a fixed id (reserved ids, reportsthatmatter-efso, see `renderArtifacts`);
+ * every forced id is taken before the pass starts, so an unforced unit can never take one and is
+ * suffixed past it instead.
+ */
+export function renderMarkdownUnits(markdown, forced) {
+    const units = [];
     const { content } = splitFrontMatter(markdown);
     const md = new MarkdownIt({ html: false, linkify: true, typographer: false });
     configureLinkify(md);
     md.core.ruler.push("rtm_anchors", (state) => {
         const tokens = state.tokens;
-        const taken = new Set();
+        const taken = new Set(forced?.values() ?? []);
         let page = null;
+        // The id for the next citable unit: its forced id, else its text's, suffixed past every id taken.
+        const unitId = (text) => {
+            const base = paragraphIdBase(text);
+            const id = forced?.get(units.length) ?? nextFreeId(base, taken);
+            units.push({ id, base });
+            return id;
+        };
         for (let i = 0; i < tokens.length; i++) {
             const token = tokens[i];
             // A bulleted list is a citable unit too — in these reports the list is
@@ -358,7 +381,7 @@ export function renderMarkdown(markdown) {
                         break;
                     }
                 }
-                token.attrSet("id", paragraphId(firstItemText, taken));
+                token.attrSet("id", unitId(firstItemText));
                 if (page !== null)
                     token.attrSet("data-page", String(page));
                 continue;
@@ -382,7 +405,7 @@ export function renderMarkdown(markdown) {
             }
             // Only top-level paragraphs are citable units. A paragraph nested in a
             // list item or a block quote would put its marker mid-line.
-            const id = paragraphId(text, taken);
+            const id = unitId(text);
             token.attrSet("id", id);
             if (page !== null)
                 token.attrSet("data-page", String(page));
@@ -426,15 +449,18 @@ export function renderMarkdown(markdown) {
         });
     }
     if (!orphans.length)
-        return html;
+        return { html, units };
     const items = orphans
         .map(({ number, text, instance }) => `<li id="note-${number}${instance > 0 ? `-${instance + 1}` : ""}"><sup>${number.replace(/-\d+$/, "")}</sup> ${escapeText(text)}</li>`)
         .join("");
-    return (`${html}\n<section class="orphan-notes">` +
-        `<h2>Notes not linked in the text</h2>` +
-        `<p class="orphan-notes-why">These notes appear in the source but the pipeline ` +
-        `could not place their reference in the body. They are listed here so nothing ` +
-        `is lost.</p><ol>${items}</ol></section>`);
+    return {
+        html: `${html}\n<section class="orphan-notes">` +
+            `<h2>Notes not linked in the text</h2>` +
+            `<p class="orphan-notes-why">These notes appear in the source but the pipeline ` +
+            `could not place their reference in the body. They are listed here so nothing ` +
+            `is lost.</p><ol>${items}</ol></section>`,
+        units,
+    };
 }
 /** The collected `## Notes` block, which sidenotes replace in the body. */
 export function stripNotesSection(markdown) {
