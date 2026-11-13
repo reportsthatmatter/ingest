@@ -1285,7 +1285,7 @@ function opensUnclosedQuotation(text, lines, at) {
     }
     return true;
 }
-export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false, allCapsHeadings = true, paragraphContents = false, numberedHeadings = true, listed, numbered, findings, outline, divisions, wrappedHeadings = false, hangingIndents = false, unmarkedHeadings = false, numberedOutsideTables = false, recoverListedHeadings = false, letteredItems = false, speakerTurns = false, hangingLabels) {
+export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET, numberedParagraphs = false, allCapsHeadings = true, paragraphContents = false, numberedHeadings = true, listed, numbered, findings, outline, divisions, wrappedHeadings = false, hangingIndents = false, unmarkedHeadings = false, numberedOutsideTables = false, recoverListedHeadings = false, letteredItems = false, speakerTurns = false, hangingLabels, divisionCrossReferences = false) {
     if (paragraphContents)
         lines = joinParagraphContents(lines);
     // With `listedHeadings`, a would-be heading the contents does not name is
@@ -1303,6 +1303,17 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
         for (let j = at - 1; j >= 0; j--) {
             if (lines[j].trim())
                 return !/[.:;?!"”)\]]$/.test(lines[j].trim());
+        }
+        return false;
+    };
+    // `divisionCrossReferences`: the nearest non-blank line before `at`, on this page, is prose that does not
+    // end a sentence (not itself heading-shaped, so a title wrapped over a division keeps it).
+    const proseRunsOn = (at) => {
+        for (let j = at - 1; j >= 0; j--) {
+            const prior = lines[j].trim();
+            if (!prior)
+                continue;
+            return !/[.:;?!"”)\]]$/.test(prior) && !isHeadingLine(prior);
         }
         return false;
     };
@@ -1372,6 +1383,11 @@ export function toBlocks(lines, documentMargin, quoteInset = DEFAULT_QUOTE_INSET
         // two-column list ("C. Hobson Bryan   Jill Jonnes") is not a heading.
         const numberedHere = numberedHeadings && !(numberedOutsideTables && at !== undefined && inTable[at]);
         const heading = isHeadingLine(text, allowDivisions, allCapsHeadings, numberedHere);
+        // `divisionCrossReferences`: "Chapter 2: The emergence of Covid-19, in Volume I, a reasonable worst-case"
+        // is a line of prose that names a division, not a division: the line above it runs on into it. A volume's
+        // title ("Volume II: Key themes…", under "Modules 2, 2A, 2B, 2C: …" on its cover) is left alone.
+        if (divisionCrossReferences && heading && at !== undefined && /^(Chapter|Appendix|Annex|Section)\s/.test(text.trim()) && DIVISION_LABEL.test(text.trim()) && proseRunsOn(at))
+            return null;
         // `recoverListedHeadings`: a caps title that ends in a number ("…RESOLUTION
         // 1483") has the number read as a page number and trimmed, so the heading
         // found no longer matches the contents. Judge the whole line instead.

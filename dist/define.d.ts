@@ -105,6 +105,8 @@ export type ResolvedPasses = {
     hyphenFragments?: boolean;
     divisionLabels?: boolean;
     speakerTurns?: boolean;
+    /** `divisionCrossReferences`: a "Chapter 2: …" line that a sentence runs on into is prose (reportsthatmatter-nshl). */
+    divisionCrossReferences?: boolean;
     /** `hangingLabels`: an item under a short colon label ("Fact:") with its lines hanging in is one paragraph; the report's own labels. */
     hangingLabels?: {
         labels: readonly string[];
@@ -127,6 +129,8 @@ export type ResolvedPasses = {
     /** `foiaRedactions`: a FOIA release's box labels marked as redactions, its margin labels taken out. */
     foiaRedactions?: boolean;
     quoteInset?: number;
+    /** `quoteInset({ volumes })`: the volumes it applies to; omitted, all. */
+    quoteInsetVolumes?: readonly number[];
     allCapsHeadings: boolean;
     numberedHeadings?: boolean;
     bodyPasses: BodyPass[];

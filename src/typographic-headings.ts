@@ -127,6 +127,15 @@ export type TypographicHeadingsOptions = {
    * chapter before it (reportsthatmatter-r0w). Only with `relevel`. Default false.
    */
   keepDivisions?: boolean;
+   * A declared face that the report also sets other text in counts as a heading only where the heading's
+   * text (wrapped lines joined) matches the pattern given for it. The UK Covid-19 Inquiry heads each
+   * recommendation box of Module 2 Volume II in black Proxima Nova Semibold 14pt ("Recommendation 1: Chief
+   * Medical Officer for Northern Ireland", PDF vol. 2 p.17) and sets its contents entries in the same face
+   * (Volume I pp.6-10, Volume II pp.5-6): declared bare, the face made headings of every contents line and,
+   * under `relevel`, moved the contents' stray chapter headings. Keyed by the face key as in `faces`.
+   * Only with `faces`.
+   */
+  faceText?: Record<string, RegExp>;
 };
 
 export type TypographicHeadingStats = {
@@ -156,7 +165,7 @@ const LABEL_ONLY = /^\s*(?:\(?\d{1,4}(?:\.\d{1,4})*[.)]?|\(?[a-z][.)]|[ivxlc]{1,
 type Heading = { volume: number; pdfIndex: number; text: string; level: number };
 
 /** A heading line's candidacy, before the face's recurrence is known. */
-function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns" | "labelWraps" | "commaWraps" | "semicolonWraps" | "skipMarked" | "punctuationAside" | "keepDivisions">> & { sizes?: number[]; faces?: string[][]; labelWraps?: boolean; commaWraps?: boolean; semicolonWraps?: boolean; skipMarked?: boolean }): boolean {
+function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns" | "labelWraps" | "commaWraps" | "semicolonWraps" | "skipMarked" | "punctuationAside" | "keepDivisions" | "faceText">> & { sizes?: number[]; faces?: string[][]; labelWraps?: boolean; commaWraps?: boolean; semicolonWraps?: boolean; skipMarked?: boolean }): boolean {
   const text = line.text.trim();
   if (!text || text.length > o.maxChars) return false;
   if (o.faces)
@@ -183,7 +192,7 @@ const faceSize = (face: string) => Number(face.split("|")[1]) || 0;
  * Exported for the tests.
  */
 export function layoutHeadings(layout: Layout, options: TypographicHeadingsOptions = {}): { headings: Heading[]; faces: TypographicHeadingStats["faces"] } {
-  const o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns" | "labelWraps" | "commaWraps" | "semicolonWraps" | "skipMarked" | "punctuationAside" | "keepDivisions">> & { sizes?: number[]; faces?: string[][]; labelWraps?: boolean; commaWraps?: boolean; semicolonWraps?: boolean; skipMarked?: boolean } = {
+  const o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns" | "labelWraps" | "commaWraps" | "semicolonWraps" | "skipMarked" | "punctuationAside" | "keepDivisions" | "faceText">> & { sizes?: number[]; faces?: string[][]; labelWraps?: boolean; commaWraps?: boolean; semicolonWraps?: boolean; skipMarked?: boolean } = {
     firstLevel: options.firstLevel ?? 2,
     ...(options.sizes ? { sizes: options.sizes } : {}),
     ...(options.faces ? { faces: options.faces } : {}),
@@ -249,6 +258,9 @@ export function layoutHeadings(layout: Layout, options: TypographicHeadingsOptio
       if (o.commaWraps && /,$/.test(text)) continue;
       // `semicolonWraps`: and a semicolon line
       if (o.semicolonWraps && /;$/.test(text)) continue;
+      // `faceText`: a shared face is a heading only where its text says so
+      const pattern = options.faces ? options.faceText?.[first.font] : undefined;
+      if (pattern && !pattern.test(text)) continue;
       headings.push({ volume, pdfIndex: page, text, level: levels.get(first.font)! });
     }
   }

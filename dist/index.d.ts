@@ -11,8 +11,8 @@
  */
 export { pipeline, resolvePasses } from "./define.js";
 export type { PipelineDef, Volume, ResolvedPasses } from "./define.js";
-export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, escapeNumberedParagraphs, escapeLeadingHash, paragraphNotes, chapterContents, listedHeadings, unlistedHeadingsMinor, hangingIndents, letteredItems, hangingLabels, insetOpenings, numberedOpenings, unmarkedHeadings, recoverListedHeadings, endnotes, layoutEndnotes, numberedSections, contentsEntries, shortSubheads, shiftedPages, facingPageMargins, quoteRunOn, quoteListRunOns, layoutPageJoins, layoutMarkers, typographicHeadings, numberedFindings, doubleSpaced, contentsOutline, noteFaceRunOver, listedDivisions, wrappedHeadings, pageBreakContinuations, citationRunOver, holdNoteSequence, footnoteResets, romanFolios, parenFolios, pageHeadFolios, foliosInStep, foiaRedactions, asteriskBreaks, layoutRunOvers, numberedOutsideTables, photoCredits, hyphenFragments, divisionLabels, speakerTurns, footnoteGap, footnoteRestarts, thumbIndexNotes, strandedMarkers, sequencedNoteOpenings, footnoteNumbers, pdfPageNumbers, runningFurniture, furnitureFaces, figureFaces, geometry, columns, quoteInset, allCapsHeadings, numberedHeadings, } from "./passes.js";
-export type { Pass, PagePass, LayoutPageJoinsPass, LayoutMarkersPass, LayoutEndnotesPass, LayoutEndnotesOptions, EndnoteRange, TypographicHeadingsPass, PageHeadFoliosPass, HangingLabelsPass, PageBreakContinuationsPass, ContentsOutlinePass, BodyPass, SourcePass, VolumePass, GeometryPass, QuoteInsetPass, AllCapsHeadingsPass, NumberedHeadingsPass, } from "./passes.js";
+export { printedPageNumber, footnoteBlock, flushFootnoteMarkers, numberedParagraphs, escapeNumberedParagraphs, escapeLeadingHash, paragraphNotes, chapterContents, listedHeadings, unlistedHeadingsMinor, hangingIndents, letteredItems, hangingLabels, insetOpenings, numberedOpenings, unmarkedHeadings, recoverListedHeadings, endnotes, layoutEndnotes, numberedSections, contentsEntries, shortSubheads, shiftedPages, facingPageMargins, quoteRunOn, quoteListRunOns, layoutPageJoins, layoutMarkers, typographicHeadings, numberedFindings, doubleSpaced, contentsOutline, noteFaceRunOver, listedDivisions, wrappedHeadings, pageBreakContinuations, citationRunOver, holdNoteSequence, footnoteResets, romanFolios, parenFolios, pageHeadFolios, foliosInStep, foiaRedactions, asteriskBreaks, layoutRunOvers, numberedOutsideTables, photoCredits, hyphenFragments, divisionLabels, speakerTurns, divisionCrossReferences, footnoteGap, footnoteRestarts, thumbIndexNotes, strandedMarkers, sequencedNoteOpenings, footnoteNumbers, pdfPageNumbers, runningFurniture, furnitureFaces, figureFaces, geometry, columns, quoteInset, allCapsHeadings, numberedHeadings, } from "./passes.js";
+export type { Pass, PagePass, LayoutPageJoinsPass, LayoutMarkersPass, EndnoteRange, TypographicHeadingsPass, PageHeadFoliosPass, HangingLabelsPass, PageBreakContinuationsPass, ContentsOutlinePass, BodyPass, SourcePass, VolumePass, GeometryPass, QuoteInsetPass, AllCapsHeadingsPass, NumberedHeadingsPass, } from "./passes.js";
 export { detectGutter, splitColumns } from "./columns.js";
 export { cleanEdition, inlineMarkdown, inlineText, escapeInline, assembleEdition, fillGaps } from "./edition.js";
 export type { Edition, EditionBlock, EditionNote, EditionPass, EditionSource, EditionReport, InlinePiece, PrintedPage, BlockSource, FilledGap, ShadowText } from "./edition.js";
@@ -70,9 +70,9 @@ export type { Block, Provenance } from "./paragraphs.js";
 export { linkFlushMarkers, linkInlineMarkers } from "./footnotes.js";
 export type { Footnote } from "./footnotes.js";
 export type { Suspect } from "./ocr.js";
-export { renderArtifacts, paragraphFingerprint, reservedAssignments } from "./render.js";
-export type { RenderedArtifacts, ReportMeta, SectionSummary, ReservedId, RenderOptions } from "./render.js";
-export { renderMarkdown, renderMarkdownUnits, paragraphId, paragraphIdBase, slugify, PARAGRAPH_ID_CHARS, resolveNoteReferences, collectNoteOrder } from "./markdown.js";
+export { renderArtifacts } from "./render.js";
+export type { RenderedArtifacts, ReportMeta, SectionSummary } from "./render.js";
+export { renderMarkdown, paragraphId, slugify, PARAGRAPH_ID_CHARS, resolveNoteReferences, collectNoteOrder } from "./markdown.js";
 export { splitSections, sectionFor, paragraphIndex } from "./sections.js";
 export type { Section } from "./sections.js";
 export { extractPassages } from "./passages.js";

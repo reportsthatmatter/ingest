@@ -356,7 +356,7 @@ export function ingestPageGroups(pageGroups, meta, resolved = {
                     ? pageMargin(split.body, margins[0])
                     : resolved.shiftedPages
                         ? shiftedPageMargin(split.body, margins[resolved.geometry === "per-volume" ? groupIndex : 0])
-                        : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings, resolved.hangingIndents, resolved.unmarkedHeadings, resolved.numberedOutsideTables, resolved.recoverListedHeadings, resolved.letteredItems, resolved.speakerTurns, resolved.hangingLabels);
+                        : margins[resolved.geometry === "per-volume" ? groupIndex : 0], resolved.quoteInsetVolumes && !resolved.quoteInsetVolumes.includes(groupIndex + 1) ? undefined : resolved.quoteInset, resolved.numberedParagraphs, resolved.allCapsHeadings, resolved.chapterContents, resolved.numberedHeadings ?? true, gate, sections, findings, outline, divisionGate, resolved.wrappedHeadings, resolved.hangingIndents, resolved.unmarkedHeadings, resolved.numberedOutsideTables, resolved.recoverListedHeadings, resolved.letteredItems, resolved.speakerTurns, resolved.hangingLabels, resolved.divisionCrossReferences);
             const read = (resolved.contentsEntries && (entries?.sections.size || isIllustrationList(pageLines))
                 ? spacedContentsBlocks(pageLines)
                 : isContentsPage(pageLines)

@@ -119,6 +119,8 @@ export type ResolvedPasses = {
   hyphenFragments?: boolean;
   divisionLabels?: boolean;
   speakerTurns?: boolean;
+  /** `divisionCrossReferences`: a "Chapter 2: …" line that a sentence runs on into is prose (reportsthatmatter-nshl). */
+  divisionCrossReferences?: boolean;
   /** `hangingLabels`: an item under a short colon label ("Fact:") with its lines hanging in is one paragraph; the report's own labels. */
   hangingLabels?: { labels: readonly string[] };
   footnoteGap?: boolean;
@@ -139,6 +141,8 @@ export type ResolvedPasses = {
   /** `foiaRedactions`: a FOIA release's box labels marked as redactions, its margin labels taken out. */
   foiaRedactions?: boolean;
   quoteInset?: number;
+  /** `quoteInset({ volumes })`: the volumes it applies to; omitted, all. */
+  quoteInsetVolumes?: readonly number[];
   allCapsHeadings: boolean;
   numberedHeadings?: boolean;
   bodyPasses: BodyPass[];
@@ -230,6 +234,7 @@ export const KNOWN_PAGE_PASS_NAMES: readonly string[] = [
   "citationRunOver",
   "contentsEntries",
   "contentsOutline",
+  "divisionCrossReferences",
   "divisionLabels",
   "doubleSpaced",
   "endnotes",
@@ -364,6 +369,7 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     hyphenFragments: passes.some((pass) => pass.name === "hyphenFragments"),
     divisionLabels: passes.some((pass) => pass.name === "divisionLabels"),
     speakerTurns: passes.some((pass) => pass.name === "speakerTurns"),
+    divisionCrossReferences: passes.some((pass) => pass.name === "divisionCrossReferences"),
     hangingLabels: passes.find((pass): pass is HangingLabelsPass => pass.name === "hangingLabels") ?? undefined,
     footnoteGap: passes.some((pass) => pass.name === "footnoteGap"),
     footnoteRestarts: passes.some((pass) => pass.name === "footnoteRestarts"),
@@ -378,6 +384,9 @@ export function resolvePasses(def: PipelineDef): ResolvedPasses {
     quoteInset: passes.find(
       (pass): pass is QuoteInsetPass => pass.stage === "quoteInset"
     )?.columns,
+    quoteInsetVolumes: passes.find(
+      (pass): pass is QuoteInsetPass => pass.stage === "quoteInset"
+    )?.volumes,
     allCapsHeadings:
       passes.find(
         (pass): pass is AllCapsHeadingsPass => pass.stage === "allCapsHeadings"

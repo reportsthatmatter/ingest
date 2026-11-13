@@ -468,7 +468,7 @@ export function ingestPageGroups(
                 : resolved.shiftedPages
                   ? shiftedPageMargin(split.body, margins[resolved.geometry === "per-volume" ? groupIndex : 0])
                   : margins[resolved.geometry === "per-volume" ? groupIndex : 0],
-              resolved.quoteInset,
+              resolved.quoteInsetVolumes && !resolved.quoteInsetVolumes.includes(groupIndex + 1) ? undefined : resolved.quoteInset,
               resolved.numberedParagraphs,
               resolved.allCapsHeadings,
               resolved.chapterContents,
@@ -485,7 +485,8 @@ export function ingestPageGroups(
               resolved.recoverListedHeadings,
               resolved.letteredItems,
               resolved.speakerTurns,
-              resolved.hangingLabels
+              resolved.hangingLabels,
+              resolved.divisionCrossReferences
         );
       const read = (
         resolved.contentsEntries && (entries?.sections.size || isIllustrationList(pageLines))

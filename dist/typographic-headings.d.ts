@@ -97,34 +97,21 @@ export type TypographicHeadingsOptions = {
      */
     commaWraps?: boolean;
     /**
-     * The same for a declared face's line that ends on a semicolon: the Thirlwall Inquiry's chapter banners run
-     * over three lines and break after one ("Chapter 6. August 2015 to" / "February 2016: Baby I and Baby J;" /
-     * "concerns increase; reviews", Vol I PDF p.105), so the banner was served as "Chapter 6. August 2015 to"
-     * and a paragraph. A semicolon line with no such continuation is still no heading. Only with `faces`.
-     * Default false.
-     */
-    semicolonWraps?: boolean;
-    /**
      * A declared face's line that carries a raised note marker is a caption, not a heading: the Litvinenko
      * Inquiry sets its figure captions ("Plan of the Pine Bar" with note 283, PDF p.172) in the face of its
      * lowest subheadings, and a heading there never cites a note. Only with `faces`. Default false.
      */
     skipMarked?: boolean;
     /**
-     * A paragraph whose letters and digits are exactly a heading's, its punctuation aside, is that heading.
-     * The Leveson Inquiry sets each Part's opener as "parT a" over "The inquiry"; the report's own pass
-     * reads it as "Part A: The inquiry", and the colon it adds kept the line from matching, so the Part
-     * stayed a paragraph (reportsthatmatter-r0w). The paragraph keeps its own spelling. Only with `faces`.
-     * Default false.
+     * A declared face that the report also sets other text in counts as a heading only where the heading's
+     * text (wrapped lines joined) matches the pattern given for it. The UK Covid-19 Inquiry heads each
+     * recommendation box of Module 2 Volume II in black Proxima Nova Semibold 14pt ("Recommendation 1: Chief
+     * Medical Officer for Northern Ireland", PDF vol. 2 p.17) and sets its contents entries in the same face
+     * (Volume I pp.6-10, Volume II pp.5-6): declared bare, the face made headings of every contents line and,
+     * under `relevel`, moved the contents' stray chapter headings. Keyed by the face key as in `faces`.
+     * Only with `faces`.
      */
-    punctuationAside?: boolean;
-    /**
-     * Under `relevel`, a heading the text reading made a Part or a chapter ("Chapter 4: The Conservative
-     * revival…") keeps its level, whatever face it is set in: Leveson sets one chapter opener (Part I,
-     * Chapter 4, vol iii PDF p.179) in its sections' face, and relevelled it became a section of the
-     * chapter before it (reportsthatmatter-r0w). Only with `relevel`. Default false.
-     */
-    keepDivisions?: boolean;
+    faceText?: Record<string, RegExp>;
 };
 export type TypographicHeadingStats = {
     /** Heading faces found, largest first, with the level each was given. */
