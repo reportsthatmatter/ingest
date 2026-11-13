@@ -130,6 +130,17 @@ export function paragraphIndex(sections: Section[]): Record<string, string> {
  *   HUMAN IMPACT" then "a. Introduction", which otherwise sat at the foot of
  *   the Recommendations) — so this only ever fires on a document shaped that
  *   way, not on report identity.
+ *
+ * A divider gathers what follows only until it is long enough, and never a
+ * whole chapter that is a section in its own right: a Part heading with an
+ * introduction of its own (its opening text, or a short introductory chapter
+ * gathered under it) stands alone, short as it is, when the next part is an h3
+ * of at least twice `minChars` (reportsthatmatter-owre: the Stern Review's
+ * one-page Part III introduction had taken in the whole of Chapter 9, whose
+ * sections are one level down, and the Deepwater Horizon report's Parts I-III
+ * their first chapters). A bare banner still heads its first chapter, and a
+ * short opening subsection (Hillsborough's Part 3 "Introduction") or a stray
+ * contents heading (the Covid Inquiry's front matter) still folds in.
  */
 const DIVISION_HEADING =
   /^<h2\b[^>]*>(?:<[^>]+>)*\s*(?:Part|Appendix|Annex|Volume)\s+(?:\d|[IVXLC])/i;
@@ -159,6 +170,9 @@ function mergeSlivers(parts: string[], minChars: number): string[] {
   // A pending top-level divider, accumulating its chapters until it is a
   // section a reader would recognise as one.
   let divider = "";
+  // The divider is a Part (or Appendix, Annex, Volume) heading, which stands
+  // alone once it has an introduction of its own and a whole chapter follows.
+  let division = false;
 
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i];
@@ -169,6 +183,17 @@ function mergeSlivers(parts: string[], minChars: number): string[] {
       // short foreword ("Foreword: Speaker of the House", then its title as an h3) had swallowed the
       // Chairman's whole foreword after it, which then had no section of its own (us-jan6-committee).
       if (/^<h2\b/.test(part)) {
+        merged.push(divider);
+        divider = "";
+        i--;
+        continue;
+      }
+      // A Part with its own introduction stands as a section of its own when
+      // the next part is a whole chapter, rather than swallowing it
+      // (reportsthatmatter-owre): the Stern Review's one-page Part III
+      // introduction took in its first chapter, Chapter 9 (28 pages, its
+      // sections one level down), which then had no entry in the contents.
+      if (division && introLength(divider) >= MIN_INTRO_CHARS && /^<h3\b/.test(part) && textLength(part) >= 2 * minChars) {
         merged.push(divider);
         divider = "";
         i--;
@@ -187,6 +212,7 @@ function mergeSlivers(parts: string[], minChars: number): string[] {
 
     if ((chapterBanner || chapterIntro || DIVISION_HEADING.test(part)) && textLength(part) < minChars) {
       divider = part;
+      division = DIVISION_HEADING.test(part);
       continue;
     }
 
@@ -209,6 +235,17 @@ function mergeSlivers(parts: string[], minChars: number): string[] {
   }
 
   return merged;
+}
+
+/**
+ * A Part's introduction: its text after the heading, not counting printed-page
+ * labels. Under this it is a banner (Leveson's "Part C: The press", Grenfell's
+ * "Part 1: Introduction") and heads its first chapter as before.
+ */
+const MIN_INTRO_CHARS = 200;
+
+function introLength(html: string): number {
+  return textLength(html.replace(/^<h2\b[\s\S]*?<\/h2>/, "").replace(/<a class="page-marker"[^>]*>[\s\S]*?<\/a>/g, ""));
 }
 
 function textLength(html: string): number {
