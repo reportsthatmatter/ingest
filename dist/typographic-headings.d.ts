@@ -97,6 +97,14 @@ export type TypographicHeadingsOptions = {
      */
     commaWraps?: boolean;
     /**
+     * The same for a declared face's line that ends on a semicolon: the Thirlwall Inquiry's chapter banners run
+     * over three lines and break after one ("Chapter 6. August 2015 to" / "February 2016: Baby I and Baby J;" /
+     * "concerns increase; reviews", Vol I PDF p.105), so the banner was served as "Chapter 6. August 2015 to"
+     * and a paragraph. A semicolon line with no such continuation is still no heading. Only with `faces`.
+     * Default false.
+     */
+    semicolonWraps?: boolean;
+    /**
      * A declared face's line that carries a raised note marker is a caption, not a heading: the Litvinenko
      * Inquiry sets its figure captions ("Plan of the Pine Bar" with note 283, PDF p.172) in the face of its
      * lowest subheadings, and a heading there never cites a note. Only with `faces`. Default false.

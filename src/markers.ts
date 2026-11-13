@@ -131,7 +131,8 @@ function anchorPattern(before: string, earlier: Array<{ offset: number; text: st
     // The space between two raised numbers ("8 9 10") is gone once they are linked ("[^8][^9]").
     const gap = trimmed.slice(at, r.offset);
     out += at > from && /^\s+$/.test(gap) ? "\\s*" : plain(gap);
-    out += `(?:\\[\\^${r.text}(?:-\\d+)?\\]|${r.text})`;
+    // Escaped: a raised run can be a symbol as well as digits ("(NRLS*).", Thirlwall Vol III).
+    out += `(?:\\[\\^${escape(r.text)}(?:-\\d+)?\\]|${escape(r.text)})`;
     at = r.offset + r.text.length;
   }
   out += plain(trimmed.slice(at));

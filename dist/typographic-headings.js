@@ -13,7 +13,7 @@ function candidate(line, bodySize, o) {
         return (o.faces.some((level) => level.includes(line.font)) &&
             !LABEL_ONLY.test(text) &&
             /\p{L}/u.test(text) &&
-            (!SENTENCE_END.test(text) || (o.labelWraps === true && /:$/.test(text)) || (o.commaWraps === true && /,$/.test(text))) &&
+            (!SENTENCE_END.test(text) || (o.labelWraps === true && /:$/.test(text)) || (o.commaWraps === true && /,$/.test(text)) || (o.semicolonWraps === true && /;$/.test(text))) &&
             !(o.skipMarked === true && line.raised.length > 0));
     if (line.body || line.italic)
         return false;
@@ -40,6 +40,7 @@ export function layoutHeadings(layout, options = {}) {
         ...(options.faces ? { faces: options.faces } : {}),
         ...(options.faces && options.labelWraps ? { labelWraps: true } : {}),
         ...(options.faces && options.commaWraps ? { commaWraps: true } : {}),
+        ...(options.faces && options.semicolonWraps ? { semicolonWraps: true } : {}),
         ...(options.faces && options.skipMarked ? { skipMarked: true } : {}),
         minRatio: options.minRatio ?? 1.15,
         maxChars: options.maxChars ?? 160,
@@ -97,6 +98,9 @@ export function layoutHeadings(layout, options = {}) {
                 continue;
             // `commaWraps`: likewise a comma line
             if (o.commaWraps && /,$/.test(text))
+                continue;
+            // `semicolonWraps`: and a semicolon line
+            if (o.semicolonWraps && /;$/.test(text))
                 continue;
             headings.push({ volume, pdfIndex: page, text, level: levels.get(first.font) });
         }

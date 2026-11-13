@@ -99,6 +99,14 @@ export type TypographicHeadingsOptions = {
    */
   commaWraps?: boolean;
   /**
+   * The same for a declared face's line that ends on a semicolon: the Thirlwall Inquiry's chapter banners run
+   * over three lines and break after one ("Chapter 6. August 2015 to" / "February 2016: Baby I and Baby J;" /
+   * "concerns increase; reviews", Vol I PDF p.105), so the banner was served as "Chapter 6. August 2015 to"
+   * and a paragraph. A semicolon line with no such continuation is still no heading. Only with `faces`.
+   * Default false.
+   */
+  semicolonWraps?: boolean;
+  /**
    * A declared face's line that carries a raised note marker is a caption, not a heading: the Litvinenko
    * Inquiry sets its figure captions ("Plan of the Pine Bar" with note 283, PDF p.172) in the face of its
    * lowest subheadings, and a heading there never cites a note. Only with `faces`. Default false.
@@ -148,7 +156,7 @@ const LABEL_ONLY = /^\s*(?:\(?\d{1,4}(?:\.\d{1,4})*[.)]?|\(?[a-z][.)]|[ivxlc]{1,
 type Heading = { volume: number; pdfIndex: number; text: string; level: number };
 
 /** A heading line's candidacy, before the face's recurrence is known. */
-function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns" | "labelWraps" | "commaWraps" | "skipMarked" | "punctuationAside" | "keepDivisions">> & { sizes?: number[]; faces?: string[][]; labelWraps?: boolean; commaWraps?: boolean; skipMarked?: boolean }): boolean {
+function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns" | "labelWraps" | "commaWraps" | "semicolonWraps" | "skipMarked" | "punctuationAside" | "keepDivisions">> & { sizes?: number[]; faces?: string[][]; labelWraps?: boolean; commaWraps?: boolean; semicolonWraps?: boolean; skipMarked?: boolean }): boolean {
   const text = line.text.trim();
   if (!text || text.length > o.maxChars) return false;
   if (o.faces)
@@ -156,7 +164,7 @@ function candidate(line: LayoutLine, bodySize: number, o: Required<Omit<Typograp
       o.faces.some((level) => level.includes(line.font)) &&
       !LABEL_ONLY.test(text) &&
       /\p{L}/u.test(text) &&
-      (!SENTENCE_END.test(text) || (o.labelWraps === true && /:$/.test(text)) || (o.commaWraps === true && /,$/.test(text))) &&
+      (!SENTENCE_END.test(text) || (o.labelWraps === true && /:$/.test(text)) || (o.commaWraps === true && /,$/.test(text)) || (o.semicolonWraps === true && /;$/.test(text))) &&
       !(o.skipMarked === true && line.raised.length > 0)
     );
   if (line.body || line.italic) return false;
@@ -175,12 +183,13 @@ const faceSize = (face: string) => Number(face.split("|")[1]) || 0;
  * Exported for the tests.
  */
 export function layoutHeadings(layout: Layout, options: TypographicHeadingsOptions = {}): { headings: Heading[]; faces: TypographicHeadingStats["faces"] } {
-  const o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns" | "labelWraps" | "commaWraps" | "skipMarked" | "punctuationAside" | "keepDivisions">> & { sizes?: number[]; faces?: string[][]; labelWraps?: boolean; commaWraps?: boolean; skipMarked?: boolean } = {
+  const o: Required<Omit<TypographicHeadingsOptions, "sizes" | "faces" | "relevel" | "quotedRemainder" | "skipRunIns" | "labelWraps" | "commaWraps" | "semicolonWraps" | "skipMarked" | "punctuationAside" | "keepDivisions">> & { sizes?: number[]; faces?: string[][]; labelWraps?: boolean; commaWraps?: boolean; semicolonWraps?: boolean; skipMarked?: boolean } = {
     firstLevel: options.firstLevel ?? 2,
     ...(options.sizes ? { sizes: options.sizes } : {}),
     ...(options.faces ? { faces: options.faces } : {}),
     ...(options.faces && options.labelWraps ? { labelWraps: true } : {}),
     ...(options.faces && options.commaWraps ? { commaWraps: true } : {}),
+    ...(options.faces && options.semicolonWraps ? { semicolonWraps: true } : {}),
     ...(options.faces && options.skipMarked ? { skipMarked: true } : {}),
     minRatio: options.minRatio ?? 1.15,
     maxChars: options.maxChars ?? 160,
@@ -238,6 +247,8 @@ export function layoutHeadings(layout: Layout, options: TypographicHeadingsOptio
       if (o.labelWraps && /:$/.test(text)) continue;
       // `commaWraps`: likewise a comma line
       if (o.commaWraps && /,$/.test(text)) continue;
+      // `semicolonWraps`: and a semicolon line
+      if (o.semicolonWraps && /;$/.test(text)) continue;
       headings.push({ volume, pdfIndex: page, text, level: levels.get(first.font)! });
     }
   }
