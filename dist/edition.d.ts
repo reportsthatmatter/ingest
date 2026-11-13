@@ -83,6 +83,8 @@ export type EditionSource = {
     path: string;
     sha256: string;
 };
+/** `words: "pdf"`: the longest disagreement, in words a side, served in the PDF's words. */
+export declare const PDF_WORDS_MAX = 40;
 /** `cleanEdition`: declares the edition a report's text and structure come from. */
 export type EditionPass = {
     readonly name: "cleanEdition";
@@ -107,6 +109,17 @@ export type EditionPass = {
      * (reportsthatmatter-gq4j).
      */
     readonly floats?: "after" | "by-notes";
+    /**
+     * Whose words are served where the edition and the PDF disagree. `"edition"`
+     * (the default): the edition's, every disagreement a review-queue suspect.
+     * `"pdf"`: for an edition of an earlier version than the PDF (the Duelfer
+     * Report's 2004 web text against its revised 2005 printing, reportsthatmatter-ivg.4),
+     * a short disagreement inside one paragraph, list item or quotation (up to
+     * `PDF_WORDS_MAX` words a side, both ends aligned on one PDF page, in one
+     * run of its text) takes the PDF's words; each is listed in fidelity.md.
+     * Longer ones, and table cells, stay the edition's and stay suspects.
+     */
+    readonly words?: "edition" | "pdf";
     /** Reads and checks the edition's files and returns its blocks. */
     read(): Edition;
 };
@@ -126,6 +139,8 @@ export declare function cleanEdition(options: {
     notes?: "back" | "page-foot";
     /** See `EditionPass.floats`. */
     floats?: "after" | "by-notes";
+    /** See `EditionPass.words`. */
+    words?: "edition" | "pdf";
     read(files: Array<{
         path: string;
         text: string;
@@ -180,6 +195,18 @@ export type EditionReport = {
         editionNotInPdf: number;
         pdfNotInEdition: number;
     };
+    /**
+     * `words: "pdf"`: the disagreements served in the PDF's words: how many,
+     * the edition words they replaced and the PDF words served, and how many
+     * short ones were left as the edition's because the edition marks them up
+     * (emphasis, a note marker) or the PDF breaks a paragraph or column inside.
+     */
+    servedFromPdf?: {
+        replaced: number;
+        editionWords: number;
+        pdfWords: number;
+        kept: number;
+    };
     /** The edition's gaps and what the PDF shadow filled each with (`fillGaps`). */
     filled?: FilledGap[];
 };
@@ -205,6 +232,7 @@ export type PrintedPage = {
  */
 export declare function assembleEdition(edition: Edition, pages: Page[], printed: PrintedPage[], sources: readonly EditionSource[], options?: {
     floats?: "after" | "by-notes";
+    words?: "edition" | "pdf";
 }): {
     body: string;
     notes: string;
