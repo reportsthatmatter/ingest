@@ -23,11 +23,11 @@ const doc = (partBody: string) =>
     "",
     "#### 9.1 Introduction",
     "",
-    filler(60),
+    filler(80),
     "",
     "### 10 Macroeconomic Models of Costs",
     "",
-    filler(60),
+    filler(100),
   ].join("\n");
 
 describe("a Part with its own introduction does not swallow its first chapter", () => {
@@ -58,10 +58,24 @@ describe("a bare Part banner still heads its first chapter", () => {
   });
 });
 
-describe("a Part whose next chapter is itself short still gathers it", () => {
-  it("accumulates short chapters under the Part until it is a section", () => {
-    const short = doc("A short introduction.").replace(/#### 9\.1 Introduction\n\n.*\n/, "");
+describe("a Part whose next part is short still gathers it", () => {
+  const intro = "Part III of the Review considers the costs of stabilisation. " + filler(5);
+
+  it("gathers a short chapter, then stands alone before a whole one", () => {
+    const short = doc(intro).replace(/#### 9\.1 Introduction\n\n.*\n/, "");
     const sections = splitSections(renderMarkdown(short));
+    expect(sections.map((s) => s.title)).toEqual(["Summary of Conclusions", "Part III: The Economics of Stabilisation", "10 Macroeconomic Models of Costs"]);
+    expect(sections[1].html).toContain("9 Identifying the Costs of Mitigation");
+  });
+
+  it("gathers a part under twice the sliver threshold (a short opening, a stray contents heading)", () => {
+    const opening = doc(intro).replace(filler(80), filler(30));
+    const sections = splitSections(renderMarkdown(opening));
+    expect(sections.map((s) => s.title)).toEqual(["Summary of Conclusions", "Part III: The Economics of Stabilisation", "10 Macroeconomic Models of Costs"]);
+  });
+
+  it("treats a heading with only a printed-page label as a bare banner", () => {
+    const sections = splitSections(renderMarkdown(doc("%%page 168%%")));
     expect(sections.map((s) => s.title)).toEqual(["Summary of Conclusions", "Part III: The Economics of Stabilisation", "10 Macroeconomic Models of Costs"]);
   });
 });
