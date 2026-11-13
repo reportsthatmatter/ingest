@@ -130,6 +130,13 @@ export function paragraphIndex(sections: Section[]): Record<string, string> {
  *   HUMAN IMPACT" then "a. Introduction", which otherwise sat at the foot of
  *   the Recommendations) — so this only ever fires on a document shaped that
  *   way, not on report identity.
+ *
+ * A divider gathers what follows only until it is long enough, and never a
+ * whole chapter that is a section in its own right: a Part heading with an
+ * introduction of its own stands alone, short as it is, when the next part is
+ * an h3 of at least `minChars` (reportsthatmatter-owre, the Stern Review's
+ * Part III and Chapter 9). A bare banner, with no text of its own, still heads
+ * its first chapter.
  */
 const DIVISION_HEADING =
   /^<h2\b[^>]*>(?:<[^>]+>)*\s*(?:Part|Appendix|Annex|Volume)\s+(?:\d|[IVXLC])/i;
@@ -159,6 +166,9 @@ function mergeSlivers(parts: string[], minChars: number): string[] {
   // A pending top-level divider, accumulating its chapters until it is a
   // section a reader would recognise as one.
   let divider = "";
+  // The divider is a Part (or Appendix, Annex, Volume) heading with an
+  // introduction of its own, not a bare banner.
+  let introducedDivision = false;
 
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i];
@@ -169,6 +179,17 @@ function mergeSlivers(parts: string[], minChars: number): string[] {
       // short foreword ("Foreword: Speaker of the House", then its title as an h3) had swallowed the
       // Chairman's whole foreword after it, which then had no section of its own (us-jan6-committee).
       if (/^<h2\b/.test(part)) {
+        merged.push(divider);
+        divider = "";
+        i--;
+        continue;
+      }
+      // A Part with its own introduction stands as a section of its own when
+      // the next part is a whole chapter, rather than swallowing it
+      // (reportsthatmatter-owre): the Stern Review's one-page Part III
+      // introduction took in its first chapter, Chapter 9 (28 pages, its
+      // sections one level down), which then had no entry in the contents.
+      if (introducedDivision && /^<h3\b/.test(part) && textLength(part) >= minChars) {
         merged.push(divider);
         divider = "";
         i--;
@@ -187,6 +208,7 @@ function mergeSlivers(parts: string[], minChars: number): string[] {
 
     if ((chapterBanner || chapterIntro || DIVISION_HEADING.test(part)) && textLength(part) < minChars) {
       divider = part;
+      introducedDivision = DIVISION_HEADING.test(part) && isH2WithIntro(part);
       continue;
     }
 
