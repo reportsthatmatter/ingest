@@ -129,23 +129,26 @@ export function reservedAssignments(
     (r, ks) => (r.fingerprint === undefined ? undefined : ks.find((k) => sectionOf[units[k].id] === r.section && fp[k] === r.fingerprint)),
     (r, ks) => ks.find((k) => sectionOf[units[k].id] === r.section),
   ];
-  for (const tier of tiers) {
+  // A reservation whose paragraph (same text, and same next passage or same section) an older one claimed lost it:
+  // it is retired. Decided after tiers 1-2, so tier 3 cannot hand a retired id to a different paragraph in that
+  // section (a reference added beside the one it named): an id never changes meaning twice (review 2026-11-13).
+  const blocked = new Set<string>();
+  const lostIt = (r: ReservedId) =>
+    r.fingerprint !== undefined &&
+    familiesOf(r.id)
+      .flatMap((f) => byFamily.get(f) ?? [])
+      .some((k) => claimed.has(k) && fp[k] === r.fingerprint && (nextFp[k] === r.next || sectionOf[units[k].id] === r.section));
+  tiers.forEach((tier, t) => {
+    if (t === 2) for (const r of reserved) if (!placed.has(r.id) && lostIt(r)) blocked.add(r.id);
     for (const r of reserved) {
-      if (placed.has(r.id)) continue;
+      if (placed.has(r.id) || blocked.has(r.id)) continue;
       const k = tier(r, family(r));
       if (k === undefined) continue;
       claimed.set(k, r.id);
       placed.add(r.id);
     }
-  }
-  const blocked = new Set<string>();
-  for (const r of reserved) {
-    if (placed.has(r.id) || r.fingerprint === undefined) continue;
-    const lost = familiesOf(r.id)
-      .flatMap((f) => byFamily.get(f) ?? [])
-      .some((k) => claimed.has(k) && fp[k] === r.fingerprint && (nextFp[k] === r.next || sectionOf[units[k].id] === r.section));
-    if (lost) blocked.add(r.id);
-  }
+  });
+  for (const r of reserved) if (!placed.has(r.id) && lostIt(r)) blocked.add(r.id);
   const moved = [...claimed].some(([k, id]) => units[k].id !== id) || units.some((u, k) => !claimed.has(k) && blocked.has(u.id));
   return moved ? { forced: claimed, blocked } : { forced: new Map(), blocked: new Set() };
 }

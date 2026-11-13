@@ -138,4 +138,16 @@ describe("paragraphFingerprint", () => {
     expect(paragraphFingerprint("Key Messages")).not.toBe(paragraphFingerprint("Key Message"));
     expect(paragraphFingerprint("x")).toMatch(/^[0-9a-f]{8}$/);
   });
+  it("never hands a retired id to a different paragraph in its section (tier 3 skips an id that lost its paragraph)", () => {
+    const P2 = "Tol, R.S.J. (2002): Estimates part II: dynamic estimates.";
+    const P1 = "Tol, R.S.J. (2002): Estimates part I: benchmark estimates.";
+    const Z = "Zed, Z. (2001): Something.";
+    // tol-r-s-j-2002-2 was served on P2 after tol-r-s-j-2002 (older): it lost P2 and is retired.
+    const reserved: ReservedId[] = ["tol-r-s-j-2002", "tol-r-s-j-2002-2"].map((id) => ({ id, section: "ch-a", fingerprint: paragraphFingerprint(P2), next: paragraphFingerprint(Z) }));
+    const after = renderArtifacts(`## Ch A\n\nIntro text here.\n\n${P1}\n\n${P2}\n\n${Z}\n`, { reserved });
+    const ids = where(after);
+    expect(ids["tol-r-s-j-2002"][1]).toBe(P2);
+    expect(ids["tol-r-s-j-2002-2"]).toBeUndefined();
+    expect(ids["tol-r-s-j-2002-3"][1]).toBe(P1);
+  });
 });
